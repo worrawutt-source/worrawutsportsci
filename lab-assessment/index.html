@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lab & Fitness Assessment | Worrawut Sport Sci</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-base: #060d17;
+      --card-bg: #0c1a2e;
+      --card-inner: #13243c;
+      --card-inner-hover: #1a304f;
+      --accent-blue: #38bdf8;
+      --accent-teal: #2dd4bf;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --font-stack: 'Prompt', 'Inter', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-stack);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .navbar {
+      width: 100%;
+      background: rgba(6, 13, 23, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .nav-container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      font-weight: 600;
+      font-size: 1.05rem;
+      color: var(--text-main);
+      text-decoration: none;
+    }
+
+    .brand span {
+      color: var(--accent-blue);
+      font-size: 0.8rem;
+      margin-left: 0.4rem;
+      font-weight: 400;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 1.25rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s ease;
+    }
+
+    .nav-links a:hover,
+    .nav-links a.active {
+      color: var(--text-main);
+    }
+
+    main {
+      flex: 1;
+      padding: 2.5rem 1rem 4rem;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .portal-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-subtle);
+      border-radius: 1.5rem;
+      max-width: 920px;
+      width: 100%;
+      padding: 2.5rem 2.25rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+    }
+
+    .back-nav {
+      margin-bottom: 1.5rem;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: var(--accent-blue);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .section-tag {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent-teal);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0.4rem;
+    }
+
+    .page-title {
+      font-size: clamp(1.75rem, 3.5vw, 2.25rem);
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 0.75rem;
+    }
+
+    .page-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      max-width: 650px;
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.25rem;
+    }
+
+    .action-card {
+      background: var(--card-inner);
+      border: 1px solid var(--border-subtle);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 160px;
+      transition: all 0.2s ease;
+    }
+
+    .action-card:hover {
+      background: var(--card-inner-hover);
+      border-color: rgba(56, 189, 248, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .action-card.full-width {
+      grid-column: span 2;
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .card-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 0.65rem;
+      background: rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-blue);
+    }
+
+    .badge-indicator {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .card-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    @media (max-width: 640px) {
+      .portal-card {
+        padding: 1.75rem 1.25rem;
+      }
+      .grid-container {
+        grid-template-columns: 1fr;
+      }
+      .action-card.full-width {
+        grid-column: span 1;
+      }
+      .nav-links {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="../index.html" class="brand">WORRAWUT<span>SPORT SCI</span></a>
+      <nav>
+        <ul class="nav-links">
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="../courses/">My Courses</a></li>
+          <li><a href="./" class="active">Lab & Assessment</a></li>
+          <li><a href="../online-learning/">Online Learning</a></li>
+          <li><a href="../about/">About</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <article class="portal-card">
+      <div class="back-nav">
+        <a href="../index.html" class="back-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          ย้อนกลับหน้าหลัก
+        </a>
+      </div>
+
+      <div class="section-tag">Laboratory & Field Testing</div>
+      <h1 class="page-title">Lab Booking & Assessment</h1>
+      <p class="page-desc">ระบบจองเวลาปฏิบัติการสรีรวิทยาการออกกำลังกาย และศูนย์บันทึกผลการทดสอบสมรรถภาพทางกาย</p>
+
+      <section class="grid-container">
+        
+        <!-- Lab Booking -->
+        <a id="btn-lab" target="_blank" rel="noopener noreferrer" class="action-card full-width">
+          <div class="card-top">
+            <div class="card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+            </div>
+            <span class="badge-indicator">Schedule</span>
+          </div>
+          <div>
+            <div class="card-title">จองเวลาทำ Lab สรีรวิทยาการออกกำลังกาย</div>
+            <div class="card-desc">ระบบนัดหมายเวลาเครื่องมือและห้องปฏิบัติการวิทยาศาสตร์การกีฬาสำหรับการเรียนการสอนและวิจัย</div>
+          </div>
+        </a>
+
+        <!-- Athlete Fitness -->
+        <a id="btn-fitness-athlete" target="_blank" rel="noopener noreferrer" class="action-card">
+          <div class="card-top">
+            <div class="card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+            </div>
+            <span class="badge-indicator">Athletes</span>
+          </div>
+          <div>
+            <div class="card-title">ทดสอบสมรรถภาพนักกีฬา</div>
+            <div class="card-desc">บันทึกและประเมินเกณฑ์สมรรถภาพทางกายเฉพาะทางของตัวแทนนักกีฬามหาวิทยาลัย</div>
+          </div>
+        </a>
+
+        <!-- General Fitness -->
+        <a id="btn-fitness-general" target="_blank" rel="noopener noreferrer" class="action-card">
+          <div class="card-top">
+            <div class="card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <span class="badge-indicator">General</span>
+          </div>
+          <div>
+            <div class="card-title">ทดสอบสมรรถภาพบุคคลทั่วไป</div>
+            <div class="card-desc">ระบบประเมินสมรรถภาพทางกายเพื่อสุขภาพสำหรับบุคลากร นักศึกษา และประชาชนทั่วไป</div>
+          </div>
+        </a>
+
+      </section>
+    </article>
+  </main>
+
+  <!-- Load Config & Bind Links -->
+  <script src="../assets/js/config.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      if (typeof APP_CONFIG !== "undefined" && APP_CONFIG.webApps) {
+        const bind = (id, url) => {
+          const el = document.getElementById(id);
+          if (el && url) el.href = url;
+        };
+
+        bind("btn-lab", APP_CONFIG.webApps.labBooking);
+        bind("btn-fitness-athlete", APP_CONFIG.webApps.fitnessAthlete);
+        bind("btn-fitness-general", APP_CONFIG.webApps.fitnessGeneral);
+      }
+    });
+  </script>
+</body>
+</html>
