@@ -9,7 +9,7 @@ const APP_CONFIG = {
     labBooking: "https://script.google.com/macros/s/AKfycbzcK0F-MyKMDsIf-7wG2_--lvi2nXg6My2cryzFCH3Y74CkjmDZvaJVCn5XPa05w4ODZw/exec",
     fitnessAthlete: "https://script.google.com/macros/s/AKfycbwLoiLPVnLndSG8ema3ezaF-9duE2hEXI8d_zy8aTtUKGDn7c-E_BCblBa1HuqxfcsoQA/exec",
     fitnessGeneral: "https://script.google.com/macros/s/AKfycbyrgUBx4_SFQFfHvzPlgBr6X7hQp0mpaz-qx7suc7SobP_OZKyZXj0UM-U-o_khGsFf/exec",
-    onlineExam: "https://script.google.com/macros/s/AKfycbzDVjKZPapwjRTH5lEJWQOFxY7ZXqRNo60mFZM_zRCIa-SmuqUrMwTXBctV6MrJd6E/exec",
+    onlineExam: "https://worrawutt-source.github.io/worrawutsportsci/smart-exam/",
     attendance: "" // รอนำมาใส่เพิ่มเติมภายหลัง
   },
 
