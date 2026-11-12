@@ -2,96 +2,57 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sport Science Research System</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPORT SCIENCE RESEARCH</title>
 
-    <style>
-        * {
-            box-sizing: border-box;
-        }
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-        body {
-            margin: 0;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: Arial, Tahoma, sans-serif;
-            background: linear-gradient(135deg, #123c69, #2a5298);
-        }
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #ffffff;
+}
 
-        .container {
-            text-align: center;
-            background: #ffffff;
-            padding: 45px 30px;
-            border-radius: 18px;
-            width: 90%;
-            max-width: 480px;
-            box-shadow: 0 10px 35px rgba(0,0,0,0.2);
-        }
+/* กรอบครอบ Google Apps Script */
+.app-wrapper {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #ffffff;
+}
 
-        h1 {
-            color: #173f70;
-            font-size: 25px;
-            margin-bottom: 12px;
-        }
-
-        p {
-            color: #666;
-            font-size: 15px;
-            margin-bottom: 30px;
-        }
-
-        .btn {
-            display: inline-block;
-            padding: 15px 35px;
-            background: #1769aa;
-            color: white;
-            text-decoration: none;
-            border-radius: 10px;
-            font-size: 17px;
-            font-weight: bold;
-            transition: 0.2s;
-        }
-
-        .btn:hover {
-            background: #104d80;
-            transform: translateY(-2px);
-        }
-
-        .footer {
-            margin-top: 30px;
-            font-size: 12px;
-            color: #999;
-        }
-    </style>
+/* ซ่อนแถบด้านบนของ Google Apps Script */
+.app-frame {
+    position: absolute;
+    top: -56px;
+    left: 0;
+    width: 100%;
+    height: calc(100% + 56px);
+    border: none;
+    display: block;
+}
+</style>
 </head>
 
 <body>
 
-    <div class="container">
-
-        <h1>Sport Science Research System</h1>
-
-        <p>
-            ระบบบริหารจัดการงานวิจัย<br>
-            สาขาวิทยาศาสตร์การกีฬาและการออกกำลังกาย
-        </p>
-
-        <a
-            class="btn"
-            href="https://script.google.com/macros/s/AKfycbwV6XL3kV9fP-8yZnPpb8L9wAutK_Ah2zReRbyfauJfebp44sasXmmLyGG1YczG5R9D/exec"
-            target="_blank"
-            rel="noopener noreferrer">
-            เข้าสู่ระบบ
-        </a>
-
-        <div class="footer">
-            Sport Science Research System
-        </div>
-
-    </div>
+<div class="app-wrapper">
+    <iframe
+        class="app-frame"
+        src="https://script.google.com/macros/s/AKfycbwV6XL3kV9fP-8yZnPpb8L9wAutK_Ah2zReRbyfauJfebp44sasXmmLyGG1YczG5R9D/exec"
+        allow="fullscreen"
+        loading="eager">
+    </iframe>
+</div>
 
 </body>
 </html>
