@@ -70,7 +70,11 @@ function doPost(e) {
     return jsonResponse_(failure_(requestId, 'NOT_IMPLEMENTED', 'This API action is not implemented yet.'));
   } catch (err) {
     console.error('API failure [' + requestId + ']: ' + (err && err.message ? err.message : 'unknown'));
-    return jsonResponse_(failure_(requestId, 'INTERNAL_ERROR', 'The request could not be completed.'));
+    var code = err && err.apiCode ? err.apiCode : 'INTERNAL_ERROR';
+    var message = code === 'UNAUTHENTICATED'
+      ? 'Authentication failed. A valid LINE ID token is required.'
+      : 'The request could not be completed.';
+    return jsonResponse_(failure_(requestId, code, message));
   }
 }
 
@@ -161,5 +165,35 @@ function testConfiguration() {
   console.log(JSON.stringify({
     apiVersion: SNC.API_VERSION,
     lineChannelIdConfigured: Boolean(channelId)
+  }));
+}
+
+
+/**
+ * Calls the deployed Web App without an ID token.
+ * Expected result: success=false and error.code=UNAUTHENTICATED.
+ */
+function testPostMissingToken() {
+  var url = ScriptApp.getService().getUrl();
+  if (!url) throw new Error('Deploy this project as a Web App before running this test.');
+
+  var response = UrlFetchApp.fetch(url, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify({
+      action: 'auth.verify',
+      requestId: Utilities.getUuid(),
+      payload: {}
+    }),
+    muteHttpExceptions: true
+  });
+
+  var result = JSON.parse(response.getContentText());
+  console.log(JSON.stringify({
+    httpStatus: response.getResponseCode(),
+    success: result.success,
+    errorCode: result.error && result.error.code,
+    expected: 'UNAUTHENTICATED',
+    pass: result.success === false && result.error && result.error.code === 'UNAUTHENTICATED'
   }));
 }
