@@ -49,22 +49,35 @@ function doPost(e) {
 
     if (action === 'auth.verify' || action === 'auth.me') {
       var auth = verifyLiffIdentity_(payload.idToken);
+      var linked = findLineAccountBySubject_(auth.sub);
       return jsonResponse_({
-        success: true,
-        requestId: requestId,
+        success: true, requestId: requestId,
         data: {
-          authenticated: true,
-          identityProvider: 'LINE',
-          lineSubject: auth.sub,
-          displayName: auth.name || null,
-          pictureUrl: auth.picture || null,
-          email: auth.email || null,
-          accountStatus: 'LINKING_REQUIRED',
-          role: null,
-          message: 'Identity verified. Application account and role authorization are not yet configured.'
-        },
-        error: null
+          authenticated: true, identityProvider: 'LINE',
+          lineSubject: auth.sub, displayName: auth.name || null,
+          pictureUrl: auth.picture || null, email: auth.email || null,
+          accountStatus: linked ? 'LINKED' : 'LINKING_REQUIRED',
+          role: linked ? 'STUDENT' : null,
+          user: linked ? publicUser_(linked.user) : null
+        }, error: null
       });
+    }
+
+    if (action === 'auth.requestLinkOtp') {
+      var linkIdentity = verifyLiffIdentity_(payload.idToken);
+      return jsonResponse_(success_(requestId, requestStudentLinkOtp_(linkIdentity, payload, requestId)));
+    }
+    if (action === 'auth.linkStudent') {
+      var confirmIdentity = verifyLiffIdentity_(payload.idToken);
+      return jsonResponse_(success_(requestId, confirmStudentLink_(confirmIdentity, payload, requestId)));
+    }
+    if (action === 'auth.requestEmailChange') {
+      var emailIdentity = verifyLiffIdentity_(payload.idToken);
+      return jsonResponse_(success_(requestId, requestEmailChangeOtp_(emailIdentity, payload, requestId)));
+    }
+    if (action === 'auth.confirmEmailChange') {
+      var changeIdentity = verifyLiffIdentity_(payload.idToken);
+      return jsonResponse_(success_(requestId, confirmEmailChange_(changeIdentity, payload, requestId)));
     }
 
     return jsonResponse_(failure_(requestId, 'NOT_IMPLEMENTED', 'This API action is not implemented yet.'));
@@ -251,4 +264,290 @@ function testPostMissingToken() {
     expected: 'UNAUTHENTICATED',
     pass: result.success === false && result.error && result.error.code === 'UNAUTHENTICATED'
   }));
+}
+
+
+/* ===================== Account linking and email change ===================== */
+
+function success_(requestId, data) {
+  return { success: true, requestId: requestId, data: data, error: null };
+}
+
+function accountSheet_(name) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss && ss.getSheetByName(name);
+  if (!sh) throw apiError_('DATABASE_NOT_READY', 'Required account table is unavailable.');
+  return sh;
+}
+
+function rowsAsObjects_(sheet) {
+  var values = sheet.getDataRange().getValues();
+  if (values.length < 2) return [];
+  var headers = values[0].map(String);
+  return values.slice(1).map(function(row, i) {
+    var obj = { _row: i + 2 };
+    headers.forEach(function(h, j) { obj[h] = row[j]; });
+    return obj;
+  });
+}
+
+function findLineAccountBySubject_(subject) {
+  var accounts = rowsAsObjects_(accountSheet_('LINEAccounts'));
+  var match = accounts.filter(function(a) {
+    return String(a.Provider) === 'LINE' &&
+      String(a.ProviderSubject) === String(subject) &&
+      String(a.Status).toUpperCase() === 'ACTIVE';
+  })[0];
+  if (!match) return null;
+  var user = rowsAsObjects_(accountSheet_('Users')).filter(function(u) {
+    return String(u.UserID) === String(match.UserID) &&
+      String(u.Status).toUpperCase() === 'ACTIVE';
+  })[0];
+  return user ? { account: match, user: user } : null;
+}
+
+function publicUser_(u) {
+  return {
+    userId: String(u.UserID), studentId: String(u.StudentID),
+    firstName: String(u.FirstName), lastName: String(u.LastName),
+    email: String(u.Email)
+  };
+}
+
+function normalizeEmail_(value) {
+  var email = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw apiError_('VALIDATION_ERROR', 'Please provide a valid email address.');
+  }
+  return email;
+}
+
+function normalizeStudentId_(value) {
+  var id = typeof value === 'string' || typeof value === 'number' ? String(value).trim() : '';
+  if (!/^\d{6,20}$/.test(id)) throw apiError_('VALIDATION_ERROR', 'Student ID format is invalid.');
+  return id;
+}
+
+function makeOtp_() {
+  var raw = Utilities.getUuid().replace(/[^0-9]/g, '');
+  while (raw.length < 6) raw += String(Math.floor(Math.random() * 10));
+  return raw.slice(0, 6);
+}
+
+function otpHash_(otp, challengeId) {
+  var pepper = PropertiesService.getScriptProperties().getProperty('SNC_OTP_PEPPER');
+  if (!pepper) throw apiError_('CONFIGURATION_ERROR', 'OTP service is not configured.');
+  var bytes = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    String(challengeId) + ':' + String(otp) + ':' + pepper,
+    Utilities.Charset.UTF_8
+  );
+  return bytes.map(function(b) {
+    var v = (b + 256) % 256;
+    return ('0' + v.toString(16)).slice(-2);
+  }).join('');
+}
+
+function createOtpChallenge_(data) {
+  var sh = accountSheet_('EmailOTPChallenges');
+  var headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0];
+  var required = ['ChallengeID','StudentID','Email','LINEProvider','LINEProviderSubject',
+    'OTPHash','ExpiresAt','AttemptCount','MaxAttempts','ConsumedAt','CreatedAt',
+    'RequestID','Purpose','UserID','NewEmail'];
+  if (headers.length !== required.length || !required.every(function(h,i){return headers[i] === h;})) {
+    throw apiError_('SCHEMA_MISMATCH', 'Email OTP schema is not migrated. Run setupAccountLinkingSheets() first.');
+  }
+  var challengeId = Utilities.getUuid();
+  var otp = makeOtp_();
+  var now = new Date();
+  var expires = new Date(now.getTime() + 10 * 60 * 1000);
+  sh.appendRow([
+    challengeId, data.studentId || '', data.email, 'LINE', data.subject,
+    otpHash_(otp, challengeId), expires, 0, 5, '', now, data.requestId,
+    data.purpose, data.userId || '', data.newEmail || ''
+  ]);
+  try {
+    MailApp.sendEmail({
+      to: data.email,
+      subject: data.purpose === 'STUDENT_LINK' ? 'รหัสยืนยันการเชื่อมบัญชีนักศึกษา' : 'รหัสยืนยันการเปลี่ยนอีเมล',
+      body: 'รหัส OTP ของคุณคือ ' + otp + '\nรหัสนี้ใช้ได้ 10 นาที และใช้ได้เพียงครั้งเดียว หากคุณไม่ได้ร้องขอสามารถละเว้นอีเมลนี้ได้'
+    });
+  } catch (err) {
+    sh.getRange(sh.getLastRow(), 10).setValue(new Date());
+    throw apiError_('EMAIL_DELIVERY_FAILED', 'Unable to send verification email. Please try again later.');
+  }
+  return { challengeId: challengeId, expiresInSeconds: 600, destination: maskEmail_(data.email) };
+}
+
+function maskEmail_(email) {
+  var p = String(email).split('@');
+  if (p.length !== 2) return '';
+  return (p[0].slice(0, 2) + '***@' + p[1]);
+}
+
+function requestStudentLinkOtp_(identity, payload, requestId) {
+  var studentId = normalizeStudentId_(payload.studentId);
+  var email = normalizeEmail_(payload.email);
+  var users = rowsAsObjects_(accountSheet_('Users'));
+  var user = users.filter(function(u) {
+    return String(u.StudentID).trim() === studentId &&
+      String(u.Email).trim().toLowerCase() === email &&
+      String(u.Status).toUpperCase() === 'ACTIVE';
+  })[0];
+  if (!user) throw apiError_('ACCOUNT_NOT_VERIFIED', 'Student ID and registered email could not be verified.');
+  var existing = findLineAccountBySubject_(identity.sub);
+  if (existing && String(existing.user.UserID) !== String(user.UserID)) {
+    throw apiError_('LINE_ALREADY_LINKED', 'This LINE account is already linked to another student account.');
+  }
+  var accounts = rowsAsObjects_(accountSheet_('LINEAccounts'));
+  if (accounts.some(function(a) {
+    return String(a.UserID) === String(user.UserID) &&
+      String(a.Status).toUpperCase() === 'ACTIVE' &&
+      String(a.ProviderSubject) !== String(identity.sub);
+  })) throw apiError_('STUDENT_ALREADY_LINKED', 'This student account is already linked to a different LINE account.');
+  var result = createOtpChallenge_({
+    studentId: studentId, email: email, subject: identity.sub,
+    purpose: 'STUDENT_LINK', requestId: requestId
+  });
+  return { status: 'OTP_SENT', challengeId: result.challengeId,
+    destination: result.destination, expiresInSeconds: result.expiresInSeconds };
+}
+
+function confirmStudentLink_(identity, payload, requestId) {
+  var studentId = normalizeStudentId_(payload.studentId);
+  var email = normalizeEmail_(payload.email);
+  var otp = typeof payload.otp === 'string' ? payload.otp.trim() : '';
+  if (!/^\d{6}$/.test(otp)) throw apiError_('VALIDATION_ERROR', 'OTP must contain six digits.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var challenge = consumeOtpChallenge_({
+      purpose: 'STUDENT_LINK', subject: identity.sub, studentId: studentId,
+      email: email, otp: otp
+    });
+    var users = rowsAsObjects_(accountSheet_('Users'));
+    var user = users.filter(function(u) {
+      return String(u.StudentID).trim() === studentId &&
+        String(u.Email).trim().toLowerCase() === email &&
+        String(u.Status).toUpperCase() === 'ACTIVE';
+    })[0];
+    if (!user) throw apiError_('ACCOUNT_NOT_VERIFIED', 'Student account is no longer eligible for linking.');
+    var linked = findLineAccountBySubject_(identity.sub);
+    if (linked && String(linked.user.UserID) !== String(user.UserID)) {
+      throw apiError_('LINE_ALREADY_LINKED', 'This LINE account is already linked elsewhere.');
+    }
+    var accounts = rowsAsObjects_(accountSheet_('LINEAccounts'));
+    var existing = accounts.filter(function(a) {
+      return String(a.UserID) === String(user.UserID) &&
+        String(a.Provider) === 'LINE' && String(a.Status).toUpperCase() === 'ACTIVE';
+    })[0];
+    var now = new Date();
+    if (!existing) {
+      accountSheet_('LINEAccounts').appendRow([
+        Utilities.getUuid(), user.UserID, 'LINE', identity.sub,
+        identity.name || '', identity.picture || '', 'ACTIVE', now, now, now
+      ]);
+    }
+    appendAudit_('', 'STUDENT_ACCOUNT_LINKED', 'User', user.UserID, {
+      provider: 'LINE', studentId: studentId
+    }, requestId);
+    return { accountStatus: 'LINKED', role: 'STUDENT', user: publicUser_(user) };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function requestEmailChangeOtp_(identity, payload, requestId) {
+  var linked = findLineAccountBySubject_(identity.sub);
+  if (!linked) throw apiError_('LINKING_REQUIRED', 'Link your student account before changing email.');
+  var newEmail = normalizeEmail_(payload.newEmail);
+  var users = rowsAsObjects_(accountSheet_('Users'));
+  if (users.some(function(u) {
+    return String(u.Email).trim().toLowerCase() === newEmail &&
+      String(u.UserID) !== String(linked.user.UserID);
+  })) throw apiError_('EMAIL_ALREADY_USED', 'This email address is already registered.');
+  if (String(linked.user.Email).trim().toLowerCase() === newEmail) {
+    throw apiError_('EMAIL_UNCHANGED', 'The new email is the same as the current email.');
+  }
+  var result = createOtpChallenge_({
+    studentId: String(linked.user.StudentID), email: newEmail,
+    subject: identity.sub, purpose: 'EMAIL_CHANGE',
+    userId: String(linked.user.UserID), newEmail: newEmail, requestId: requestId
+  });
+  return { status: 'OTP_SENT', destination: result.destination,
+    challengeId: result.challengeId, expiresInSeconds: result.expiresInSeconds };
+}
+
+function confirmEmailChange_(identity, payload, requestId) {
+  var otp = typeof payload.otp === 'string' ? payload.otp.trim() : '';
+  var newEmail = normalizeEmail_(payload.newEmail);
+  if (!/^\d{6}$/.test(otp)) throw apiError_('VALIDATION_ERROR', 'OTP must contain six digits.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var linked = findLineAccountBySubject_(identity.sub);
+    if (!linked) throw apiError_('LINKING_REQUIRED', 'Student account is not linked.');
+    consumeOtpChallenge_({
+      purpose: 'EMAIL_CHANGE', subject: identity.sub,
+      studentId: String(linked.user.StudentID), email: newEmail,
+      userId: String(linked.user.UserID), newEmail: newEmail, otp: otp
+    });
+    var users = accountSheet_('Users');
+    var all = rowsAsObjects_(users);
+    if (all.some(function(u) {
+      return String(u.Email).trim().toLowerCase() === newEmail &&
+        String(u.UserID) !== String(linked.user.UserID);
+    })) throw apiError_('EMAIL_ALREADY_USED', 'This email address is already registered.');
+    var headers = users.getRange(1,1,1,users.getLastColumn()).getDisplayValues()[0];
+    var emailCol = headers.indexOf('Email') + 1;
+    var updatedCol = headers.indexOf('UpdatedAt') + 1;
+    if (!emailCol || !updatedCol) throw apiError_('SCHEMA_MISMATCH', 'Users schema is invalid.');
+    var oldEmail = String(linked.user.Email);
+    users.getRange(linked.user._row, emailCol).setValue(newEmail);
+    users.getRange(linked.user._row, updatedCol).setValue(new Date());
+    appendAudit_(String(linked.user.UserID), 'STUDENT_EMAIL_CHANGED', 'User',
+      linked.user.UserID, { oldEmail: oldEmail, newEmail: newEmail }, requestId);
+    linked.user.Email = newEmail;
+    return { status: 'EMAIL_UPDATED', user: publicUser_(linked.user) };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function consumeOtpChallenge_(criteria) {
+  var sh = accountSheet_('EmailOTPChallenges');
+  var rows = rowsAsObjects_(sh);
+  var now = new Date();
+  var candidate = rows.filter(function(r) {
+    return String(r.Purpose) === criteria.purpose &&
+      String(r.LINEProvider) === 'LINE' &&
+      String(r.LINEProviderSubject) === String(criteria.subject) &&
+      String(r.StudentID) === String(criteria.studentId) &&
+      String(r.Email).toLowerCase() === String(criteria.email).toLowerCase() &&
+      (!criteria.userId || String(r.UserID) === String(criteria.userId)) &&
+      (!criteria.newEmail || String(r.NewEmail).toLowerCase() === String(criteria.newEmail).toLowerCase()) &&
+      !r.ConsumedAt && new Date(r.ExpiresAt).getTime() > now.getTime() &&
+      Number(r.AttemptCount) < Number(r.MaxAttempts)
+  }).sort(function(a,b) { return new Date(b.CreatedAt) - new Date(a.CreatedAt); })[0];
+  if (!candidate) throw apiError_('OTP_INVALID_OR_EXPIRED', 'OTP is invalid or expired. Request a new code.');
+  var headers = sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0];
+  var attemptCol = headers.indexOf('AttemptCount') + 1;
+  var consumedCol = headers.indexOf('ConsumedAt') + 1;
+  sh.getRange(candidate._row, attemptCol).setValue(Number(candidate.AttemptCount) + 1);
+  var expected = otpHash_(criteria.otp, candidate.ChallengeID);
+  if (expected !== String(candidate.OTPHash)) {
+    if (Number(candidate.AttemptCount) + 1 >= Number(candidate.MaxAttempts)) {
+      sh.getRange(candidate._row, consumedCol).setValue(new Date());
+    }
+    throw apiError_('OTP_INVALID_OR_EXPIRED', 'OTP is invalid or expired. Request a new code.');
+  }
+  sh.getRange(candidate._row, consumedCol).setValue(new Date());
+  return candidate;
+}
+
+function appendAudit_(actorUserId, action, entityType, entityId, details, requestId) {
+  accountSheet_('AuditLogs').appendRow([
+    Utilities.getUuid(), actorUserId || '', action, entityType, entityId,
+    JSON.stringify(details || {}), new Date(), requestId || ''
+  ]);
 }
