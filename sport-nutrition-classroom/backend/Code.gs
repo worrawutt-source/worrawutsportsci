@@ -7,7 +7,7 @@
 const SNC = Object.freeze({
   LINE_VERIFY_URL: 'https://api.line.me/oauth2/v2.1/verify',
   MAX_TOKEN_LENGTH: 12000,
-  API_VERSION: '1.0.0'
+  API_VERSION: '1.1.0'
 });
 
 function doGet() {
@@ -448,7 +448,7 @@ function confirmStudentLink_(identity, payload, requestId) {
         identity.name || '', identity.picture || '', 'ACTIVE', now, now, now
       ]);
     }
-    appendAudit_('', 'STUDENT_ACCOUNT_LINKED', 'User', user.UserID, {
+    appendAudit_(String(user.UserID), 'STUDENT_ACCOUNT_LINKED', 'User', user.UserID, {
       provider: 'LINE', studentId: studentId
     }, requestId);
     return { accountStatus: 'LINKED', role: 'STUDENT', user: publicUser_(user) };
@@ -550,4 +550,50 @@ function appendAudit_(actorUserId, action, entityType, entityId, details, reques
     Utilities.getUuid(), actorUserId || '', action, entityType, entityId,
     JSON.stringify(details || {}), new Date(), requestId || ''
   ]);
+}
+
+
+/**
+ * Read-only preflight for the account-linking phase.
+ * Does not send email, alter rows, or print student identifiers.
+ */
+function testAccountLinkingPreflight() {
+  var required = {
+    Users: ['UserID','StudentID','FirstName','LastName','Email','Status','CreatedAt','UpdatedAt'],
+    LINEAccounts: ['LINEAccountID','UserID','Provider','ProviderSubject','DisplayName','PictureUrl','Status','LinkedAt','CreatedAt','UpdatedAt'],
+    EmailOTPChallenges: ['ChallengeID','StudentID','Email','LINEProvider','LINEProviderSubject','OTPHash','ExpiresAt','AttemptCount','MaxAttempts','ConsumedAt','CreatedAt','RequestID','Purpose','UserID','NewEmail'],
+    AuditLogs: ['AuditID','ActorUserID','Action','EntityType','EntityID','DetailsJson','CreatedAt','RequestID']
+  };
+  var report = { success: true, checks: {}, userCount: 0, activeLineLinks: 0 };
+  Object.keys(required).forEach(function(name) {
+    var sh = accountSheet_(name);
+    var actual = sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0];
+    var ok = actual.length === required[name].length &&
+      required[name].every(function(h,i) { return actual[i] === h; });
+    report.checks[name] = ok ? 'PASS' : 'FAIL';
+    if (!ok) report.success = false;
+  });
+  var props = PropertiesService.getScriptProperties();
+  report.checks.LINE_CHANNEL_ID = props.getProperty('LINE_CHANNEL_ID') ? 'PASS' : 'MISSING';
+  report.checks.SNC_OTP_PEPPER = props.getProperty('SNC_OTP_PEPPER') ? 'PASS' : 'MISSING';
+  if (!props.getProperty('LINE_CHANNEL_ID') || !props.getProperty('SNC_OTP_PEPPER')) report.success = false;
+  var users = rowsAsObjects_(accountSheet_('Users'));
+  var links = rowsAsObjects_(accountSheet_('LINEAccounts'));
+  report.userCount = users.length;
+  report.activeLineLinks = links.filter(function(a) {
+    return String(a.Provider) === 'LINE' && String(a.Status).toUpperCase() === 'ACTIVE';
+  }).length;
+  var ids = {}, emails = {}, duplicates = [];
+  users.forEach(function(u) {
+    var id = String(u.StudentID).trim();
+    var email = String(u.Email).trim().toLowerCase();
+    if (id && ids[id]) duplicates.push('DUPLICATE_STUDENT_ID');
+    if (email && emails[email]) duplicates.push('DUPLICATE_EMAIL');
+    if (id) ids[id] = true;
+    if (email) emails[email] = true;
+  });
+  report.checks.uniqueStudentIdAndEmail = duplicates.length ? 'FAIL' : 'PASS';
+  if (duplicates.length) report.success = false;
+  console.log(JSON.stringify(report, null, 2));
+  return report;
 }
