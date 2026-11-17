@@ -69,18 +69,35 @@ function doPost(e) {
 
     return jsonResponse_(failure_(requestId, 'NOT_IMPLEMENTED', 'This API action is not implemented yet.'));
   } catch (err) {
-    console.error('API failure [' + requestId + ']: ' + (err && err.message ? err.message : 'unknown'));
     var code = err && err.apiCode ? err.apiCode : 'INTERNAL_ERROR';
-    var message = code === 'UNAUTHENTICATED'
-      ? 'Authentication failed. A valid LINE ID token is required.'
+    // Never log ID tokens or request payloads. Log only safe diagnostic metadata.
+    console.error(JSON.stringify({
+      event: 'API_FAILURE',
+      requestId: requestId,
+      errorCode: code,
+      message: safeLogText_(err && err.message ? err.message : 'unknown')
+    }));
+    var isTokenError = /^TOKEN_/.test(code);
+    var message = isTokenError
+      ? 'Authentication failed. Please sign in with LINE again.'
       : 'The request could not be completed.';
     return jsonResponse_(failure_(requestId, code, message));
   }
 }
 
 function verifyLiffIdentity_(idToken) {
-  if (typeof idToken !== 'string' || !idToken.trim() || idToken.length > SNC.MAX_TOKEN_LENGTH) {
-    throw apiError_('UNAUTHENTICATED', 'A valid LINE LIFF ID token is required.');
+  var tokenLength = typeof idToken === 'string' ? idToken.length : 0;
+  console.log(JSON.stringify({
+    event: 'LINE_TOKEN_RECEIVED',
+    tokenLength: tokenLength,
+    tokenPresent: typeof idToken === 'string' && Boolean(idToken.trim())
+  }));
+
+  if (typeof idToken !== 'string' || !idToken.trim()) {
+    throw apiError_('TOKEN_MISSING', 'LINE ID token is missing.');
+  }
+  if (idToken.length > SNC.MAX_TOKEN_LENGTH) {
+    throw apiError_('TOKEN_INVALID', 'LINE ID token exceeds the accepted length.');
   }
 
   var props = PropertiesService.getScriptProperties();
@@ -104,16 +121,46 @@ function verifyLiffIdentity_(idToken) {
   }
 
   var status = response.getResponseCode();
+  var responseText = response.getContentText();
   var body;
   try {
-    body = JSON.parse(response.getContentText());
+    body = JSON.parse(responseText);
   } catch (_) {
-    throw apiError_('UNAUTHENTICATED', 'LINE returned an invalid verification response.');
+    console.error(JSON.stringify({
+      event: 'LINE_VERIFY_RESPONSE',
+      httpStatus: status,
+      parseableJson: false,
+      responseLength: responseText ? responseText.length : 0
+    }));
+    throw apiError_('TOKEN_INVALID', 'LINE returned an invalid verification response.');
   }
 
   if (status !== 200 || !body || !body.sub) {
-    throw apiError_('UNAUTHENTICATED', 'LINE ID token verification failed.');
+    var lineError = safeLogText_(body && body.error ? body.error : 'unknown');
+    var lineDescription = safeLogText_(body && body.error_description ? body.error_description : '');
+    console.error(JSON.stringify({
+      event: 'LINE_VERIFY_REJECTED',
+      httpStatus: status,
+      lineError: lineError,
+      errorDescription: lineDescription,
+      tokenLength: tokenLength
+    }));
+
+    var diagnosticText = (String(lineError) + ' ' + String(lineDescription)).toLowerCase();
+    if (/expir|expired/.test(diagnosticText)) {
+      throw apiError_('TOKEN_EXPIRED', 'LINE ID token has expired.');
+    }
+    if (/audience|client.?id|channel.?id/.test(diagnosticText)) {
+      throw apiError_('TOKEN_AUDIENCE_MISMATCH', 'LINE ID token audience does not match the configured channel.');
+    }
+    throw apiError_('TOKEN_INVALID', 'LINE ID token verification failed.');
   }
+
+  console.log(JSON.stringify({
+    event: 'LINE_VERIFY_SUCCESS',
+    httpStatus: status,
+    tokenLength: tokenLength
+  }));
 
   // LINE verifies signature, issuer, audience, expiry and token validity.
   return {
@@ -143,6 +190,14 @@ function apiError_(code, message) {
   var err = new Error(message);
   err.apiCode = code;
   return err;
+}
+
+function safeLogText_(value) {
+  if (typeof value !== 'string') return '';
+  // Redact any JWT-shaped value defensively before writing provider diagnostics to logs.
+  return value.replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[REDACTED]')
+    .replace(/[\r\n\t]/g, ' ')
+    .slice(0, 500);
 }
 
 function safeString_(value, maxLength) {
