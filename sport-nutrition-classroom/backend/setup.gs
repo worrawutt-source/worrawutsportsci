@@ -229,11 +229,11 @@ function importStudentsFromStaging() {
       var studentId=String(r[2]||'').trim();
       var rowNo=index+2;
       if (!email || !display || !studentId) { errors.push('Row '+rowNo+': missing EMAIL, DISPLAY_NAME, or STUDENT_ID'); return; }
-      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) { errors.push('Row '+rowNo+': invalid email format'); return; }
-      if (!/^\\d+$/.test(studentId)) { errors.push('Row '+rowNo+': STUDENT_ID must contain digits only'); return; }
-      var m=display.match(/^(นาย|นางสาว|นาง|น\.ส\.)\\s*(.+)$/);
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errors.push('Row '+rowNo+': invalid email format'); return; }
+      if (!/^\d+$/.test(studentId)) { errors.push('Row '+rowNo+': STUDENT_ID must contain digits only'); return; }
+      var m=display.match(/^(นาย|นางสาว|นาง|น\.ส\.)\s*(.+)$/);
       if (!m) { errors.push('Row '+rowNo+': cannot parse name prefix: '+display); return; }
-      var parts=m[2].trim().split(/\\s+/);
+      var parts=m[2].trim().split(/\s+/);
       if (parts.length < 2) { errors.push('Row '+rowNo+': name must contain first and last name'); return; }
       if (seenIds[studentId] || seenEmails[email]) { errors.push('Row '+rowNo+': duplicate StudentID or Email in import file'); return; }
       seenIds[studentId]=true; seenEmails[email]=true;
@@ -257,7 +257,7 @@ function importStudentsFromStaging() {
     });
 
     if (errors.length) {
-      throw new Error('Import cancelled; no rows were written.\\n'+errors.join('\\n'));
+      throw new Error('Import cancelled; no rows were written.\n'+errors.join('\n'));
     }
     if (additions.length) {
       users.getRange(users.getLastRow()+1,1,additions.length,required.length).setValues(additions);
@@ -333,7 +333,7 @@ function importInitialStudentsBatch() {
       var sid = String(s[0]).trim();
       var email = String(s[4]).trim().toLowerCase();
 
-      if (!sid || !email || !/^\\d{11}$/.test(sid) || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+      if (!sid || !email || !/^\d{11}$/.test(sid) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         skipped.push({ studentId: sid, email: email, reason: 'INVALID_DATA' });
         return;
       }
