@@ -8,6 +8,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../assets/css/app.css">
+  <style>
+    .snc-auth-panel { margin: 24px 0 32px; padding: 22px; border: 1px solid var(--snc-color-border); border-radius: var(--snc-radius-lg); background: var(--snc-color-surface); }
+    .snc-auth-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+    .snc-result { margin-top:14px; overflow-wrap:anywhere; }
+    .snc-result pre { white-space:pre-wrap; overflow-wrap:anywhere; font-size:.82rem; color:var(--snc-color-muted); }
+  </style>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
   <header class="snc-topbar"><div class="snc-container snc-topbar-inner">
@@ -17,17 +24,111 @@
   <main class="snc-container snc-main">
     <div class="snc-eyebrow">LINE LIFF · STUDENT</div>
     <h1>Student Portal</h1>
-    <p class="snc-muted">พื้นที่สำหรับนักศึกษาในการเข้าถึงรายวิชา งานที่ได้รับมอบหมาย การส่งงาน คะแนน และข้อมูลกลุ่ม ตามสิทธิ์ที่ Backend ตรวจสอบ</p>
-    <p style="margin:18px 0"><span class="snc-status" data-status="warning">โครงสร้างหน้าจอระยะพัฒนา — ยังไม่เชื่อมระบบยืนยันตัวตนหรือฐานข้อมูล</span></p>
+    <p class="snc-muted">เข้าสู่ระบบด้วย LINE เพื่อยืนยันตัวตนก่อนใช้งานระบบรายวิชา</p>
+
+    <section class="snc-auth-panel" aria-labelledby="auth-title">
+      <h2 id="auth-title">การเข้าสู่ระบบ</h2>
+      <p><span id="auth-status" class="snc-status" data-status="warning">กำลังเตรียมระบบ LIFF…</span></p>
+      <div class="snc-auth-actions">
+        <button id="login-button" class="snc-button" type="button" hidden>เข้าสู่ระบบด้วย LINE</button>
+        <button id="verify-button" class="snc-button" type="button" hidden>ยืนยันตัวตน</button>
+      </div>
+      <div id="auth-result" class="snc-result" aria-live="polite"></div>
+    </section>
+
     <h2 style="margin:32px 0 16px">เมนูหลัก</h2>
     <section class="snc-grid">
-      <article class="snc-card"><div class="snc-eyebrow">MODULE 01</div><h3>รายวิชาของฉัน</h3><p class="snc-muted">ดูรายวิชาที่ลงทะเบียนในภาคการศึกษาปัจจุบัน</p><p style="margin-top:16px"><span class="snc-status">รอพัฒนา</span></p></article>
-<article class="snc-card"><div class="snc-eyebrow">MODULE 02</div><h3>งานที่ได้รับมอบหมาย</h3><p class="snc-muted">ดูงานเดี่ยวและงานกลุ่ม กำหนดส่ง และสถานะการเปิดรับ</p><p style="margin-top:16px"><span class="snc-status">รอพัฒนา</span></p></article>
-<article class="snc-card"><div class="snc-eyebrow">MODULE 03</div><h3>ประวัติการส่ง</h3><p class="snc-muted">ติดตามสถานะและประวัติการส่งงาน/ฉบับแก้ไข</p><p style="margin-top:16px"><span class="snc-status">รอพัฒนา</span></p></article>
-<article class="snc-card"><div class="snc-eyebrow">MODULE 04</div><h3>คะแนนและข้อเสนอแนะ</h3><p class="snc-muted">ดูผลประเมินและข้อเสนอแนะจากผู้สอน</p><p style="margin-top:16px"><span class="snc-status">รอพัฒนา</span></p></article>
-<article class="snc-card"><div class="snc-eyebrow">MODULE 05</div><h3>ข้อมูลกลุ่ม</h3><p class="snc-muted">ดูสมาชิกกลุ่ม ผู้แทนส่งงาน และสถานะการล็อกสมาชิก</p><p style="margin-top:16px"><span class="snc-status">รอพัฒนา</span></p></article>
+      <article class="snc-card"><div class="snc-eyebrow">MODULE 01</div><h3>รายวิชาของฉัน</h3><p class="snc-muted">ดูรายวิชาที่ลงทะเบียนในภาคการศึกษาปัจจุบัน</p><p><span class="snc-status">รอพัฒนา</span></p></article>
+      <article class="snc-card"><div class="snc-eyebrow">MODULE 02</div><h3>งานที่ได้รับมอบหมาย</h3><p class="snc-muted">ดูงานเดี่ยวและงานกลุ่ม กำหนดส่ง และสถานะการเปิดรับ</p><p><span class="snc-status">รอพัฒนา</span></p></article>
+      <article class="snc-card"><div class="snc-eyebrow">MODULE 03</div><h3>ประวัติการส่ง</h3><p class="snc-muted">ติดตามสถานะและประวัติการส่งงาน/ฉบับแก้ไข</p><p><span class="snc-status">รอพัฒนา</span></p></article>
+      <article class="snc-card"><div class="snc-eyebrow">MODULE 04</div><h3>คะแนนและข้อเสนอแนะ</h3><p class="snc-muted">ดูผลประเมินและข้อเสนอแนะจากผู้สอน</p><p><span class="snc-status">รอพัฒนา</span></p></article>
+      <article class="snc-card"><div class="snc-eyebrow">MODULE 05</div><h3>ข้อมูลกลุ่ม</h3><p class="snc-muted">ดูสมาชิกกลุ่ม ผู้แทนส่งงาน และสถานะการล็อกสมาชิก</p><p><span class="snc-status">รอพัฒนา</span></p></article>
     </section>
   </main>
-  <script src="../assets/js/app.js"></script>
+  <script>
+    (function () {
+      "use strict";
+      const LIFF_ID = "2012654701-hrl5IzaQ";
+      const API_URL = "https://script.google.com/macros/s/AKfycbwIvdYeUa4IqFZVKAuwfc4ANtGUrLRBilXv51t2YPuSAOj3tFKi9HCBtGhWuN7HwTT0/exec";
+      const statusEl = document.getElementById("auth-status");
+      const resultEl = document.getElementById("auth-result");
+      const loginButton = document.getElementById("login-button");
+      const verifyButton = document.getElementById("verify-button");
+
+      function setStatus(message, state) {
+        statusEl.textContent = message;
+        statusEl.dataset.status = state || "warning";
+      }
+      function requestId() {
+        return window.crypto && crypto.randomUUID ? crypto.randomUUID() :
+          "req-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+      }
+      async function verifyIdentity() {
+        verifyButton.disabled = true;
+        setStatus("กำลังยืนยันตัวตนกับระบบ…", "warning");
+        resultEl.textContent = "";
+        try {
+          const idToken = liff.getIDToken();
+          if (!idToken) throw new Error("ไม่พบ LINE ID Token กรุณาเข้าสู่ระบบใหม่");
+          const response = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=UTF-8" },
+            body: JSON.stringify({
+              action: "auth.verify",
+              requestId: requestId(),
+              payload: { idToken: idToken }
+            })
+          });
+          const result = await response.json();
+          if (!response.ok || !result.success) {
+            const message = result.error && result.error.message ?
+              result.error.message : "ไม่สามารถยืนยันตัวตนได้";
+            throw new Error(message);
+          }
+          setStatus("ยืนยันตัวตนด้วย LINE สำเร็จ", "success");
+          const summary = document.createElement("p");
+          summary.textContent = "ยืนยันตัวตนสำเร็จแล้ว แต่ยังไม่ได้เชื่อมบัญชีผู้ใช้หรือกำหนดสิทธิ์ในรายวิชา";
+          resultEl.appendChild(summary);
+          const details = document.createElement("pre");
+          details.textContent = JSON.stringify({
+            authenticated: result.data.authenticated,
+            identityProvider: result.data.identityProvider,
+            accountStatus: result.data.accountStatus,
+            role: result.data.role
+          }, null, 2);
+          resultEl.appendChild(details);
+        } catch (error) {
+          setStatus("ยืนยันตัวตนไม่สำเร็จ", "danger");
+          resultEl.textContent = error && error.message ? error.message : "เกิดข้อผิดพลาด";
+        } finally {
+          verifyButton.disabled = false;
+        }
+      }
+
+      loginButton.addEventListener("click", function () {
+        if (!liff.isLoggedIn()) liff.login();
+      });
+      verifyButton.addEventListener("click", verifyIdentity);
+
+      async function init() {
+        try {
+          await liff.init({ liffId: LIFF_ID });
+          if (!liff.isLoggedIn()) {
+            setStatus("กรุณาเข้าสู่ระบบด้วย LINE", "warning");
+            loginButton.hidden = false;
+            return;
+          }
+          loginButton.hidden = true;
+          verifyButton.hidden = false;
+          setStatus("เข้าสู่ระบบ LINE แล้ว พร้อมยืนยันตัวตน", "success");
+          await verifyIdentity();
+        } catch (error) {
+          setStatus("เริ่มต้น LIFF ไม่สำเร็จ", "danger");
+          resultEl.textContent = error && error.message ? error.message : "ตรวจสอบ LIFF ID และ Endpoint URL";
+        }
+      }
+      init();
+    })();
+  </script>
 </body>
 </html>
