@@ -13,7 +13,7 @@
  */
 
 const SNC_SETUP = Object.freeze({
-  VERSION: '1.0.1',
+  VERSION: '1.1.0',
   IMPORT_SHEET: 'StudentImport',
   IMPORT_HEADERS: ['EMAIL', 'DISPLAY_NAME', 'STUDENT_ID'],
   TABLES: {
@@ -51,7 +51,10 @@ const SNC_SETUP = Object.freeze({
       'MaxAttempts',
       'ConsumedAt',
       'CreatedAt',
-      'RequestID'
+      'RequestID',
+      'Purpose',
+      'UserID',
+      'NewEmail'
     ],
     AuditLogs: [
       'AuditID',
@@ -122,6 +125,14 @@ function setupAccountLinkingSheets() {
 
       var lastRow = sheet.getLastRow();
       var lastColumn = sheet.getLastColumn();
+
+      // Additive migration for EmailOTPChallenges only. Existing challenge data is retained.
+      if (tableName === 'EmailOTPChallenges' && lastColumn === 12) {
+        var extraHeaders = headers.slice(12);
+        sheet.getRange(1, 13, 1, extraHeaders.length).setValues([extraHeaders]);
+        lastColumn = sheet.getLastColumn();
+        report.push('Added EmailOTPChallenges purpose/user/email columns (data preserved)');
+      }
 
       if (lastRow === 0 || (lastRow === 1 && lastColumn === 0)) {
         sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
