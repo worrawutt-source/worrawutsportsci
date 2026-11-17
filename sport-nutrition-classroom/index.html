@@ -36,7 +36,7 @@
     @media(max-width:800px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:540px){.wrap{width:min(100% - 28px,1120px)}main{padding:38px 0 52px}.grid{grid-template-columns:1fr}.section-head{align-items:start;flex-direction:column}.nav{min-height:60px}}
   </style>
-</head>
+  <link rel="stylesheet" href="assets/css/app.css">\n</head>
 <body>
   <header class="topbar">
     <div class="wrap nav">
@@ -64,7 +64,16 @@
       <article class="card"><div class="card-top"><span class="number">08 / AUDIT</span><span class="state">กำลังพัฒนา</span></div><div><h3>ประวัติการดำเนินงาน</h3><p class="desc">ตรวจสอบประวัติการเปลี่ยนแปลงข้อมูลและการดำเนินการสำคัญ</p></div></article>
       <article class="card"><div class="card-top"><span class="number">09 / ADMIN</span><span class="state">กำลังพัฒนา</span></div><div><h3>ผู้ดูแลระบบ</h3><p class="desc">กำหนดสิทธิ์และดูแลการตั้งค่าระบบตามบทบาทผู้ใช้งาน</p></div></article>
     </section>
+    <section class="section-head" aria-labelledby="access-title">
+      <div><div class="eyebrow">Portal Access</div><h2 id="access-title">เข้าสู่ระบบตามบทบาท</h2></div>
+      <div class="section-note">เลือกพื้นที่ใช้งานตามบทบาทของผู้ใช้</div>
+    </section>
+    <section class="grid" aria-label="Role-based portals">
+      <a class="card" href="student/"><div class="card-top"><span class="number">STUDENT</span><span class="state">Student Portal</span></div><div><h3>พื้นที่นักศึกษา</h3><p class="desc">รายวิชา งานที่ได้รับมอบหมาย ประวัติการส่ง คะแนน และข้อมูลกลุ่ม</p></div></a>
+      <a class="card" href="instructor/"><div class="card-top"><span class="number">INSTRUCTOR</span><span class="state">Instructor</span></div><div><h3>พื้นที่ผู้สอน</h3><p class="desc">จัดการรายวิชา นักศึกษา งาน กลุ่ม การตรวจงาน และคะแนน</p></div></a>
+      <a class="card" href="admin/"><div class="card-top"><span class="number">ADMIN</span><span class="state">Administrator</span></div><div><h3>ผู้ดูแลระบบ</h3><p class="desc">จัดการผู้ใช้ บทบาท ภาคการศึกษา และการตั้งค่าระบบ</p></div></a>
+    </section>
     <footer class="footer"><span>SPORT NUTRITION CLASSROOM</span><span>Uttaradit Rajabhat University · 2026</span></footer>
   </main>
-</body>
+  <script src="assets/js/app.js"></script>\n</body>
 </html>
