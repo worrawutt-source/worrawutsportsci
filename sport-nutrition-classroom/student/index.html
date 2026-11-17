@@ -39,7 +39,7 @@
       <h2 id="auth-title">การเข้าสู่ระบบ</h2>
       <p><span id="auth-status" class="snc-status" data-status="warning">กำลังเตรียมระบบ LIFF…</span></p>
       <div class="snc-auth-actions">
-        <button id="login-button" class="snc-button" type="button" hidden>เข้าสู่ระบบด้วย LINE</button>
+        <button id="login-button" class="snc-button" type="button" hidden>เข้าสู่ระบบ LINE ใหม่</button>
         <button id="verify-button" class="snc-button" type="button" hidden>ยืนยันตัวตน</button>
       </div>
       <div id="auth-result" class="snc-result" aria-live="polite"></div>
@@ -168,6 +168,7 @@
               "Backend HTTP status": response.status,
               "Backend error": code
             });
+            if (code === "TOKEN_EXPIRED") { showTokenExpired(); return; }
             throw new Error(message + " (" + code + ")");
           }
 
@@ -183,15 +184,29 @@
       }
 
 
-      let currentIdToken = null;
+      function showTokenExpired() {
+        document.getElementById("link-panel").hidden = true;
+        document.getElementById("email-panel").hidden = true;
+        setStatus("เซสชัน LINE หมดอายุ กรุณาเข้าสู่ระบบใหม่", "danger");
+        showError("LINE ID Token หมดอายุ กรุณากดปุ่มเข้าสู่ระบบ LINE ใหม่ก่อนดำเนินการต่อ");
+        setButtons(true, false);
+        loginButton.textContent = "เข้าสู่ระบบ LINE ใหม่";
+      }
+
       async function callApi(action, payload) {
-        if (!currentIdToken) currentIdToken = liff.getIDToken();
+        const idToken = liff.getIDToken();
+        if (!idToken) {
+          showTokenExpired();
+          throw new Error("ไม่พบ LINE ID Token กรุณาเข้าสู่ระบบ LINE ใหม่");
+        }
         const response = await fetch(API_URL, {
           method: "POST", headers: { "Content-Type": "text/plain;charset=UTF-8" },
-          body: JSON.stringify({ action, requestId: requestId(), payload: { ...payload, idToken: currentIdToken } })
+          body: JSON.stringify({ action, requestId: requestId(), payload: { ...payload, idToken: idToken } })
         });
         const data = await response.json();
         if (!response.ok || !data.success) {
+          const code = data && data.error && data.error.code ? data.error.code : "API_ERROR";
+          if (code === "TOKEN_EXPIRED") showTokenExpired();
           throw new Error(data && data.error && data.error.message ? data.error.message : "ดำเนินการไม่สำเร็จ");
         }
         return data.data;
@@ -262,7 +277,13 @@
       });
 
       loginButton.addEventListener("click", function () {
-        if (window.liff && !liff.isLoggedIn()) liff.login();
+        if (!window.liff) return;
+        try {
+          if (liff.isLoggedIn()) liff.logout();
+          liff.login({ redirectUri: window.location.href });
+        } catch (error) {
+          showError("เริ่มเข้าสู่ระบบ LINE ใหม่ไม่สำเร็จ กรุณารีเฟรชหน้าแล้วลองอีกครั้ง");
+        }
       });
       verifyButton.addEventListener("click", verifyIdentity);
 
