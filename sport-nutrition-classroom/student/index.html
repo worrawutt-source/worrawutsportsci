@@ -18,6 +18,10 @@
     .snc-diagnostic dl { display:grid; grid-template-columns:minmax(120px, auto) 1fr; gap:4px 12px; margin:0; }
     .snc-diagnostic dt { color:var(--snc-color-muted); }
     .snc-diagnostic dd { margin:0; overflow-wrap:anywhere; }
+    .snc-auth-panel label { display:block; margin:12px 0 5px; font-weight:600; }
+    .snc-input { display:block; width:100%; max-width:440px; box-sizing:border-box; padding:11px 12px; margin-bottom:10px; border:1px solid var(--snc-color-border); border-radius:8px; font:inherit; background:var(--snc-color-background); color:inherit; }
+    .snc-auth-panel button { margin-top:10px; }
+
   </style>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
@@ -39,6 +43,32 @@
         <button id="verify-button" class="snc-button" type="button" hidden>ยืนยันตัวตน</button>
       </div>
       <div id="auth-result" class="snc-result" aria-live="polite"></div>
+      <section id="link-panel" class="snc-auth-panel" hidden aria-labelledby="link-title">
+        <h3 id="link-title">เชื่อมบัญชีนักศึกษา</h3>
+        <p class="snc-muted">กรอกรหัสนักศึกษาและอีเมลที่ลงทะเบียนไว้ ระบบจะส่ง OTP ไปยังอีเมลดังกล่าว</p>
+        <label for="link-student-id">รหัสนักศึกษา</label>
+        <input id="link-student-id" class="snc-input" inputmode="numeric" autocomplete="off" maxlength="20">
+        <label for="link-email">อีเมลที่ลงทะเบียน</label>
+        <input id="link-email" class="snc-input" type="email" autocomplete="email">
+        <button id="request-link-otp" class="snc-button" type="button">ส่งรหัส OTP</button>
+        <div id="link-otp-area" hidden>
+          <label for="link-otp">รหัส OTP 6 หลัก</label>
+          <input id="link-otp" class="snc-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+          <button id="confirm-link" class="snc-button" type="button">ยืนยันและเชื่อมบัญชี</button>
+        </div>
+      </section>
+      <section id="email-panel" class="snc-auth-panel" hidden aria-labelledby="email-title">
+        <h3 id="email-title">เปลี่ยนอีเมล</h3>
+        <p class="snc-muted">ระบบจะส่ง OTP ไปยังอีเมลใหม่ และเปลี่ยนข้อมูลเมื่อยืนยันรหัสสำเร็จเท่านั้น</p>
+        <label for="new-email">อีเมลใหม่</label>
+        <input id="new-email" class="snc-input" type="email" autocomplete="email">
+        <button id="request-email-otp" class="snc-button" type="button">ส่ง OTP ไปยังอีเมลใหม่</button>
+        <div id="email-otp-area" hidden>
+          <label for="email-otp">รหัส OTP 6 หลัก</label>
+          <input id="email-otp" class="snc-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+          <button id="confirm-email-change" class="snc-button" type="button">ยืนยันเปลี่ยนอีเมล</button>
+        </div>
+      </section>
       <div id="auth-diagnostic" class="snc-diagnostic" hidden aria-live="polite"></div>
     </section>
 
@@ -142,17 +172,7 @@
           }
 
           setStatus("ยืนยันตัวตนด้วย LINE สำเร็จ", "success");
-          const summary = document.createElement("p");
-          summary.textContent = "ยืนยันตัวตนสำเร็จแล้ว แต่ยังไม่ได้เชื่อมบัญชีนักศึกษาหรือกำหนดสิทธิ์ในรายวิชา";
-          resultEl.appendChild(summary);
-          const details = document.createElement("pre");
-          details.textContent = JSON.stringify({
-            authenticated: result.data.authenticated,
-            identityProvider: result.data.identityProvider,
-            accountStatus: result.data.accountStatus,
-            role: result.data.role
-          }, null, 2);
-          resultEl.appendChild(details);
+          renderAccountState(result.data);
           setButtons(false, false);
         } catch (error) {
           setStatus("ยืนยันตัวตนไม่สำเร็จ", "danger");
@@ -161,6 +181,85 @@
           verifyButton.disabled = false;
         }
       }
+
+
+      let currentIdToken = null;
+      async function callApi(action, payload) {
+        if (!currentIdToken) currentIdToken = liff.getIDToken();
+        const response = await fetch(API_URL, {
+          method: "POST", headers: { "Content-Type": "text/plain;charset=UTF-8" },
+          body: JSON.stringify({ action, requestId: requestId(), payload: { ...payload, idToken: currentIdToken } })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data && data.error && data.error.message ? data.error.message : "ดำเนินการไม่สำเร็จ");
+        }
+        return data.data;
+      }
+      function showMessage(message, isError) {
+        resultEl.textContent = message;
+        resultEl.style.color = isError ? "#b42318" : "";
+      }
+      function renderAccountState(data) {
+        const linked = data.accountStatus === "LINKED";
+        document.getElementById("link-panel").hidden = linked;
+        document.getElementById("email-panel").hidden = !linked;
+        if (linked && data.user) {
+          showMessage("เชื่อมบัญชีแล้ว: " + data.user.firstName + " " + data.user.lastName +
+            " (รหัสนักศึกษา " + data.user.studentId + ") · " + data.user.email, false);
+        } else {
+          showMessage("ยืนยัน LINE สำเร็จ กรุณาเชื่อมบัญชีนักศึกษาด้วยรหัสนักศึกษาและอีเมลที่ลงทะเบียน", false);
+        }
+      }
+      document.getElementById("request-link-otp").addEventListener("click", async function() {
+        const button=this; button.disabled=true;
+        try {
+          const result=await callApi("auth.requestLinkOtp", {
+            studentId:document.getElementById("link-student-id").value.trim(),
+            email:document.getElementById("link-email").value.trim()
+          });
+          document.getElementById("link-otp-area").hidden=false;
+          showMessage("ส่ง OTP ไปยัง " + result.destination + " แล้ว รหัสมีอายุ 10 นาที", false);
+        } catch(e) { showMessage(e.message, true); }
+        finally { button.disabled=false; }
+      });
+      document.getElementById("confirm-link").addEventListener("click", async function() {
+        const button=this; button.disabled=true;
+        try {
+          const result=await callApi("auth.linkStudent", {
+            studentId:document.getElementById("link-student-id").value.trim(),
+            email:document.getElementById("link-email").value.trim(),
+            otp:document.getElementById("link-otp").value.trim()
+          });
+          document.getElementById("link-panel").hidden=true;
+          document.getElementById("email-panel").hidden=false;
+          showMessage("เชื่อมบัญชีนักศึกษาสำเร็จ: " + result.user.studentId, false);
+        } catch(e) { showMessage(e.message, true); }
+        finally { button.disabled=false; }
+      });
+      document.getElementById("request-email-otp").addEventListener("click", async function() {
+        const button=this; button.disabled=true;
+        try {
+          const result=await callApi("auth.requestEmailChange", {
+            newEmail:document.getElementById("new-email").value.trim()
+          });
+          document.getElementById("email-otp-area").hidden=false;
+          showMessage("ส่ง OTP ไปยัง " + result.destination + " แล้ว รหัสมีอายุ 10 นาที", false);
+        } catch(e) { showMessage(e.message, true); }
+        finally { button.disabled=false; }
+      });
+      document.getElementById("confirm-email-change").addEventListener("click", async function() {
+        const button=this; button.disabled=true;
+        try {
+          const result=await callApi("auth.confirmEmailChange", {
+            newEmail:document.getElementById("new-email").value.trim(),
+            otp:document.getElementById("email-otp").value.trim()
+          });
+          showMessage("เปลี่ยนอีเมลสำเร็จ: " + result.user.email, false);
+          document.getElementById("email-otp-area").hidden=true;
+        } catch(e) { showMessage(e.message, true); }
+        finally { button.disabled=false; }
+      });
 
       loginButton.addEventListener("click", function () {
         if (window.liff && !liff.isLoggedIn()) liff.login();
