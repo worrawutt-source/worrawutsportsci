@@ -269,3 +269,121 @@ function importStudentsFromStaging() {
     lock.releaseLock();
   }
 }
+
+
+/**
+ * Imports the current verified initial batch of 15 students into Users.
+ *
+ * Run only after setupAccountLinkingSheets().
+ * Idempotent: existing StudentID or Email rows are never overwritten.
+ * Conflicts are reported for manual review; no automatic merge is attempted.
+ */
+function importInitialStudentsBatch() {
+  var students = [
+    ['67042950106', 'นาย', 'ภัสกร', 'ชุนท่าไม้', '0940270520t@gmail.com'],
+    ['67042950101', 'นางสาว', 'ขณิษฐา', 'บุญมาก', 'kanidtaa69@gmail.com'],
+    ['67042950108', 'นาย', 'ชิษณุพงศ์', 'ปาลี', 'tun12344qwe@gmail.com'],
+    ['67042950114', 'นางสาว', 'ปราณปริยา', 'บุญแก้ว', 'pranpreeya2249@gmail.com'],
+    ['67042950109', 'นาย', 'ณัฐภัทร', 'ม่านแก้ว', 'garfieldmanz8@gmail.com'],
+    ['67042950123', 'นาย', 'วงศกร', 'วันเสาร์', 'wongsakorn6724@gmail.com'],
+    ['67042950111', 'นาย', 'นทีกานต์', 'จันทร์ฤทธิ์', 'nateekan0644@gmail.com'],
+    ['67042950128', 'นาย', 'เสถียรพงษ์', 'ตาปลา', 'sethiyrphngstapla800@gmail.com'],
+    ['67042950136', 'นาย', 'ปฏิวัติ', 'บรรพตาธิ', 'patiwat9937@gmail.com'],
+    ['67042950137', 'นางสาว', 'สุพิชญา', 'เสงี่ยมโปร่ง', 'supitchaya4459@gmail.com'],
+    ['67042950124', 'นาย', 'วรเชษฐ์', 'แก้วก่า', 'kaewkaworachet19@gmail.com'],
+    ['67042950112', 'นาย', 'นิพิฐพันธ์', 'ตนดี', 'banswntx003@gmail.com'],
+    ['67042950122', 'นาย', 'นพรัตน์', 'นันตะสุคนธ์', 'nopparat291148@gmail.com'],
+    ['67042950135', 'นางสาว', 'มลิตา', 'แก้วอาณา', 'plaijj06@gmail.com'],
+    ['67042950105', 'นางสาว', 'ปุณณภา', 'ศรีจันทร์ทับ', 'mingpuunpha1649@gmail.com']
+  ];
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss && ss.getSheetByName('Users');
+  if (!sheet) throw new Error('Users sheet not found. Run setupAccountLinkingSheets() first.');
+
+  var expectedHeaders = SNC_SETUP.TABLES.Users;
+  var actualHeaders = sheet.getRange(1, 1, 1, expectedHeaders.length).getDisplayValues()[0];
+  if (expectedHeaders.some(function(h, i) { return actualHeaders[i] !== h; })) {
+    throw new Error('Users header mismatch. Import cancelled; no data changed.');
+  }
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var lastRow = sheet.getLastRow();
+    var existing = lastRow > 1
+      ? sheet.getRange(2, 1, lastRow - 1, expectedHeaders.length).getDisplayValues()
+      : [];
+
+    var studentIds = {};
+    var emails = {};
+    existing.forEach(function(row, i) {
+      var sid = String(row[1] || '').trim();
+      var email = String(row[4] || '').trim().toLowerCase();
+      if (sid) studentIds[sid] = i + 2;
+      if (email) emails[email] = i + 2;
+    });
+
+    var seenIds = {};
+    var seenEmails = {};
+    var toAppend = [];
+    var skipped = [];
+
+    students.forEach(function(s) {
+      var sid = String(s[0]).trim();
+      var email = String(s[4]).trim().toLowerCase();
+
+      if (!sid || !email || !/^\\d{11}$/.test(sid) || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+        skipped.push({ studentId: sid, email: email, reason: 'INVALID_DATA' });
+        return;
+      }
+      if (seenIds[sid] || seenEmails[email]) {
+        skipped.push({ studentId: sid, email: email, reason: 'DUPLICATE_IN_IMPORT_BATCH' });
+        return;
+      }
+      seenIds[sid] = true;
+      seenEmails[email] = true;
+
+      if (studentIds[sid] || emails[email]) {
+        skipped.push({
+          studentId: sid,
+          email: email,
+          reason: studentIds[sid] && emails[email] ? 'ALREADY_EXISTS' :
+            (studentIds[sid] ? 'STUDENT_ID_CONFLICT' : 'EMAIL_CONFLICT')
+        });
+        return;
+      }
+
+      var now = new Date();
+      toAppend.push([
+        Utilities.getUuid(),
+        sid,
+        String(s[2]).trim(),
+        String(s[3]).trim(),
+        email,
+        'ACTIVE',
+        now,
+        now
+      ]);
+    });
+
+    if (toAppend.length) {
+      sheet.getRange(sheet.getLastRow() + 1, 1, toAppend.length, expectedHeaders.length)
+        .setValues(toAppend);
+    }
+
+    var result = {
+      success: true,
+      sourceBatch: 'INITIAL_15',
+      attempted: students.length,
+      imported: toAppend.length,
+      skipped: skipped.length,
+      skippedDetails: skipped,
+      totalUsersRows: Math.max(0, sheet.getLastRow() - 1)
+    };
+    console.log(JSON.stringify(result, null, 2));
+    return result;
+  } finally {
+    lock.releaseLock();
+  }
+}
