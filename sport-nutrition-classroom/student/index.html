@@ -13,6 +13,11 @@
     .snc-auth-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
     .snc-result { margin-top:14px; overflow-wrap:anywhere; }
     .snc-result pre { white-space:pre-wrap; overflow-wrap:anywhere; font-size:.82rem; color:var(--snc-color-muted); }
+    [hidden] { display:none !important; }
+    .snc-diagnostic { margin-top:12px; padding:12px; border:1px solid var(--snc-color-border); border-radius:var(--snc-radius-sm); font-size:.88rem; }
+    .snc-diagnostic dl { display:grid; grid-template-columns:minmax(120px, auto) 1fr; gap:4px 12px; margin:0; }
+    .snc-diagnostic dt { color:var(--snc-color-muted); }
+    .snc-diagnostic dd { margin:0; overflow-wrap:anywhere; }
   </style>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
@@ -34,6 +39,7 @@
         <button id="verify-button" class="snc-button" type="button" hidden>ยืนยันตัวตน</button>
       </div>
       <div id="auth-result" class="snc-result" aria-live="polite"></div>
+      <div id="auth-diagnostic" class="snc-diagnostic" hidden aria-live="polite"></div>
     </section>
 
     <h2 style="margin:32px 0 16px">เมนูหลัก</h2>
@@ -52,6 +58,7 @@
       const API_URL = "https://script.google.com/macros/s/AKfycbwIvdYeUa4IqFZVKAuwfc4ANtGUrLRBilXv51t2YPuSAOj3tFKi9HCBtGhWuN7HwTT0/exec";
       const statusEl = document.getElementById("auth-status");
       const resultEl = document.getElementById("auth-result");
+      const diagnosticEl = document.getElementById("auth-diagnostic");
       const loginButton = document.getElementById("login-button");
       const verifyButton = document.getElementById("verify-button");
 
@@ -59,17 +66,57 @@
         statusEl.textContent = message;
         statusEl.dataset.status = state || "warning";
       }
-      function requestId() {
-        return window.crypto && crypto.randomUUID ? crypto.randomUUID() :
-          "req-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+      function setButtons(showLogin, showVerify) {
+        loginButton.hidden = !showLogin;
+        verifyButton.hidden = !showVerify;
       }
+      function requestId() {
+        return window.crypto && typeof window.crypto.randomUUID === "function"
+          ? window.crypto.randomUUID()
+          : "req-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+      }
+      function showDiagnostics(values) {
+        diagnosticEl.hidden = false;
+        diagnosticEl.replaceChildren();
+        const heading = document.createElement("strong");
+        heading.textContent = "ข้อมูลตรวจสอบระบบ (ไม่แสดง Token)";
+        diagnosticEl.appendChild(heading);
+        const dl = document.createElement("dl");
+        Object.entries(values).forEach(function (entry) {
+          const dt = document.createElement("dt");
+          dt.textContent = entry[0];
+          const dd = document.createElement("dd");
+          dd.textContent = String(entry[1]);
+          dl.append(dt, dd);
+        });
+        diagnosticEl.appendChild(dl);
+      }
+      function showError(message) {
+        resultEl.textContent = message || "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
+      }
+
       async function verifyIdentity() {
+        if (!window.liff || !liff.isLoggedIn()) {
+          setStatus("ยังไม่ได้เข้าสู่ระบบ LINE", "warning");
+          setButtons(true, false);
+          return;
+        }
         verifyButton.disabled = true;
-        setStatus("กำลังยืนยันตัวตนกับระบบ…", "warning");
+        setStatus("กำลังตรวจสอบ LINE ID Token…", "warning");
         resultEl.textContent = "";
         try {
           const idToken = liff.getIDToken();
-          if (!idToken) throw new Error("ไม่พบ LINE ID Token กรุณาเข้าสู่ระบบใหม่");
+          showDiagnostics({
+            "LIFF initialized": true,
+            "LINE login": liff.isLoggedIn(),
+            "LIFF client": liff.isInClient(),
+            "ID Token available": Boolean(idToken),
+            "ID Token length": idToken ? idToken.length : 0
+          });
+          if (!idToken) {
+            throw new Error("ไม่พบ LINE ID Token แม้เข้าสู่ระบบแล้ว กรุณาเปิด LIFF ใหม่จาก LINE และตรวจสอบการตั้งค่า");
+          }
+
           const response = await fetch(API_URL, {
             method: "POST",
             headers: { "Content-Type": "text/plain;charset=UTF-8" },
@@ -81,13 +128,22 @@
           });
           const result = await response.json();
           if (!response.ok || !result.success) {
-            const message = result.error && result.error.message ?
-              result.error.message : "ไม่สามารถยืนยันตัวตนได้";
-            throw new Error(message);
+            const code = result && result.error && result.error.code ? result.error.code : "API_ERROR";
+            const message = result && result.error && result.error.message ? result.error.message : "ไม่สามารถยืนยันตัวตนได้";
+            showDiagnostics({
+              "LIFF initialized": true,
+              "LINE login": liff.isLoggedIn(),
+              "LIFF client": liff.isInClient(),
+              "ID Token available": true,
+              "Backend HTTP status": response.status,
+              "Backend error": code
+            });
+            throw new Error(message + " (" + code + ")");
           }
+
           setStatus("ยืนยันตัวตนด้วย LINE สำเร็จ", "success");
           const summary = document.createElement("p");
-          summary.textContent = "ยืนยันตัวตนสำเร็จแล้ว แต่ยังไม่ได้เชื่อมบัญชีผู้ใช้หรือกำหนดสิทธิ์ในรายวิชา";
+          summary.textContent = "ยืนยันตัวตนสำเร็จแล้ว แต่ยังไม่ได้เชื่อมบัญชีนักศึกษาหรือกำหนดสิทธิ์ในรายวิชา";
           resultEl.appendChild(summary);
           const details = document.createElement("pre");
           details.textContent = JSON.stringify({
@@ -97,34 +153,47 @@
             role: result.data.role
           }, null, 2);
           resultEl.appendChild(details);
+          setButtons(false, false);
         } catch (error) {
           setStatus("ยืนยันตัวตนไม่สำเร็จ", "danger");
-          resultEl.textContent = error && error.message ? error.message : "เกิดข้อผิดพลาด";
+          showError(error && error.message ? error.message : "เกิดข้อผิดพลาด");
         } finally {
           verifyButton.disabled = false;
         }
       }
 
       loginButton.addEventListener("click", function () {
-        if (!liff.isLoggedIn()) liff.login();
+        if (window.liff && !liff.isLoggedIn()) liff.login();
       });
       verifyButton.addEventListener("click", verifyIdentity);
 
       async function init() {
+        setButtons(false, false);
+        diagnosticEl.hidden = true;
         try {
+          if (!window.liff) throw new Error("โหลด LINE LIFF SDK ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต");
           await liff.init({ liffId: LIFF_ID });
           if (!liff.isLoggedIn()) {
             setStatus("กรุณาเข้าสู่ระบบด้วย LINE", "warning");
-            loginButton.hidden = false;
+            setButtons(true, false);
+            showDiagnostics({
+              "LIFF initialized": true,
+              "LINE login": false,
+              "LIFF client": liff.isInClient()
+            });
             return;
           }
-          loginButton.hidden = true;
-          verifyButton.hidden = false;
+          setButtons(false, true);
           setStatus("เข้าสู่ระบบ LINE แล้ว พร้อมยืนยันตัวตน", "success");
           await verifyIdentity();
         } catch (error) {
-          setStatus("เริ่มต้น LIFF ไม่สำเร็จ", "danger");
-          resultEl.textContent = error && error.message ? error.message : "ตรวจสอบ LIFF ID และ Endpoint URL";
+          setButtons(true, false);
+          setStatus("เริ่มต้น LIFF หรือยืนยันตัวตนไม่สำเร็จ", "danger");
+          showError(error && error.message ? error.message : "ตรวจสอบ LIFF ID และ Endpoint URL");
+          showDiagnostics({
+            "LIFF initialized": false,
+            "Error": error && error.message ? error.message : "Unknown error"
+          });
         }
       }
       init();
