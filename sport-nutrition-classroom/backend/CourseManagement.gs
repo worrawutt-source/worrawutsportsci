@@ -22,10 +22,13 @@ function cmCanCourse_(a,id){return cmSystem_(a,'SYSTEM_ADMIN')||cmSystem_(a,'COU
 function cmCanSemester_(a,id){return cmSystem_(a,'SYSTEM_ADMIN')||cmSystem_(a,'COURSE_COORDINATOR')||a.roles.some(function(r){return r.role==='COURSE_COORDINATOR'&&r.scopeType==='SEMESTER'&&String(r.scopeId)===String(id);});}
 function cmCanOffering_(a,o){return cmCanCourse_(a,o.CourseID)||cmCanSemester_(a,o.SemesterID)||cmRows_('CourseInstructors').some(function(r){return String(r.OfferingID)===String(o.OfferingID)&&String(r.InstructorUserID)===a.userId&&String(r.Status).toUpperCase()==='ACTIVE';});}
 function cmNeedSystem_(a){if(!cmSystem_(a,'SYSTEM_ADMIN')&&!cmSystem_(a,'COURSE_COORDINATOR'))throw apiError_('FORBIDDEN','Insufficient permission.');}
+function cmVisibleCourses_(a,rows){return rows.filter(function(x){return x.Status!=='DELETED'&&cmCanCourse_(a,x.CourseID);});}
+function cmVisibleSemesters_(a,rows){return rows.filter(function(x){return x.Status!=='DELETED'&&cmCanSemester_(a,x.SemesterID);});}
+function cmVisibleOfferings_(a,rows){return rows.filter(function(o){return o.Status!=='DELETED'&&cmCanOffering_(a,o);});}
 function handleCourseManagementAction_(action,identity,p,requestId){
  var a=cmActor_(identity),lock=LockService.getScriptLock();lock.waitLock(30000);
  try{
-  if(action==='course.list'){return cmRows_('Courses').filter(function(x){return x.Status!=='DELETED'&&cmCanCourse_(a,x.CourseID);});}
+  if(action==='course.list'){return cmVisibleCourses_(a,cmRows_('Courses'));}
   if(action==='course.create'){
    cmNeedSystem_(a);var code=cmText_(p.courseCode,40,'courseCode',true).toUpperCase(),name=cmText_(p.courseName,200,'courseName',true);
    if(cmRows_('Courses').some(function(x){return String(x.CourseCode).toUpperCase()===code;}))throw apiError_('DUPLICATE','Course code already exists.');
@@ -40,7 +43,7 @@ function handleCourseManagementAction_(action,identity,p,requestId){
    if(p.status!==undefined){var st=cmText_(p.status,20,'status',true).toUpperCase();if(['ACTIVE','INACTIVE'].indexOf(st)<0)throw apiError_('VALIDATION_ERROR','Invalid status.');sh.getRange(r._row,h.indexOf('Status')+1).setValue(st);}
    sh.getRange(r._row,h.indexOf('UpdatedAt')+1).setValue(new Date());appendAudit_(a.userId,'COURSE_UPDATED','Course',id,{updated:true},requestId);return cmGet_('Courses','CourseID',id);
   }
-  if(action==='semester.list'){return cmRows_('Semesters').filter(function(x){return x.Status!=='DELETED'&&cmCanSemester_(a,x.SemesterID);});}
+  if(action==='semester.list'){return cmVisibleSemesters_(a,cmRows_('Semesters'));}
   if(action==='semester.create'){
    cmNeedSystem_(a);var y=Number(p.academicYear),term=cmText_(p.term,20,'term',true),sd=cmDate_(p.startDate,'startDate'),ed=cmDate_(p.endDate,'endDate');
    if(!Number.isInteger(y)||y<2500||y>2700||ed<sd)throw apiError_('VALIDATION_ERROR','Invalid academic year or date range.');
@@ -55,7 +58,7 @@ function handleCourseManagementAction_(action,identity,p,requestId){
    if(p.status!==undefined){var ss=cmText_(p.status,20,'status',true).toUpperCase();if(['ACTIVE','INACTIVE'].indexOf(ss)<0)throw apiError_('VALIDATION_ERROR','Invalid status.');s.getRange(sem._row,hh.indexOf('Status')+1).setValue(ss);}
    s.getRange(sem._row,hh.indexOf('UpdatedAt')+1).setValue(new Date());appendAudit_(a.userId,'SEMESTER_UPDATED','Semester',sid,{updated:true},requestId);return cmGet_('Semesters','SemesterID',sid);
   }
-  if(action==='offering.list')return cmRows_('CourseOfferings').filter(function(o){return o.Status!=='DELETED'&&cmCanOffering_(a,o);}).map(function(o){return {offering:o,course:cmGet_('Courses','CourseID',o.CourseID),semester:cmGet_('Semesters','SemesterID',o.SemesterID)};});
+  if(action==='offering.list')return cmVisibleOfferings_(a,cmRows_('CourseOfferings')).map(function(o){return {offering:o,course:cmGet_('Courses','CourseID',o.CourseID),semester:cmGet_('Semesters','SemesterID',o.SemesterID)};});
   if(action==='offering.create'){
    var cid=cmText_(p.courseId,100,'courseId',true),sid2=cmText_(p.semesterId,100,'semesterId',true),c=cmGet_('Courses','CourseID',cid),sem2=cmGet_('Semesters','SemesterID',sid2);
    if(!c||!sem2)throw apiError_('NOT_FOUND','Course or semester not found.');if(!cmCanCourse_(a,cid)||!cmCanSemester_(a,sid2))throw apiError_('FORBIDDEN','Cannot create offering for this course/semester.');
@@ -117,6 +120,16 @@ function testCourseManagementAuthorizationLogic(){
  check('System Coordinator passes system-level guard',function(){try{cmNeedSystem_(actor('COURSE_COORDINATOR','SYSTEM','*'));return true;}catch(e){return false;}},true);
  denied('Scoped Coordinator is denied system-level creation guard',function(){cmNeedSystem_(actor('COURSE_COORDINATOR','COURSE',course));});
  denied('Instructor is denied system-level creation guard',function(){cmNeedSystem_(actor('INSTRUCTOR','OFFERING','*'));});
+
+ var courseRows=[{CourseID:'COURSE-A',Status:'ACTIVE'},{CourseID:'COURSE-B',Status:'ACTIVE'},{CourseID:'COURSE-C',Status:'DELETED'}];
+ var semesterRows=[{SemesterID:'SEM-1',Status:'ACTIVE'},{SemesterID:'SEM-2',Status:'ACTIVE'},{SemesterID:'SEM-3',Status:'DELETED'}];
+ var offeringRows=[{OfferingID:'OFF-1',CourseID:'COURSE-A',SemesterID:'SEM-1',Status:'ACTIVE'},{OfferingID:'OFF-2',CourseID:'COURSE-B',SemesterID:'SEM-2',Status:'ACTIVE'},{OfferingID:'OFF-3',CourseID:'COURSE-A',SemesterID:'SEM-1',Status:'DELETED'}];
+ check('Course list filters to assigned course only',function(){return cmVisibleCourses_(actor('COURSE_COORDINATOR','COURSE',course),courseRows).map(function(x){return x.CourseID;}).join(',');},'COURSE-A');
+ check('Semester list filters to assigned semester only',function(){return cmVisibleSemesters_(actor('COURSE_COORDINATOR','SEMESTER',semester),semesterRows).map(function(x){return x.SemesterID;}).join(',');},'SEM-1');
+ check('System Admin sees all non-deleted courses',function(){return cmVisibleCourses_(actor('SYSTEM_ADMIN','SYSTEM','*'),courseRows).length;},2);
+ check('System Coordinator sees all non-deleted semesters',function(){return cmVisibleSemesters_(actor('COURSE_COORDINATOR','SYSTEM','*'),semesterRows).length;},2);
+ check('Instructor sees only assigned offering',function(){var a=actor('INSTRUCTOR','OFFERING','*');a.userId='INSTRUCTOR-1';var rows=offeringRows.concat();var old=cmRows_;cmRows_=function(){return [{OfferingID:'OFF-1',InstructorUserID:'INSTRUCTOR-1',Status:'ACTIVE'}];};try{return cmVisibleOfferings_(a,rows).map(function(x){return x.OfferingID;}).join(',');}finally{cmRows_=old;}},'OFF-1');
+ check('Student sees no offerings by default',function(){var old=cmRows_;cmRows_=function(){return [];};try{return cmVisibleOfferings_(actor('STUDENT','SELF','TEST-USER'),offeringRows).length;}finally{cmRows_=old;}},0);
  var passed=cases.filter(function(x){return x.result==='PASS';}).length,failed=cases.length-passed;
  var out={success:failed===0,passed:passed,failed:failed,total:cases.length,cases:cases};
  console.log(JSON.stringify(out,null,2));return out;
