@@ -610,9 +610,18 @@ function testAccountLinkingPreflight() {
  * Confirms doPost rejects a missing token before any course-management action.
  */
 function testApiMissingTokenGuard(){
- var response=doPost({postData:{contents:JSON.stringify({action:'auth.verify',requestId:'LOCAL-TEST-MISSING-TOKEN',payload:{}})}});
- var body=JSON.parse(response.getContent());
- var ok=body&&body.success===false&&body.error&&body.error.code==='TOKEN_MISSING';
- var out={success:Boolean(ok),httpLayer:'Apps Script ContentService response',expectedErrorCode:'TOKEN_MISSING',actualErrorCode:body&&body.error?body.error.code:null,pass:Boolean(ok)};
+ var cases=[];
+ function run(action,payload,expected){
+  var response=doPost({postData:{contents:JSON.stringify({action:action,requestId:'LOCAL-TEST-'+action,payload:payload})}});
+  var body=JSON.parse(response.getContent());
+  var actual=body&&body.error?body.error.code:null;
+  cases.push({action:action,result:body&&body.success===false&&actual===expected?'PASS':'FAIL',expected:expected,actual:actual});
+ }
+ run('auth.verify',{},'TOKEN_MISSING');
+ run('course.list',{},'TOKEN_MISSING');
+ run('semester.list',{},'TOKEN_MISSING');
+ run('offering.list',{},'TOKEN_MISSING');
+ var passed=cases.filter(function(x){return x.result==='PASS';}).length;
+ var out={success:passed===cases.length,passed:passed,failed:cases.length-passed,total:cases.length,cases:cases,note:'Direct doPost guard test; no LINE token, external request, or database write.'};
  console.log(JSON.stringify(out,null,2));return out;
 }
