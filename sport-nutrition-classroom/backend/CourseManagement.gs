@@ -418,3 +418,72 @@ function expectCoordinatorForbidden_(actor,action,payload){
  try{handleCourseManagementActionForActor_(action,actor,payload,'COORDINATOR-NEGATIVE-SCOPE');return false;}
  catch(e){return Boolean(e&&e.apiCode==='FORBIDDEN');}
 }
+
+
+
+/**
+ * System Admin authorization and permission-boundary tests.
+ * TEST spreadsheet only. Read-only against database; negative mutation
+ * requests must be rejected by authorization guards before any write.
+ */
+function testSystemAdminAuthorizationAndPermissionBoundary(){
+ var TEST_SPREADSHEET_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk';
+ var ss=SpreadsheetApp.getActiveSpreadsheet();
+ if(!ss||ss.getId()!==TEST_SPREADSHEET_ID)throw new Error('SAFETY_STOP: This test is restricted to the configured TEST spreadsheet.');
+
+ var admin={userId:'SNC_SIMULATED_SYSTEM_ADMIN',roles:[{role:'SYSTEM_ADMIN',scopeType:'SYSTEM',scopeId:'*'}]};
+ var student={userId:'SNC_SIMULATED_STUDENT',roles:[{role:'STUDENT',scopeType:'SELF',scopeId:'SNC_SIMULATED_STUDENT'}]};
+ var instructor={userId:'SNC_SIMULATED_INSTRUCTOR',roles:[{role:'INSTRUCTOR',scopeType:'OFFERING',scopeId:'*'}]};
+ var courseCoordinator={userId:'SNC_SIMULATED_SCOPED_COORDINATOR',roles:[{role:'COURSE_COORDINATOR',scopeType:'COURSE',scopeId:'SNC_UNRELATED_COURSE'}]};
+ var semesterCoordinator={userId:'SNC_SIMULATED_SCOPED_SEMESTER_COORDINATOR',roles:[{role:'COURSE_COORDINATOR',scopeType:'SEMESTER',scopeId:'SNC_UNRELATED_SEMESTER'}]};
+
+ var rawCourses=cmRows_('Courses').filter(function(x){return String(x.Status).toUpperCase()!=='DELETED';});
+ var rawSemesters=cmRows_('Semesters').filter(function(x){return String(x.Status).toUpperCase()!=='DELETED';});
+ var rawOfferings=cmRows_('CourseOfferings').filter(function(x){return String(x.Status).toUpperCase()!=='DELETED';});
+ var checks=[];
+ function add(name,ok,detail){checks.push({test:name,result:ok?'PASS':'FAIL',detail:detail||''});}
+ function expectForbidden(name,actor,action,payload){
+  try{
+   handleCourseManagementActionForActor_(action,actor,payload||{},'SYSTEM-ADMIN-BOUNDARY-'+name);
+   add(name,false,'REQUEST_ALLOWED');
+  }catch(e){
+   var code=e&&e.apiCode?e.apiCode:'UNEXPECTED_ERROR';
+   add(name,code==='FORBIDDEN','expected=FORBIDDEN, actual='+code);
+  }
+ }
+ function canPass(name,fn){
+  try{fn();add(name,true,'authorized');}
+  catch(e){add(name,false,'unexpected='+((e&&e.apiCode)||e.message||String(e)));}
+ }
+
+ var adminCourses=handleCourseManagementActionForActor_('course.list',admin,{},'SYSADMIN-COURSE-LIST');
+ var adminSemesters=handleCourseManagementActionForActor_('semester.list',admin,{},'SYSADMIN-SEMESTER-LIST');
+ var adminOfferings=handleCourseManagementActionForActor_('offering.list',admin,{},'SYSADMIN-OFFERING-LIST');
+ add('System Admin can view all non-deleted Courses',adminCourses.length===rawCourses.length,'visible='+adminCourses.length+', expected='+rawCourses.length);
+ add('System Admin can view all non-deleted Semesters',adminSemesters.length===rawSemesters.length,'visible='+adminSemesters.length+', expected='+rawSemesters.length);
+ add('System Admin can view all non-deleted Offerings',adminOfferings.length===rawOfferings.length,'visible='+adminOfferings.length+', expected='+rawOfferings.length);
+ add('System Admin has global Course permission',cmCanCourse_(admin,'SNC_ANY_COURSE_ID'), 'global=true');
+ add('System Admin has global Semester permission',cmCanSemester_(admin,'SNC_ANY_SEMESTER_ID'),'global=true');
+ add('System Admin passes system-level authorization guard',(function(){try{cmNeedSystem_(admin);return true;}catch(e){return false;}})(),'systemGuard=true');
+
+ var actors=[{name:'Student',actor:student},{name:'Instructor',actor:instructor},{name:'Course-scoped Coordinator',actor:courseCoordinator},{name:'Semester-scoped Coordinator',actor:semesterCoordinator}];
+ actors.forEach(function(x){
+  expectForbidden(x.name+' cannot create Course',x.actor,'course.create',{courseCode:'BOUNDARY-TEST',courseName:'Boundary Test'});
+  expectForbidden(x.name+' cannot create Semester',x.actor,'semester.create',{academicYear:2569,term:'BOUNDARY-TEST',startDate:'2026-11-18',endDate:'2027-04-01'});
+ });
+ if(rawCourses.length&&rawSemesters.length){
+  var cid=String(rawCourses[0].CourseID),sid=String(rawSemesters[0].SemesterID);
+  actors.forEach(function(x){
+   expectForbidden(x.name+' cannot create Offering without both global scopes',x.actor,'offering.create',{courseId:cid,semesterId:sid,section:'BOUNDARY-TEST'});
+  });
+ }else{
+  add('Non-admin Offering creation boundary',false,'BLOCKED: active Course and Semester records are required');
+ }
+ var passed=checks.filter(function(x){return x.result==='PASS';}).length;
+ var failed=checks.filter(function(x){return x.result==='FAIL';}).length;
+ var out={success:failed===0,mode:'READ_ONLY_SIMULATED_SYSTEM_ADMIN_BOUNDARY',database:'TEST',
+  adminVisibleCourseCount:adminCourses.length,adminVisibleSemesterCount:adminSemesters.length,adminVisibleOfferingCount:adminOfferings.length,
+  passed:passed,failed:failed,blocked:0,total:checks.length,checks:checks,
+  note:'Synthetic actors; database reads only. Denied create requests are expected to stop at authorization guards before writes. No Production access.'};
+ console.log(JSON.stringify(out,null,2));return out;
+}
