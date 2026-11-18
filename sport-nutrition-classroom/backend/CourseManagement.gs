@@ -194,3 +194,40 @@ function testCourseManagementLiveAuthorizationData(){
  console.log(JSON.stringify(report,null,2));
  return report;
 }
+
+/**
+ * Read-only integration test of list handlers against the active TEST spreadsheet.
+ * Uses an already-linked active System Admin account; never prints LINE subject or IDs.
+ * This exercises Sheets -> role resolution -> cmActor -> list handlers, but not doPost/token verification.
+ */
+function testCourseManagementReadEndpointsWithLinkedAdmin(){
+ var ss=SpreadsheetApp.getActiveSpreadsheet();
+ var roleRows=rowsAsObjects_(ss.getSheetByName('UserRoles'));
+ var accountRows=rowsAsObjects_(ss.getSheetByName('LINEAccounts'));
+ var activeAdmin=roleRows.filter(function(r){return String(r.Role)==='SYSTEM_ADMIN'&&String(r.Status).toUpperCase()==='ACTIVE'&&(String(r.ScopeType)==='SYSTEM'||String(r.ScopeType)==='ALL');})[0];
+ if(!activeAdmin)throw new Error('No active system administrator role is configured.');
+ var link=accountRows.filter(function(r){return String(r.UserID)===String(activeAdmin.UserID)&&String(r.Provider)==='LINE'&&String(r.Status).toUpperCase()==='ACTIVE';})[0];
+ if(!link)throw new Error('The active system administrator does not have an active LINE account link.');
+ var identity={sub:String(link.ProviderSubject)};
+ var report={success:true,checks:[]};
+ function run(name,action){
+  try{
+   var data=handleCourseManagementAction_(action,identity,{},'READONLY-TEST-'+action);
+   var ok=Array.isArray(data);
+   report.checks.push({name:name,result:ok?'PASS':'FAIL',rowCount:ok?data.length:null});
+   if(!ok)report.success=false;
+  }catch(e){
+   report.checks.push({name:name,result:'FAIL',errorCode:e&&e.apiCode?e.apiCode:'INTERNAL_ERROR'});
+   report.success=false;
+  }
+ }
+ run('course.list handler returns an authorized array','course.list');
+ run('semester.list handler returns an authorized array','semester.list');
+ run('offering.list handler returns an authorized array','offering.list');
+ report.note='Exercises live Sheets, LINE account lookup, role resolution and list handlers. Does not exercise doPost or LINE ID-token verification.';
+ report.passed=report.checks.filter(function(x){return x.result==='PASS';}).length;
+ report.failed=report.checks.length-report.passed;
+ report.total=report.checks.length;
+ console.log(JSON.stringify(report,null,2));
+ return report;
+}
