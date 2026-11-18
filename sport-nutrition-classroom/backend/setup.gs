@@ -13,7 +13,7 @@
  */
 
 const SNC_SETUP = Object.freeze({
-  VERSION: '1.1.0',
+  VERSION: '1.2.0',
   IMPORT_SHEET: 'StudentImport',
   IMPORT_HEADERS: ['EMAIL', 'DISPLAY_NAME', 'STUDENT_ID'],
   TABLES: {
@@ -57,15 +57,13 @@ const SNC_SETUP = Object.freeze({
       'NewEmail'
     ],
     AuditLogs: [
-      'AuditID',
-      'ActorUserID',
-      'Action',
-      'EntityType',
-      'EntityID',
-      'DetailsJson',
-      'CreatedAt',
-      'RequestID'
-    ]
+      'AuditID','ActorUserID','Action','EntityType','EntityID','DetailsJson','CreatedAt','RequestID'
+    ],
+    UserRoles: ['UserRoleID','UserID','Role','ScopeType','ScopeID','Status','CreatedAt','UpdatedAt','CreatedByUserID'],
+    Courses: ['CourseID','CourseCode','CourseName','Description','Status','CreatedAt','UpdatedAt','CreatedByUserID'],
+    Semesters: ['SemesterID','AcademicYear','Term','StartDate','EndDate','Status','CreatedAt','UpdatedAt','CreatedByUserID'],
+    CourseOfferings: ['OfferingID','CourseID','SemesterID','Section','Status','CreatedAt','UpdatedAt','CreatedByUserID'],
+    CourseInstructors: ['CourseInstructorID','OfferingID','InstructorUserID','AssignedByUserID','Status','CreatedAt','UpdatedAt']
   }
 });
 
