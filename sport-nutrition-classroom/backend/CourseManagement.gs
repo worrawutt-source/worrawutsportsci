@@ -93,3 +93,31 @@ function testCourseManagementPreflight(){
  var ex={UserRoles:['UserRoleID','UserID','Role','ScopeType','ScopeID','Status','CreatedAt','UpdatedAt','CreatedByUserID'],Courses:['CourseID','CourseCode','CourseName','Description','Status','CreatedAt','UpdatedAt','CreatedByUserID'],Semesters:['SemesterID','AcademicYear','Term','StartDate','EndDate','Status','CreatedAt','UpdatedAt','CreatedByUserID'],CourseOfferings:['OfferingID','CourseID','SemesterID','Section','Status','CreatedAt','UpdatedAt','CreatedByUserID'],CourseInstructors:['CourseInstructorID','OfferingID','InstructorUserID','AssignedByUserID','Status','CreatedAt','UpdatedAt']};
  var ss=SpreadsheetApp.getActiveSpreadsheet(),out={success:true,checks:{}};Object.keys(ex).forEach(function(n){var sh=ss&&ss.getSheetByName(n);if(!sh){out.checks[n]='MISSING';out.success=false;return;}var a=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0],ok=a.length===ex[n].length&&ex[n].every(function(h,i){return a[i]===h;});out.checks[n]=ok?'PASS':'FAIL';if(!ok)out.success=false;});console.log(JSON.stringify(out,null,2));return out;
 }
+
+
+/**
+ * Read-only authorization unit tests. Safe to run in TEST Apps Script.
+ * Does not read/write spreadsheet data, create records, or call LINE APIs.
+ */
+function testCourseManagementAuthorizationLogic(){
+ var cases=[],course='COURSE-A',otherCourse='COURSE-B',semester='SEM-1',otherSemester='SEM-2';
+ function actor(role,scopeType,scopeId){return {userId:'TEST-USER',roles:[{role:role,scopeType:scopeType,scopeId:scopeId||''}]};}
+ function check(name,fn,expected){var passed=false,detail='';try{var actual=fn();passed=actual===expected;detail='actual='+actual;}catch(e){detail='error='+(e&&e.message?e.message:String(e));}cases.push({name:name,result:passed?'PASS':'FAIL',detail:detail});}
+ function denied(name,fn){var rejected=false;try{fn();}catch(e){rejected=true;}cases.push({name:name,result:rejected?'PASS':'FAIL',detail:rejected?'request rejected as expected':'request was not rejected'});}
+ check('System Admin can manage any course',function(){return cmCanCourse_(actor('SYSTEM_ADMIN','SYSTEM','*'),otherCourse);},true);
+ check('System Admin can manage any semester',function(){return cmCanSemester_(actor('SYSTEM_ADMIN','SYSTEM','*'),otherSemester);},true);
+ check('System Coordinator can manage any course',function(){return cmCanCourse_(actor('COURSE_COORDINATOR','SYSTEM','*'),otherCourse);},true);
+ check('System Coordinator can manage any semester',function(){return cmCanSemester_(actor('COURSE_COORDINATOR','SYSTEM','*'),otherSemester);},true);
+ check('Course-scoped Coordinator can manage assigned course',function(){return cmCanCourse_(actor('COURSE_COORDINATOR','COURSE',course),course);},true);
+ check('Course-scoped Coordinator cannot manage other course',function(){return cmCanCourse_(actor('COURSE_COORDINATOR','COURSE',course),otherCourse);},false);
+ check('Semester-scoped Coordinator can manage assigned semester',function(){return cmCanSemester_(actor('COURSE_COORDINATOR','SEMESTER',semester),semester);},true);
+ check('Semester-scoped Coordinator cannot manage other semester',function(){return cmCanSemester_(actor('COURSE_COORDINATOR','SEMESTER',semester),otherSemester);},false);
+ check('Instructor cannot manage course',function(){return cmCanCourse_(actor('INSTRUCTOR','OFFERING','*'),course);},false);
+ check('Student cannot manage semester',function(){return cmCanSemester_(actor('STUDENT','SELF','TEST-USER'),semester);},false);
+ check('System Coordinator passes system-level guard',function(){try{cmNeedSystem_(actor('COURSE_COORDINATOR','SYSTEM','*'));return true;}catch(e){return false;}},true);
+ denied('Scoped Coordinator is denied system-level creation guard',function(){cmNeedSystem_(actor('COURSE_COORDINATOR','COURSE',course));});
+ denied('Instructor is denied system-level creation guard',function(){cmNeedSystem_(actor('INSTRUCTOR','OFFERING','*'));});
+ var passed=cases.filter(function(x){return x.result==='PASS';}).length,failed=cases.length-passed;
+ var out={success:failed===0,passed:passed,failed:failed,total:cases.length,cases:cases};
+ console.log(JSON.stringify(out,null,2));return out;
+}
