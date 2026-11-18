@@ -389,8 +389,8 @@ function testCourseCoordinatorScopeIsolation(){
  var semesterOfferingList=handleCourseManagementActionForActor_('offering.list',semesterActor,{},'COORD-SEMESTER-OFFERING-LIST');
  var expectedCourseOfferingIds=offerings.filter(function(o){return String(o.CourseID)===courseId;}).map(function(o){return String(o.OfferingID);}).sort();
  var expectedSemesterOfferingIds=offerings.filter(function(o){return String(o.SemesterID)===semesterId;}).map(function(o){return String(o.OfferingID);}).sort();
- var actualCourseOfferingIds=courseOfferingList.map(function(x){return String(x.OfferingID);}).sort();
- var actualSemesterOfferingIds=semesterOfferingList.map(function(x){return String(x.OfferingID);}).sort();
+ var actualCourseOfferingIds=courseOfferingList.map(function(x){return String(x.offering.OfferingID);}).sort();
+ var actualSemesterOfferingIds=semesterOfferingList.map(function(x){return String(x.offering.OfferingID);}).sort();
  var checks=[];
  function add(name,ok,detail){checks.push({test:name,result:ok?'PASS':'FAIL',detail:detail||''});}
  add('Course-scoped Coordinator sees assigned Course only',courseList.length===courses.filter(function(x){return String(x.CourseID)===courseId;}).length&&courseList.every(function(x){return String(x.CourseID)===courseId;}),'visibleCount='+courseList.length);
