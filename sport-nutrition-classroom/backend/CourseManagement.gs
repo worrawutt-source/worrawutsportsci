@@ -328,3 +328,37 @@ function testInstructorDataScopeIsolation(){
  console.log(JSON.stringify(report,null,2));
  return report;
 }
+
+
+
+/**
+ * Creates exactly one isolated TEST offering for Instructor cross-offering
+ * authorization tests. TEST spreadsheet only; idempotent by section marker.
+ * Run manually from Apps Script. Does not assign an instructor or create
+ * Course/Semester records.
+ */
+function createInstructorScopeIsolationTestOffering(){
+ var TEST_SPREADSHEET_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk';
+ var ss=SpreadsheetApp.getActiveSpreadsheet();
+ if(!ss||ss.getId()!==TEST_SPREADSHEET_ID)throw new Error('SAFETY_STOP: This function is restricted to the configured TEST spreadsheet.');
+ var marker='SCOPE-ISOLATION-NEG';
+ var existing=cmRows_('CourseOfferings').filter(function(o){return String(o.Section)===marker&&String(o.Status).toUpperCase()!=='DELETED';})[0];
+ if(existing){
+  var prior={success:true,created:false,alreadyExists:true,status:String(existing.Status),section:marker};
+  console.log(JSON.stringify(prior,null,2));return prior;
+ }
+ var adminRole=cmRows_('UserRoles').filter(function(r){
+  return String(r.Role)==='SYSTEM_ADMIN'&&String(r.Status).toUpperCase()==='ACTIVE'&&(String(r.ScopeType)==='SYSTEM'||String(r.ScopeType)==='ALL');
+ })[0];
+ if(!adminRole)throw new Error('TEST_BLOCKED: No active System Admin role exists in TEST.');
+ var courses=cmRows_('Courses').filter(function(x){return String(x.Status).toUpperCase()==='ACTIVE';});
+ var semesters=cmRows_('Semesters').filter(function(x){return String(x.Status).toUpperCase()==='ACTIVE';});
+ if(!courses.length||!semesters.length)throw new Error('TEST_BLOCKED: An active Course and Semester are required; this function will not create them.');
+ var actor={userId:String(adminRole.UserID),roles:[{role:'SYSTEM_ADMIN',scopeType:String(adminRole.ScopeType),scopeId:String(adminRole.ScopeID||'*')}]};
+ var created=handleCourseManagementActionForActor_('offering.create',actor,{
+  courseId:String(courses[0].CourseID),semesterId:String(semesters[0].SemesterID),section:marker
+ },'CREATE-SCOPE-ISOLATION-TEST-OFFERING');
+ var out={success:true,created:true,alreadyExists:false,status:String(created.Status),section:marker,
+  note:'One TEST offering created using an existing active Course and Semester. No instructor was assigned.'};
+ console.log(JSON.stringify(out,null,2));return out;
+}
