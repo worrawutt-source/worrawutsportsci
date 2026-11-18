@@ -362,3 +362,59 @@ function createInstructorScopeIsolationTestOffering(){
   note:'One TEST offering created using an existing active Course and Semester. No instructor was assigned.'};
  console.log(JSON.stringify(out,null,2));return out;
 }
+
+
+
+/**
+ * Read-only Course Coordinator scope isolation test.
+ * Uses synthetic scoped actors and existing TEST records only.
+ * No LINE account, data creation, mutation, or Production access.
+ */
+function testCourseCoordinatorScopeIsolation(){
+ var TEST_SPREADSHEET_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk';
+ var ss=SpreadsheetApp.getActiveSpreadsheet();
+ if(!ss||ss.getId()!==TEST_SPREADSHEET_ID)throw new Error('SAFETY_STOP: This test is restricted to the configured TEST spreadsheet.');
+ var courses=cmRows_('Courses').filter(function(x){return String(x.Status).toUpperCase()!=='DELETED';});
+ var semesters=cmRows_('Semesters').filter(function(x){return String(x.Status).toUpperCase()!=='DELETED';});
+ var offerings=cmRows_('CourseOfferings').filter(function(x){return String(x.Status).toUpperCase()!=='DELETED';});
+ if(!courses.length||!semesters.length)throw new Error('TEST_BLOCKED: At least one Course and one Semester are required.');
+ var courseId=String(courses[0].CourseID),semesterId=String(semesters[0].SemesterID);
+ var courseActor={userId:'SNC_SIMULATED_COORDINATOR_COURSE',roles:[{role:'COURSE_COORDINATOR',scopeType:'COURSE',scopeId:courseId}]};
+ var semesterActor={userId:'SNC_SIMULATED_COORDINATOR_SEMESTER',roles:[{role:'COURSE_COORDINATOR',scopeType:'SEMESTER',scopeId:semesterId}]};
+ var courseList=handleCourseManagementActionForActor_('course.list',courseActor,{},'COORD-COURSE-LIST');
+ var courseSemesterList=handleCourseManagementActionForActor_('semester.list',courseActor,{},'COORD-COURSE-SEMESTER-LIST');
+ var courseOfferingList=handleCourseManagementActionForActor_('offering.list',courseActor,{},'COORD-COURSE-OFFERING-LIST');
+ var semesterCourseList=handleCourseManagementActionForActor_('course.list',semesterActor,{},'COORD-SEMESTER-COURSE-LIST');
+ var semesterList=handleCourseManagementActionForActor_('semester.list',semesterActor,{},'COORD-SEMESTER-LIST');
+ var semesterOfferingList=handleCourseManagementActionForActor_('offering.list',semesterActor,{},'COORD-SEMESTER-OFFERING-LIST');
+ var expectedCourseOfferingIds=offerings.filter(function(o){return String(o.CourseID)===courseId;}).map(function(o){return String(o.OfferingID);}).sort();
+ var expectedSemesterOfferingIds=offerings.filter(function(o){return String(o.SemesterID)===semesterId;}).map(function(o){return String(o.OfferingID);}).sort();
+ var actualCourseOfferingIds=courseOfferingList.map(function(x){return String(x.offering.OfferingID);}).sort();
+ var actualSemesterOfferingIds=semesterOfferingList.map(function(x){return String(x.offering.OfferingID);}).sort();
+ var checks=[];
+ function add(name,ok,detail){checks.push({test:name,result:ok?'PASS':'FAIL',detail:detail||''});}
+ add('Course-scoped Coordinator sees assigned Course only',courseList.length===courses.filter(function(x){return String(x.CourseID)===courseId;}).length&&courseList.every(function(x){return String(x.CourseID)===courseId;}),'visibleCount='+courseList.length);
+ add('Course-scoped Coordinator cannot view Semester master list',courseSemesterList.length===0,'visibleCount='+courseSemesterList.length);
+ add('Course-scoped Coordinator sees Offerings within assigned Course',JSON.stringify(actualCourseOfferingIds)===JSON.stringify(expectedCourseOfferingIds),'visibleCount='+actualCourseOfferingIds.length+', expected='+expectedCourseOfferingIds.length);
+ add('Course-scoped Coordinator cannot manage an unrelated Course',!cmCanCourse_(courseActor,'SNC_UNRELATED_COURSE'),'access=false');
+ add('Course-scoped Coordinator cannot manage an unrelated Semester',!cmCanSemester_(courseActor,'SNC_UNRELATED_SEMESTER'),'access=false');
+ add('Semester-scoped Coordinator cannot view Course master list',semesterCourseList.length===0,'visibleCount='+semesterCourseList.length);
+ add('Semester-scoped Coordinator sees assigned Semester only',semesterList.length===semesters.filter(function(x){return String(x.SemesterID)===semesterId;}).length&&semesterList.every(function(x){return String(x.SemesterID)===semesterId;}),'visibleCount='+semesterList.length);
+ add('Semester-scoped Coordinator sees Offerings within assigned Semester',JSON.stringify(actualSemesterOfferingIds)===JSON.stringify(expectedSemesterOfferingIds),'visibleCount='+actualSemesterOfferingIds.length+', expected='+expectedSemesterOfferingIds.length);
+ add('Semester-scoped Coordinator cannot manage an unrelated Course',!cmCanCourse_(semesterActor,'SNC_UNRELATED_COURSE'),'access=false');
+ add('Semester-scoped Coordinator cannot manage an unrelated Semester',!cmCanSemester_(semesterActor,'SNC_UNRELATED_SEMESTER'),'access=false');
+ add('Course-only Coordinator cannot update an Offering without Semester scope',offerings.length?expectCoordinatorForbidden_(courseActor,'offering.update',{offeringId:String(offerings[0].OfferingID)}):null,'expected FORBIDDEN; no mutation');
+ add('Semester-only Coordinator cannot update an Offering without Course scope',offerings.length?expectCoordinatorForbidden_(semesterActor,'offering.update',{offeringId:String(offerings[0].OfferingID)}):null,'expected FORBIDDEN; no mutation');
+ var passed=checks.filter(function(x){return x.result==='PASS';}).length;
+ var failed=checks.filter(function(x){return x.result==='FAIL';}).length;
+ var blocked=checks.filter(function(x){return x.result==='BLOCKED';}).length;
+ var out={success:failed===0&&blocked===0,mode:'READ_ONLY_SIMULATED_COORDINATOR_SCOPE',database:'TEST',
+  courseScopeOfferingCount:actualCourseOfferingIds.length,semesterScopeOfferingCount:actualSemesterOfferingIds.length,
+  passed:passed,failed:failed,blocked:blocked,total:checks.length,checks:checks,
+  note:'Synthetic Course-scoped and Semester-scoped Coordinator actors; existing TEST data only; no writes.'};
+ console.log(JSON.stringify(out,null,2));return out;
+}
+function expectCoordinatorForbidden_(actor,action,payload){
+ try{handleCourseManagementActionForActor_(action,actor,payload,'COORDINATOR-NEGATIVE-SCOPE');return false;}
+ catch(e){return Boolean(e&&e.apiCode==='FORBIDDEN');}
+}
