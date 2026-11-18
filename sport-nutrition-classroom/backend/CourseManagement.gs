@@ -487,3 +487,88 @@ function testSystemAdminAuthorizationAndPermissionBoundary(){
   note:'Synthetic actors; database reads only. Denied create requests are expected to stop at authorization guards before writes. No Production access.'};
  console.log(JSON.stringify(out,null,2));return out;
 }
+
+
+/**
+ * Security regression tests: suspended identities, role revocation,
+ * client identity spoofing/IDOR, and audit integrity after denied requests.
+ * TEST spreadsheet only. Read-only; denied operations must not mutate records.
+ */
+function testSecurityRevocationSpoofingAndAudit(){
+ var TEST_SPREADSHEET_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk';
+ var ss=SpreadsheetApp.getActiveSpreadsheet();
+ if(!ss||ss.getId()!==TEST_SPREADSHEET_ID)throw new Error('SAFETY_STOP: TEST spreadsheet only.');
+ var checks=[],blocked=[];
+ function add(name,ok,detail){checks.push({test:name,result:ok?'PASS':'FAIL',detail:detail||''});}
+ function block(name,detail){blocked.push({test:name,result:'BLOCKED',detail:detail||''});}
+ function auditCount(){var sh=ss.getSheetByName('AuditLogs');return sh?sh.getLastRow():0;}
+ function auditSignature(){var sh=ss.getSheetByName('AuditLogs');if(!sh||sh.getLastRow()<2)return '';return JSON.stringify(sh.getRange(2,1,sh.getLastRow()-1,sh.getLastColumn()).getDisplayValues());}
+
+ // Verify current implementation excludes inactive LINE account/user links.
+ var la=ss.getSheetByName('LINEAccounts'),us=ss.getSheetByName('Users');
+ var lineRows=la&&la.getLastRow()>1?rowsAsObjects_(la):[];
+ var userRows=us&&us.getLastRow()>1?rowsAsObjects_(us):[];
+ var inactiveLine=lineRows.filter(function(x){return String(x.Status).toUpperCase()!=='ACTIVE';})[0];
+ var inactiveUser=inactiveLine?null:userRows.filter(function(u){return String(u.Status).toUpperCase()!=='ACTIVE';})[0];
+ if(inactiveLine){
+  var blockedLink=findLineAccountBySubject_(inactiveLine.ProviderSubject);
+  add('Inactive LINE account cannot resolve to a linked user',blockedLink===null,'expected null; actual='+Boolean(blockedLink));
+ }else if(inactiveUser){
+  var linkedToInactive=lineRows.filter(function(x){return String(x.UserID)===String(inactiveUser.UserID)&&String(x.Status).toUpperCase()==='ACTIVE';})[0];
+  if(linkedToInactive){var resolved=findLineAccountBySubject_(linkedToInactive.ProviderSubject);add('Active LINE link to inactive user is rejected',resolved===null,'expected null; actual='+Boolean(resolved));}
+  else block('Suspended user authentication lookup','No active LINE link exists for the inactive user.');
+ }else block('Suspended account/user authentication lookup','No inactive LINE account or inactive user is present in TEST data.');
+
+ // Inactive role rows must not contribute to effective permissions.
+ var roleRows=ss.getSheetByName('UserRoles'),allRoles=roleRows&&roleRows.getLastRow()>1?rowsAsObjects_(roleRows):[];
+ var revoked=allRoles.filter(function(x){return String(x.Status).toUpperCase()!=='ACTIVE';})[0];
+ if(revoked){
+  var effective=getEffectiveRolesForUser_(String(revoked.UserID));
+  var stillGranted=effective.some(function(x){return x.role===String(revoked.Role)&&x.scopeType===String(revoked.ScopeType)&&x.scopeId===String(revoked.ScopeID||'');});
+  add('Inactive/revoked UserRole is excluded from effective roles',!stillGranted,'role='+String(revoked.Role)+', inactive row must not be granted');
+ }else block('Role revocation data check','No inactive UserRoles row exists in TEST data.');
+
+ // Spoofed client identity fields must not elevate a synthetic Instructor actor.
+ var activeAssignments=cmRows_('CourseInstructors').filter(function(x){return String(x.Status).toUpperCase()==='ACTIVE';});
+ var activeOfferings=cmRows_('CourseOfferings').filter(function(x){return String(x.Status).toUpperCase()==='ACTIVE';});
+ if(activeAssignments.length&&activeOfferings.length){
+  var uid=String(activeAssignments[0].InstructorUserID);
+  var assigned=activeAssignments.filter(function(x){return String(x.InstructorUserID)===uid;}).map(function(x){return String(x.OfferingID);});
+  var unrelated=activeOfferings.filter(function(x){return assigned.indexOf(String(x.OfferingID))<0;})[0];
+  if(unrelated){
+   var actor={userId:uid,roles:[{role:'INSTRUCTOR',scopeType:'OFFERING',scopeId:'*'}]};
+   var before=cmGet_('CourseOfferings','OfferingID',unrelated.OfferingID);
+   var beforeSection=String(before.Section||'');
+   var auditBefore=auditSignature();
+   var result='NO_RESULT';
+   try{
+    handleCourseManagementActionForActor_('offering.update',actor,{
+     offeringId:String(unrelated.OfferingID),section:'SPOOF-MUST-NOT-APPLY',
+     userId:'SNC_SIMULATED_SYSTEM_ADMIN',role:'SYSTEM_ADMIN',roles:[{role:'SYSTEM_ADMIN',scopeType:'SYSTEM',scopeId:'*'}]
+    },'SECURITY-SPOOF-IDOR-TEST');
+    result='REQUEST_ALLOWED';
+   }catch(e){result=e&&e.apiCode?e.apiCode:'UNEXPECTED_ERROR';}
+   var after=cmGet_('CourseOfferings','OfferingID',unrelated.OfferingID);
+   add('Client-supplied UserID/Role cannot elevate Instructor authorization',result==='FORBIDDEN','actual='+result);
+   add('IDOR attempt does not modify unrelated Offering',Boolean(after)&&String(after.Section||'')===beforeSection,'record unchanged='+Boolean(after)&&String(after.Section||'')===beforeSection);
+   add('Denied IDOR request does not append a success audit record',auditSignature()===auditBefore,'AuditLogs unchanged after denied request');
+  }else block('IDOR cross-offering spoof test','No unrelated active Offering exists for the selected Instructor.');
+ }else block('IDOR cross-offering spoof test','No active Instructor assignment or active Offering exists.');
+
+ // Check a second forbidden action and prove audit log remains unchanged.
+ var student={userId:'SNC_SIMULATED_STUDENT_AUDIT',roles:[{role:'STUDENT',scopeType:'SELF',scopeId:'SNC_SIMULATED_STUDENT_AUDIT'}]};
+ var auditBeforeDenied=auditSignature(),denial='NO_RESULT';
+ try{handleCourseManagementActionForActor_('course.create',student,{courseCode:'AUDIT-DENY-TEST',courseName:'Must Not Exist'},'SECURITY-AUDIT-DENY-TEST');denial='REQUEST_ALLOWED';}
+ catch(e){denial=e&&e.apiCode?e.apiCode:'UNEXPECTED_ERROR';}
+ add('Unauthorized Course create is denied before mutation',denial==='FORBIDDEN','actual='+denial);
+ add('Denied Course create leaves AuditLogs unchanged',auditSignature()===auditBeforeDenied,'AuditLogs unchanged');
+ add('Denied Course create does not create test Course',!cmRows_('Courses').some(function(x){return String(x.CourseCode)==='AUDIT-DENY-TEST';}),'marker course absent');
+
+ var passed=checks.filter(function(x){return x.result==='PASS';}).length;
+ var failed=checks.filter(function(x){return x.result==='FAIL';}).length;
+ var out={success:failed===0,mode:'READ_ONLY_SECURITY_REGRESSION_TEST',database:'TEST',
+  passed:passed,failed:failed,blocked:blocked.length,total:checks.length+blocked.length,
+  checks:checks,blockedChecks:blocked,
+  note:'No data writes expected. Inactive identity/role checks are BLOCKED when suitable inactive records do not exist; no test records are created.'};
+ console.log(JSON.stringify(out,null,2));return out;
+}
