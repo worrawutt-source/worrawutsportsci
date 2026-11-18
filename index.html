@@ -464,6 +464,50 @@
       justify-content: space-between;
     }
 
+
+    /* Academic profile hero */
+    .hero { grid-template-columns: 1.1fr 0.9fr; gap: 3.5rem; }
+    .hero-kicker {
+      display:inline-flex; align-items:center; gap:.55rem; padding:.45rem .8rem;
+      border:1px solid rgba(32,184,255,.24); border-radius:999px;
+      background:rgba(32,184,255,.07); letter-spacing:.04em; text-transform:none;
+    }
+    .hero-kicker::before {
+      content:""; width:7px; height:7px; border-radius:50%; background:var(--secondary);
+      box-shadow:0 0 12px rgba(45,212,191,.8); flex:0 0 auto;
+    }
+    .hero-name { max-width:650px; font-size:clamp(2.5rem,5vw,4rem); }
+    .hero-tagline { font-size:clamp(1.05rem,2vw,1.3rem); }
+    .hero-visual {
+      min-height:0; padding:.85rem; overflow:hidden; border-radius:1.5rem;
+      background:linear-gradient(145deg,rgba(32,184,255,.16),rgba(13,27,46,.96) 48%,rgba(45,212,191,.12));
+      box-shadow:0 24px 65px rgba(0,0,0,.38),0 0 45px rgba(32,184,255,.08);
+    }
+    .profile-frame { position:relative; overflow:hidden; min-height:390px; border:1px solid rgba(255,255,255,.12); border-radius:1.05rem; background:#0d1b2e; }
+    .profile-image { display:block; width:100%; height:430px; object-fit:cover; object-position:center 25%; }
+    .profile-overlay { position:absolute; inset:42% 0 0; background:linear-gradient(180deg,transparent 0%,rgba(5,11,20,.18) 32%,rgba(5,11,20,.94) 100%); pointer-events:none; }
+    .profile-caption { position:absolute; right:1.25rem; bottom:1.2rem; left:1.25rem; z-index:1; }
+    .profile-caption-label { display:inline-block; margin-bottom:.4rem; color:var(--secondary); font-size:.72rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; }
+    .profile-caption strong { display:block; color:#fff; font-size:1.15rem; font-weight:600; }
+    .profile-caption span:last-child { color:rgba(245,247,250,.78); font-size:.82rem; }
+    .hero-visual .visual-footer { padding:.8rem .45rem .15rem; gap:.75rem; flex-wrap:wrap; }
+    .hero-visual .visual-footer span:last-child { color:var(--secondary); }
+    @media (max-width:860px) {
+      .hero { grid-template-columns:1fr; gap:2rem; }
+      .profile-frame { min-height:320px; }
+      .profile-image { height:min(110vw,430px); }
+    }
+    @media (max-width:520px) {
+      main { padding:2rem 1rem 3.5rem; }
+      .hero { margin-bottom:3rem; padding-bottom:2.5rem; }
+      .hero-name { font-size:clamp(2.15rem,10vw,3rem); }
+      .hero-actions { flex-direction:column; }
+      .hero-actions .btn { justify-content:center; }
+      .profile-frame { min-height:280px; }
+      .profile-image { height:350px; }
+      .footer-bottom { flex-direction:column; gap:.5rem; }
+    }
+
     @media (max-width: 860px) {
       .hero {
         grid-template-columns: 1fr;
@@ -515,31 +559,22 @@
         </div>
       </div>
 
-      <!-- Movement / Data Visualization -->
+      <!-- Academic Profile / Sport Science Technology -->
       <div class="hero-visual">
-        <div class="visual-header">
-          <span>KINEMATIC MOTION & PHYSIOLOGY</span>
-          <span>REAL-TIME DATA</span>
-        </div>
-        <div class="visual-body">
-          <svg viewBox="0 0 360 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M 10 90 Q 60 10, 110 70 T 210 50 T 310 20 T 350 40" stroke="#20B8FF" stroke-width="2.5" fill="none" />
-            <path d="M 10 90 Q 60 10, 110 70 T 210 50 T 310 20 T 350 40 L 350 110 L 10 110 Z" fill="url(#grad)" opacity="0.12" />
-            <circle cx="110" cy="70" r="4" fill="#2DD4BF" />
-            <circle cx="210" cy="50" r="4" fill="#20B8FF" />
-            <circle cx="310" cy="20" r="4" fill="#20B8FF" />
-            <line x1="210" y1="10" x2="210" y2="105" stroke="#203650" stroke-dasharray="3 3" />
-            <defs>
-              <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#20B8FF" />
-                <stop offset="100%" stop-color="#20B8FF" stop-opacity="0" />
-              </linearGradient>
-            </defs>
-          </svg>
+        <div class="profile-frame">
+          <img class="profile-image" src="pic/profile.png"
+            alt="Worrawut Thuwakum, Sport and Exercise Science"
+            loading="eager" fetchpriority="high">
+          <div class="profile-overlay"></div>
+          <div class="profile-caption">
+            <span class="profile-caption-label">Academic Profile</span>
+            <strong>Sport & Exercise Science</strong>
+            <span>Uttaradit Rajabhat University</span>
+          </div>
         </div>
         <div class="visual-footer">
-          <span>Biomechanics Profile</span>
-          <span>Human Performance Lab</span>
+          <span>Research · Education · Innovation</span>
+          <span>Human Performance</span>
         </div>
       </div>
     </section>
