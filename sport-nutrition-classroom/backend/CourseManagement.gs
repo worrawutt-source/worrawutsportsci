@@ -490,6 +490,50 @@ function testSystemAdminAuthorizationAndPermissionBoundary(){
 
 
 /**
+ * In-memory synthetic fixtures for suspended identity and role revocation.
+ * TEST spreadsheet guard only. Does not append/update/delete sheet rows.
+ */
+function testSyntheticIdentityAndRoleRevocationFixtures(){
+ var TEST_SPREADSHEET_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk';
+ var ss=SpreadsheetApp.getActiveSpreadsheet();
+ if(!ss||ss.getId()!==TEST_SPREADSHEET_ID)throw new Error('SAFETY_STOP: TEST spreadsheet only.');
+ var checks=[];
+ function add(name,ok,detail){checks.push({test:name,result:ok?'PASS':'FAIL',detail:detail||''});}
+ var fixtureUser={UserID:'SNC_FIXTURE_USER_001',StudentID:'999999999991',FirstName:'Synthetic',LastName:'Fixture',Email:'fixture.invalid@example.test',Status:'ACTIVE'};
+ var fixtureAccount={LINEAccountID:'SNC_FIXTURE_LINE_001',UserID:fixtureUser.UserID,Provider:'LINE',ProviderSubject:'SNC_FIXTURE_SUBJECT_001',DisplayName:'Synthetic Fixture',Status:'ACTIVE'};
+ var activeLookup=findLineAccountBySubjectFromRows_(fixtureAccount.ProviderSubject,[fixtureAccount],[fixtureUser]);
+ add('Active synthetic LINE account and active user resolve',Boolean(activeLookup)&&activeLookup.user.UserID===fixtureUser.UserID,'expected linked identity');
+ var suspendedAccount=Object.assign({},fixtureAccount,{Status:'INACTIVE'});
+ var suspendedAccountLookup=findLineAccountBySubjectFromRows_(fixtureAccount.ProviderSubject,[suspendedAccount],[fixtureUser]);
+ add('Suspended LINE account is rejected',suspendedAccountLookup===null,'expected null');
+ var suspendedUser=Object.assign({},fixtureUser,{Status:'INACTIVE'});
+ var suspendedUserLookup=findLineAccountBySubjectFromRows_(fixtureAccount.ProviderSubject,[fixtureAccount],[suspendedUser]);
+ add('Active LINE account linked to suspended user is rejected',suspendedUserLookup===null,'expected null');
+
+ var activeRole={UserRoleID:'SNC_FIXTURE_ROLE_ACTIVE',UserID:fixtureUser.UserID,Role:'COURSE_COORDINATOR',ScopeType:'COURSE',ScopeID:'SNC_FIXTURE_COURSE',Status:'ACTIVE'};
+ var revokedRole=Object.assign({},activeRole,{UserRoleID:'SNC_FIXTURE_ROLE_REVOKED',Role:'SYSTEM_ADMIN',ScopeType:'SYSTEM',ScopeID:'*',Status:'INACTIVE'});
+ var oldRows=cmRows_;
+ cmRows_=function(table){
+  if(table==='UserRoles')return [activeRole,revokedRole];
+  if(table==='CourseInstructors')return [];
+  return [];
+ };
+ try{
+  var roles=getEffectiveRolesForUser_(fixtureUser.UserID);
+  add('Active synthetic role is retained',roles.some(function(x){return x.role==='COURSE_COORDINATOR'&&x.scopeType==='COURSE'&&x.scopeId==='SNC_FIXTURE_COURSE';}),'active scoped role expected');
+  add('Revoked System Admin role is excluded',!roles.some(function(x){return x.role==='SYSTEM_ADMIN';}),'inactive role must not grant SYSTEM_ADMIN');
+  add('Revoked role cannot pass system-level authorization', (function(){try{cmNeedSystem_({userId:fixtureUser.UserID,roles:roles});return false;}catch(e){return Boolean(e&&e.apiCode==='FORBIDDEN');}})(),'expected FORBIDDEN');
+ }finally{
+  cmRows_=oldRows;
+ }
+ var passed=checks.filter(function(x){return x.result==='PASS';}).length;
+ var failed=checks.filter(function(x){return x.result==='FAIL';}).length;
+ var out={success:failed===0,mode:'IN_MEMORY_SYNTHETIC_IDENTITY_ROLE_FIXTURES',database:'TEST',fixtureCount:4,passed:passed,failed:failed,total:checks.length,checks:checks,note:'Synthetic records exist only in memory. No Google Sheets rows were written, changed, or deleted.'};
+ console.log(JSON.stringify(out,null,2));return out;
+}
+
+
+/**
  * Security regression tests: suspended identities, role revocation,
  * client identity spoofing/IDOR, and audit integrity after denied requests.
  * TEST spreadsheet only. Read-only; denied operations must not mutate records.
