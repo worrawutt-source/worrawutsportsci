@@ -276,3 +276,55 @@ function testSimulatedInstructorNegativeAuthorization(){
  console.log(JSON.stringify(out,null,2));
  return out;
 }
+
+
+/**
+ * Read-only Instructor data-scope isolation and cross-offering access test.
+ * TEST spreadsheet only. Uses a real active instructor assignment to build
+ * the actor, but does not require LINE login and does not modify sheet data.
+ */
+function testInstructorDataScopeIsolation(){
+ var TEST_SPREADSHEET_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk';
+ var ss=SpreadsheetApp.getActiveSpreadsheet();
+ if(!ss||ss.getId()!==TEST_SPREADSHEET_ID)throw new Error('SAFETY_STOP: This test is restricted to the configured TEST spreadsheet.');
+ var assignments=cmRows_('CourseInstructors').filter(function(x){return String(x.Status).toUpperCase()==='ACTIVE';});
+ var offerings=cmRows_('CourseOfferings').filter(function(x){return String(x.Status).toUpperCase()!=='DELETED';});
+ if(!assignments.length)throw new Error('TEST_BLOCKED: No active instructor assignment exists.');
+ var assignment=assignments[0],uid=String(assignment.InstructorUserID);
+ var actor={userId:uid,roles:[{role:'INSTRUCTOR',scopeType:'OFFERING',scopeId:'*'}]};
+ var assignedIds=assignments.filter(function(x){return String(x.InstructorUserID)===uid;}).map(function(x){return String(x.OfferingID);});
+ var assignedMap={};assignedIds.forEach(function(id){assignedMap[id]=true;});
+ var unrelated=offerings.filter(function(o){return !assignedMap[String(o.OfferingID)]&&String(o.Status).toUpperCase()==='ACTIVE';})[0];
+ var report={success:true,mode:'READ_ONLY_SIMULATED_INSTRUCTOR_SCOPE',database:'TEST',checks:[]};
+ function add(name,ok,detail){report.checks.push({test:name,result:ok?'PASS':'FAIL',detail:detail||''});if(!ok)report.success=false;}
+ var courses=handleCourseManagementActionForActor_('course.list',actor,{},'SCOPE-TEST-COURSE');
+ var semesters=handleCourseManagementActionForActor_('semester.list',actor,{},'SCOPE-TEST-SEMESTER');
+ var visible=handleCourseManagementActionForActor_('offering.list',actor,{},'SCOPE-TEST-OFFERING');
+ var visibleIds=visible.map(function(x){return String(x.offering.OfferingID);}).sort();
+ var expectedIds=offerings.filter(function(o){return assignedMap[String(o.OfferingID)]&&String(o.Status).toUpperCase()!=='DELETED';}).map(function(o){return String(o.OfferingID);}).sort();
+ add('Instructor cannot view course master list',courses.length===0,'visibleCount='+courses.length);
+ add('Instructor cannot view semester master list',semesters.length===0,'visibleCount='+semesters.length);
+ add('Offering list contains only offerings assigned to this instructor',JSON.stringify(visibleIds)===JSON.stringify(expectedIds),'visibleCount='+visibleIds.length+', assignedCount='+expectedIds.length);
+ if(unrelated){
+  var before=String(unrelated.Section||'');
+  var crossResult='NO_RESULT';
+  try{
+   handleCourseManagementActionForActor_('offering.update',actor,{offeringId:String(unrelated.OfferingID),section:'SHOULD_NOT_CHANGE'},'SCOPE-TEST-CROSS-OFFERING');
+   crossResult='REQUEST_ALLOWED';
+  }catch(e){crossResult=e&&e.apiCode?e.apiCode:'UNEXPECTED_ERROR';}
+  var after=cmGet_('CourseOfferings','OfferingID',unrelated.OfferingID);
+  add('Instructor cannot update an unrelated offering',crossResult==='FORBIDDEN','actual='+crossResult);
+  add('Unrelated offering remains unchanged after denied update',Boolean(after)&&String(after.Section||'')===before,'unchanged='+Boolean(after)&&String(after.Section||'')===before);
+ }else{
+  report.checks.push({test:'Cross-offering update denial',result:'BLOCKED',detail:'No second active offering outside this instructor assignment exists; no unrelated offering was created.'});
+ }
+ report.assignedOfferingCount=expectedIds.length;
+ report.visibleOfferingCount=visibleIds.length;
+ report.hasUnrelatedActiveOffering=Boolean(unrelated);
+ report.passed=report.checks.filter(function(x){return x.result==='PASS';}).length;
+ report.failed=report.checks.filter(function(x){return x.result==='FAIL';}).length;
+ report.blocked=report.checks.filter(function(x){return x.result==='BLOCKED';}).length;
+ report.total=report.checks.length;
+ console.log(JSON.stringify(report,null,2));
+ return report;
+}
