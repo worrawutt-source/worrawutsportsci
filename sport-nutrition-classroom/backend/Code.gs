@@ -297,19 +297,26 @@ function rowsAsObjects_(sheet) {
   });
 }
 
-function findLineAccountBySubject_(subject) {
-  var accounts = rowsAsObjects_(accountSheet_('LINEAccounts'));
-  var match = accounts.filter(function(a) {
+function findLineAccountBySubjectFromRows_(subject, accounts, users) {
+  var match = (accounts || []).filter(function(a) {
     return String(a.Provider) === 'LINE' &&
       String(a.ProviderSubject) === String(subject) &&
       String(a.Status).toUpperCase() === 'ACTIVE';
   })[0];
   if (!match) return null;
-  var user = rowsAsObjects_(accountSheet_('Users')).filter(function(u) {
+  var user = (users || []).filter(function(u) {
     return String(u.UserID) === String(match.UserID) &&
       String(u.Status).toUpperCase() === 'ACTIVE';
   })[0];
   return user ? { account: match, user: user } : null;
+}
+
+function findLineAccountBySubject_(subject) {
+  return findLineAccountBySubjectFromRows_(
+    subject,
+    rowsAsObjects_(accountSheet_('LINEAccounts')),
+    rowsAsObjects_(accountSheet_('Users'))
+  );
 }
 
 function publicUser_(u) {
