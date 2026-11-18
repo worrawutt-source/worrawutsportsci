@@ -199,15 +199,28 @@
           showTokenExpired();
           throw new Error("ไม่พบ LINE ID Token กรุณาเข้าสู่ระบบ LINE ใหม่");
         }
+        const clientRequestId = requestId();
         const response = await fetch(API_URL, {
           method: "POST", headers: { "Content-Type": "text/plain;charset=UTF-8" },
-          body: JSON.stringify({ action, requestId: requestId(), payload: { ...payload, idToken: idToken } })
+          body: JSON.stringify({ action, requestId: clientRequestId, payload: { ...payload, idToken: idToken } })
         });
-        const data = await response.json();
+        let data;
+        try { data = await response.json(); }
+        catch (_) {
+          const parseError = new Error("Backend ส่งข้อมูลตอบกลับไม่ใช่ JSON (HTTP " + response.status + ")");
+          parseError.code = "INVALID_BACKEND_RESPONSE";
+          parseError.requestId = clientRequestId;
+          throw parseError;
+        }
         if (!response.ok || !data.success) {
           const code = data && data.error && data.error.code ? data.error.code : "API_ERROR";
+          const serverRequestId = data && data.requestId ? data.requestId : clientRequestId;
           if (code === "TOKEN_EXPIRED") showTokenExpired();
-          throw new Error(data && data.error && data.error.message ? data.error.message : "ดำเนินการไม่สำเร็จ");
+          const message = data && data.error && data.error.message ? data.error.message : "ดำเนินการไม่สำเร็จ";
+          const apiError = new Error(message + " [" + code + "; Request ID: " + serverRequestId + "]");
+          apiError.code = code;
+          apiError.requestId = serverRequestId;
+          throw apiError;
         }
         return data.data;
       }
