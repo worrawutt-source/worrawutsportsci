@@ -70,3 +70,27 @@ The app sends OTP using `MailApp.sendEmail`; authorize the required Apps Script 
 - Do not put channel secrets, OTP pepper, access tokens, ID tokens, or private student data in GitHub.
 - The browser is untrusted; the backend verifies identity and performs all account matching and authorization.
 - The student portal UI is in `student/index.html`; it uses the existing LIFF ID and API URL configuration currently present in the file. Change the API URL only when preparing a separate TEST deployment.
+
+
+## Phase 1.2 — Course & Semester Management (development)
+
+Added `CourseManagement.gs` with authenticated API actions:
+`course.list/create/update`, `semester.list/create/update`,
+`offering.list/create/update`, and `instructor.assign/unassign`.
+
+The additive setup schema adds `UserRoles`, `Courses`, `Semesters`,
+`CourseOfferings`, and `CourseInstructors`. DOC-05 defines these logical
+entities and relationships but not all physical columns; the minimum field
+mapping is declared in `setup.gs` and is an implementation detail.
+
+All management API calls verify the LINE ID token and derive the actor from
+the linked LINE account. Authorization is enforced on the backend. Instructors
+can list only offerings assigned to them. Coordinator roles support SYSTEM,
+COURSE, or SEMESTER scope in UserRoles. A one-time manual bootstrap function
+uses Script Property `SNC_INITIAL_ADMIN_STUDENT_ID`; it is not exposed as an API.
+
+TEST rollout only: update the TEST Apps Script source, confirm the TEST
+spreadsheet is selected, run `setupAccountLinkingSheets()`, set the initial
+admin Student ID property, run `bootstrapInitialAdminRole()` once, remove
+that property, then run `testCourseManagementPreflight()`. Do not execute
+schema setup or bootstrap against production.
