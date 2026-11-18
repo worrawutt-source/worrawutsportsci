@@ -57,7 +57,8 @@ function doPost(e) {
           lineSubject: auth.sub, displayName: auth.name || null,
           pictureUrl: auth.picture || null, email: auth.email || null,
           accountStatus: linked ? 'LINKED' : 'LINKING_REQUIRED',
-          role: linked ? 'STUDENT' : null,
+          role: linked ? getPrimaryRoleForUser_(linked.user.UserID) : null,
+          roles: linked ? getEffectiveRolesForUser_(linked.user.UserID) : [],
           user: linked ? publicUser_(linked.user) : null
         }, error: null
       });
@@ -78,6 +79,11 @@ function doPost(e) {
     if (action === 'auth.confirmEmailChange') {
       var changeIdentity = verifyLiffIdentity_(payload.idToken);
       return jsonResponse_(success_(requestId, confirmEmailChange_(changeIdentity, payload, requestId)));
+    }
+
+    if (/^(course|semester|offering|instructor)\./.test(action)) {
+      var managementIdentity = verifyLiffIdentity_(payload.idToken);
+      return jsonResponse_(success_(requestId, handleCourseManagementAction_(action, managementIdentity, payload, requestId)));
     }
 
     return jsonResponse_(failure_(requestId, 'NOT_IMPLEMENTED', 'This API action is not implemented yet.'));
