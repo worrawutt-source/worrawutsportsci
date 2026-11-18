@@ -18,14 +18,14 @@ function getEffectiveRolesForUser_(uid){
 function getPrimaryRoleForUser_(uid){var a=getEffectiveRolesForUser_(uid),p=['SYSTEM_ADMIN','COURSE_COORDINATOR','INSTRUCTOR','STUDENT'];for(var i=0;i<p.length;i++)if(a.some(function(r){return r.role===p[i];}))return p[i];return 'STUDENT';}
 function cmActor_(identity){var l=findLineAccountBySubject_(identity.sub);if(!l)throw apiError_('LINKING_REQUIRED','Link your student account first.');return {userId:String(l.user.UserID),roles:getEffectiveRolesForUser_(l.user.UserID)};}
 function cmSystem_(a,role){return a.roles.some(function(r){return r.role===role&&(r.scopeType==='SYSTEM'||r.scopeType==='ALL');});}
-function cmCanCourse_(a,id){return cmSystem_(a,'SYSTEM_ADMIN')||a.roles.some(function(r){return r.role==='COURSE_COORDINATOR'&&(r.scopeType==='SYSTEM'||(r.scopeType==='COURSE'&&String(r.scopeId)===String(id)));});}
-function cmCanSemester_(a,id){return cmSystem_(a,'SYSTEM_ADMIN')||a.roles.some(function(r){return r.role==='COURSE_COORDINATOR'&&(r.scopeType==='SYSTEM'||(r.scopeType==='SEMESTER'&&String(r.scopeId)===String(id)));});}
+function cmCanCourse_(a,id){return cmSystem_(a,'SYSTEM_ADMIN')||cmSystem_(a,'COURSE_COORDINATOR')||a.roles.some(function(r){return r.role==='COURSE_COORDINATOR'&&r.scopeType==='COURSE'&&String(r.scopeId)===String(id);});}
+function cmCanSemester_(a,id){return cmSystem_(a,'SYSTEM_ADMIN')||cmSystem_(a,'COURSE_COORDINATOR')||a.roles.some(function(r){return r.role==='COURSE_COORDINATOR'&&r.scopeType==='SEMESTER'&&String(r.scopeId)===String(id);});}
 function cmCanOffering_(a,o){return cmCanCourse_(a,o.CourseID)||cmCanSemester_(a,o.SemesterID)||cmRows_('CourseInstructors').some(function(r){return String(r.OfferingID)===String(o.OfferingID)&&String(r.InstructorUserID)===a.userId&&String(r.Status).toUpperCase()==='ACTIVE';});}
 function cmNeedSystem_(a){if(!cmSystem_(a,'SYSTEM_ADMIN')&&!cmSystem_(a,'COURSE_COORDINATOR'))throw apiError_('FORBIDDEN','Insufficient permission.');}
 function handleCourseManagementAction_(action,identity,p,requestId){
  var a=cmActor_(identity),lock=LockService.getScriptLock();lock.waitLock(30000);
  try{
-  if(action==='course.list'){cmNeedSystem_(a);return cmRows_('Courses').filter(function(x){return x.Status!=='DELETED';});}
+  if(action==='course.list'){return cmRows_('Courses').filter(function(x){return x.Status!=='DELETED'&&cmCanCourse_(a,x.CourseID);});}
   if(action==='course.create'){
    cmNeedSystem_(a);var code=cmText_(p.courseCode,40,'courseCode',true).toUpperCase(),name=cmText_(p.courseName,200,'courseName',true);
    if(cmRows_('Courses').some(function(x){return String(x.CourseCode).toUpperCase()===code;}))throw apiError_('DUPLICATE','Course code already exists.');
@@ -40,7 +40,7 @@ function handleCourseManagementAction_(action,identity,p,requestId){
    if(p.status!==undefined){var st=cmText_(p.status,20,'status',true).toUpperCase();if(['ACTIVE','INACTIVE'].indexOf(st)<0)throw apiError_('VALIDATION_ERROR','Invalid status.');sh.getRange(r._row,h.indexOf('Status')+1).setValue(st);}
    sh.getRange(r._row,h.indexOf('UpdatedAt')+1).setValue(new Date());appendAudit_(a.userId,'COURSE_UPDATED','Course',id,{updated:true},requestId);return cmGet_('Courses','CourseID',id);
   }
-  if(action==='semester.list'){cmNeedSystem_(a);return cmRows_('Semesters').filter(function(x){return x.Status!=='DELETED';});}
+  if(action==='semester.list'){return cmRows_('Semesters').filter(function(x){return x.Status!=='DELETED'&&cmCanSemester_(a,x.SemesterID);});}
   if(action==='semester.create'){
    cmNeedSystem_(a);var y=Number(p.academicYear),term=cmText_(p.term,20,'term',true),sd=cmDate_(p.startDate,'startDate'),ed=cmDate_(p.endDate,'endDate');
    if(!Number.isInteger(y)||y<2500||y>2700||ed<sd)throw apiError_('VALIDATION_ERROR','Invalid academic year or date range.');
