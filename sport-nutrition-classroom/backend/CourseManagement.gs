@@ -134,3 +134,63 @@ function testCourseManagementAuthorizationLogic(){
  var out={success:failed===0,passed:passed,failed:failed,total:cases.length,cases:cases};
  console.log(JSON.stringify(out,null,2));return out;
 }
+
+
+/**
+ * Read-only test against real TEST spreadsheet role assignments.
+ * Checks role resolution and scope enforcement without changing data.
+ * Logs aggregate counts only; does not print user, course, semester or offering IDs.
+ */
+function testCourseManagementLiveAuthorizationData(){
+ var report={success:true,roleRows:0,activeRoles:0,checks:[],summary:{}};
+ var ss=SpreadsheetApp.getActiveSpreadsheet();
+ var roleSheet=ss&&ss.getSheetByName('UserRoles');
+ var courseSheet=ss&&ss.getSheetByName('Courses');
+ var semesterSheet=ss&&ss.getSheetByName('Semesters');
+ var offeringSheet=ss&&ss.getSheetByName('CourseOfferings');
+ var instructorSheet=ss&&ss.getSheetByName('CourseInstructors');
+ if(!roleSheet||!courseSheet||!semesterSheet||!offeringSheet||!instructorSheet)throw new Error('Required course-management sheets are missing.');
+ var roleRows=rowsAsObjects_(roleSheet),courses=rowsAsObjects_(courseSheet).filter(function(x){return x.Status!=='DELETED';});
+ var semesters=rowsAsObjects_(semesterSheet).filter(function(x){return x.Status!=='DELETED';});
+ var offerings=rowsAsObjects_(offeringSheet).filter(function(x){return x.Status!=='DELETED';});
+ function add(name,ok){report.checks.push({name:name,result:ok?'PASS':'FAIL'});if(!ok)report.success=false;}
+ report.roleRows=roleRows.length;
+ var active=roleRows.filter(function(r){return String(r.Status).toUpperCase()==='ACTIVE';});
+ report.activeRoles=active.length;
+ var tested={};
+ active.forEach(function(r){
+  var uid=String(r.UserID),role=String(r.Role),scope=String(r.ScopeType),scopeId=String(r.ScopeID||''),actor={userId:uid,roles:getEffectiveRolesForUser_(uid)};
+  var key=role+'|'+scope;
+  tested[key]=(tested[key]||0)+1;
+  if(role==='COURSE_COORDINATOR'&&scope==='COURSE'){
+   var exists=courses.some(function(x){return String(x.CourseID)===scopeId;});
+   add('Active course scope resolves to an existing course',exists&&cmCanCourse_(actor,scopeId));
+   var other=courses.filter(function(x){return String(x.CourseID)!==scopeId;})[0];
+   if(other)add('Course scope denies an unrelated course',!cmCanCourse_(actor,other.CourseID));
+  }else if(role==='COURSE_COORDINATOR'&&scope==='SEMESTER'){
+   var semExists=semesters.some(function(x){return String(x.SemesterID)===scopeId;});
+   add('Active semester scope resolves to an existing semester',semExists&&cmCanSemester_(actor,scopeId));
+   var otherSem=semesters.filter(function(x){return String(x.SemesterID)!==scopeId;})[0];
+   if(otherSem)add('Semester scope denies an unrelated semester',!cmCanSemester_(actor,otherSem.SemesterID));
+  }else if(role==='COURSE_COORDINATOR'&&(scope==='SYSTEM'||scope==='ALL')){
+   add('System coordinator resolves to system-level course access',courses.every(function(x){return cmCanCourse_(actor,x.CourseID);}));
+   add('System coordinator resolves to system-level semester access',semesters.every(function(x){return cmCanSemester_(actor,x.SemesterID);}));
+  }else if(role==='SYSTEM_ADMIN'&&(scope==='SYSTEM'||scope==='ALL')){
+   add('System Admin resolves to system-level course access',courses.every(function(x){return cmCanCourse_(actor,x.CourseID);}));
+   add('System Admin resolves to system-level semester access',semesters.every(function(x){return cmCanSemester_(actor,x.SemesterID);}));
+  }
+ });
+ var activeInstructorRows=rowsAsObjects_(instructorSheet).filter(function(x){return String(x.Status).toUpperCase()==='ACTIVE';});
+ activeInstructorRows.forEach(function(r){
+  var uid=String(r.InstructorUserID),off=offerings.filter(function(x){return String(x.OfferingID)===String(r.OfferingID);})[0];
+  var actor={userId:uid,roles:getEffectiveRolesForUser_(uid)};
+  add('Active instructor assignment resolves to its offering',Boolean(off)&&cmCanOffering_(actor,off));
+ });
+ report.summary={activeCourseCoordinatorScopes:active.filter(function(r){return r.Role==='COURSE_COORDINATOR';}).length,activeSystemAdminScopes:active.filter(function(r){return r.Role==='SYSTEM_ADMIN';}).length,activeInstructorAssignments:activeInstructorRows.length,activeCourses:courses.length,activeSemesters:semesters.length,activeOfferings:offerings.length,scopeTypesTested:Object.keys(tested).length};
+ report.passed=report.checks.filter(function(x){return x.result==='PASS';}).length;
+ report.failed=report.checks.length-report.passed;
+ report.total=report.checks.length;
+ if(report.total===0)report.note='No applicable active role assignments were available for live-data checks.';
+ console.log(JSON.stringify(report,null,2));
+ return report;
+}
