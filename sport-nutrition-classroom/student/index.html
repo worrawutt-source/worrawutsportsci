@@ -41,6 +41,7 @@
       <div class="snc-auth-actions">
         <button id="login-button" class="snc-button" type="button" hidden>เข้าสู่ระบบ LINE ใหม่</button>
         <button id="verify-button" class="snc-button" type="button" hidden>ยืนยันตัวตน</button>
+        <button id="logout-button" class="snc-button" type="button" hidden>ออกจากระบบ</button>
       </div>
       <div id="auth-result" class="snc-result" aria-live="polite"></div>
       <section id="link-panel" class="snc-auth-panel" hidden aria-labelledby="link-title">
@@ -91,6 +92,7 @@
       const diagnosticEl = document.getElementById("auth-diagnostic");
       const loginButton = document.getElementById("login-button");
       const verifyButton = document.getElementById("verify-button");
+      const logoutButton = document.getElementById("logout-button");
 
       function setStatus(message, state) {
         statusEl.textContent = message;
@@ -173,6 +175,7 @@
           }
 
           setStatus("ยืนยันตัวตนด้วย LINE สำเร็จ", "success");
+          logoutButton.hidden = false;
           renderAccountState(result.data);
           setButtons(false, false);
         } catch (error) {
@@ -299,6 +302,28 @@
         }
       });
       verifyButton.addEventListener("click", verifyIdentity);
+
+      logoutButton.addEventListener("click", function () {
+        if (!window.liff || !liff.isLoggedIn()) {
+          logoutButton.hidden = true;
+          setStatus("ออกจากระบบแล้ว", "success");
+          return;
+        }
+        logoutButton.disabled = true;
+        try {
+          liff.logout();
+          setStatus("ออกจากระบบ LINE แล้ว", "success");
+          resultEl.textContent = "ออกจากระบบเรียบร้อย หากต้องการใช้งานอีกครั้งให้เข้าสู่ระบบ LINE ใหม่";
+          document.getElementById("link-panel").hidden = true;
+          document.getElementById("email-panel").hidden = true;
+          logoutButton.hidden = true;
+          setButtons(true, false);
+          diagnosticEl.hidden = true;
+        } catch (error) {
+          logoutButton.disabled = false;
+          showError("ออกจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าแล้วลองอีกครั้ง");
+        }
+      });
 
       async function init() {
         setButtons(false, false);
