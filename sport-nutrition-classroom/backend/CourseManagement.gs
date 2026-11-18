@@ -26,7 +26,10 @@ function cmVisibleCourses_(a,rows){return rows.filter(function(x){return x.Statu
 function cmVisibleSemesters_(a,rows){return rows.filter(function(x){return x.Status!=='DELETED'&&cmCanSemester_(a,x.SemesterID);});}
 function cmVisibleOfferings_(a,rows){return rows.filter(function(o){return o.Status!=='DELETED'&&cmCanOffering_(a,o);});}
 function handleCourseManagementAction_(action,identity,p,requestId){
- var a=cmActor_(identity),lock=LockService.getScriptLock();lock.waitLock(30000);
+ return handleCourseManagementActionForActor_(action,cmActor_(identity),p,requestId);
+}
+function handleCourseManagementActionForActor_(action,a,p,requestId){
+ var lock=LockService.getScriptLock();lock.waitLock(30000);
  try{
   if(action==='course.list'){return cmVisibleCourses_(a,cmRows_('Courses'));}
   if(action==='course.create'){
@@ -230,4 +233,46 @@ function testCourseManagementReadEndpointsWithLinkedAdmin(){
  report.total=report.checks.length;
  console.log(JSON.stringify(report,null,2));
  return report;
+}
+
+
+/**
+ * Simulated API-handler authorization test for the TEST spreadsheet only.
+ * Run manually from the Apps Script editor. Never exposed through doPost.
+ * Uses a synthetic Instructor actor and performs only requests expected to be
+ * rejected before any spreadsheet mutation.
+ */
+function testSimulatedInstructorNegativeAuthorization(){
+ var TEST_SPREADSHEET_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk';
+ var ss=SpreadsheetApp.getActiveSpreadsheet();
+ if(!ss||ss.getId()!==TEST_SPREADSHEET_ID)throw new Error('SAFETY_STOP: This test is restricted to the configured TEST spreadsheet.');
+ var actor={userId:'SNC_SIMULATED_INSTRUCTOR_ONLY',roles:[{role:'INSTRUCTOR',scopeType:'OFFERING',scopeId:'*'}]};
+ if(actor.roles.some(function(r){return r.role==='SYSTEM_ADMIN'||r.role==='COURSE_COORDINATOR';}))throw new Error('SAFETY_STOP: Simulated actor must not have elevated roles.');
+ var activeOffering=cmRows_('CourseOfferings').filter(function(o){return String(o.Status).toUpperCase()==='ACTIVE';})[0];
+ if(!activeOffering)throw new Error('TEST_BLOCKED: An active TEST offering is required for NEG-03.');
+ var cases=[];
+ function expectForbidden(name,action,payload){
+  try{
+   handleCourseManagementActionForActor_(action,actor,payload,'SIMULATED-NEG-'+name);
+   cases.push({test:name,result:'FAIL',actual:'REQUEST_ALLOWED'});
+  }catch(e){
+   var code=e&&e.apiCode?e.apiCode:'UNEXPECTED_ERROR';
+   cases.push({test:name,result:code==='FORBIDDEN'?'PASS':'FAIL',expected:'FORBIDDEN',actual:code});
+  }
+ }
+ expectForbidden('NEG-01 Course Create','course.create',{
+  courseCode:'SIM-NEG-TEST',courseName:'Simulated Negative Authorization',description:'Must not be created'
+ });
+ expectForbidden('NEG-02 Semester Create','semester.create',{
+  academicYear:2570,term:'SIM-NEG-TEST',startDate:'2027-05-01',endDate:'2027-09-30'
+ });
+ expectForbidden('NEG-03 Assigned Offering Update','offering.update',{
+  offeringId:String(activeOffering.OfferingID),section:'SIM-NEG-TEST'
+ });
+ var passed=cases.filter(function(x){return x.result==='PASS';}).length;
+ var out={success:passed===cases.length,passed:passed,failed:cases.length-passed,total:cases.length,cases:cases,
+  mode:'SIMULATED_ACTOR_HANDLER_TEST',database:'TEST',writesExpected:0,
+  note:'Synthetic Instructor actor; all tested actions must be rejected before any write.'};
+ console.log(JSON.stringify(out,null,2));
+ return out;
 }
