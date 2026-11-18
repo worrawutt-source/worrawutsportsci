@@ -267,8 +267,8 @@ function testPostMissingToken() {
     httpStatus: response.getResponseCode(),
     success: result.success,
     errorCode: result.error && result.error.code,
-    expected: 'UNAUTHENTICATED',
-    pass: result.success === false && result.error && result.error.code === 'UNAUTHENTICATED'
+    expected: 'TOKEN_MISSING',
+    pass: result.success === false && result.error && result.error.code === 'TOKEN_MISSING'
   }));
 }
 
@@ -602,4 +602,17 @@ function testAccountLinkingPreflight() {
   if (duplicates.length) report.success = false;
   console.log(JSON.stringify(report, null, 2));
   return report;
+}
+
+
+/**
+ * Local API guard test. Does not make external requests or require an ID token.
+ * Confirms doPost rejects a missing token before any course-management action.
+ */
+function testApiMissingTokenGuard(){
+ var response=doPost({postData:{contents:JSON.stringify({action:'auth.verify',requestId:'LOCAL-TEST-MISSING-TOKEN',payload:{}})}});
+ var body=JSON.parse(response.getContent());
+ var ok=body&&body.success===false&&body.error&&body.error.code==='TOKEN_MISSING';
+ var out={success:Boolean(ok),httpLayer:'Apps Script ContentService response',expectedErrorCode:'TOKEN_MISSING',actualErrorCode:body&&body.error?body.error.code:null,pass:Boolean(ok)};
+ console.log(JSON.stringify(out,null,2));return out;
 }
