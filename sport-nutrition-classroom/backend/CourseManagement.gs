@@ -7,13 +7,21 @@ function cmRows_(n){return rowsAsObjects_(cmSheet_(n));}
 function cmText_(v,max,key,required){var s=typeof v==='string'?v.trim():'';if((required&&!s)||s.length>max)throw apiError_('VALIDATION_ERROR',key+' is required or too long.');return s;}
 function cmDate_(v,key){if(typeof v!=='string'||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(v))throw apiError_('VALIDATION_ERROR',key+' must use YYYY-MM-DD.');var d=new Date(v+'T00:00:00Z');if(isNaN(d.getTime())||d.toISOString().slice(0,10)!==v)throw apiError_('VALIDATION_ERROR',key+' is invalid.');return d;}
 function cmGet_(table,key,id){return cmRows_(table).filter(function(r){return String(r[key])===String(id);})[0]||null;}
-function getEffectiveRolesForUser_(uid){
- var ss=SpreadsheetApp.getActiveSpreadsheet(),out=[],sh=ss&&ss.getSheetByName('UserRoles');
- if(sh&&sh.getLastRow()>1)out=rowsAsObjects_(sh).filter(function(r){return String(r.UserID)===String(uid)&&String(r.Status).toUpperCase()==='ACTIVE';}).map(function(r){return {role:String(r.Role),scopeType:String(r.ScopeType),scopeId:String(r.ScopeID||'')};});
- var ci=ss&&ss.getSheetByName('CourseInstructors');
- if(ci&&ci.getLastRow()>1&&rowsAsObjects_(ci).some(function(r){return String(r.InstructorUserID)===String(uid)&&String(r.Status).toUpperCase()==='ACTIVE';}))out.push({role:'INSTRUCTOR',scopeType:'OFFERING',scopeId:'*'});
+function getEffectiveRolesForUserFromRows_(uid,roleRows,instructorRows){
+ var out=(roleRows||[]).filter(function(r){
+  return String(r.UserID)===String(uid)&&String(r.Status).toUpperCase()==='ACTIVE';
+ }).map(function(r){
+  return {role:String(r.Role),scopeType:String(r.ScopeType),scopeId:String(r.ScopeID||'')};
+ });
+ if((instructorRows||[]).some(function(r){
+  return String(r.InstructorUserID)===String(uid)&&String(r.Status).toUpperCase()==='ACTIVE';
+ }))out.push({role:'INSTRUCTOR',scopeType:'OFFERING',scopeId:'*'});
  if(!out.some(function(r){return r.role==='STUDENT';}))out.push({role:'STUDENT',scopeType:'SELF',scopeId:String(uid)});
  return out;
+}
+
+function getEffectiveRolesForUser_(uid){
+ return getEffectiveRolesForUserFromRows_(uid,cmRows_('UserRoles'),cmRows_('CourseInstructors'));
 }
 function getPrimaryRoleForUser_(uid){var a=getEffectiveRolesForUser_(uid),p=['SYSTEM_ADMIN','COURSE_COORDINATOR','INSTRUCTOR','STUDENT'];for(var i=0;i<p.length;i++)if(a.some(function(r){return r.role===p[i];}))return p[i];return 'STUDENT';}
 function cmActor_(identity){var l=findLineAccountBySubject_(identity.sub);if(!l)throw apiError_('LINKING_REQUIRED','Link your student account first.');return {userId:String(l.user.UserID),roles:getEffectiveRolesForUser_(l.user.UserID)};}
