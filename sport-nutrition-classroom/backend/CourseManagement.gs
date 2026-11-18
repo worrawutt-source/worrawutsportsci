@@ -12,7 +12,7 @@ function getEffectiveRolesForUser_(uid){
  if(sh&&sh.getLastRow()>1)out=rowsAsObjects_(sh).filter(function(r){return String(r.UserID)===String(uid)&&String(r.Status).toUpperCase()==='ACTIVE';}).map(function(r){return {role:String(r.Role),scopeType:String(r.ScopeType),scopeId:String(r.ScopeID||'')};});
  var ci=ss&&ss.getSheetByName('CourseInstructors');
  if(ci&&ci.getLastRow()>1&&rowsAsObjects_(ci).some(function(r){return String(r.InstructorUserID)===String(uid)&&String(r.Status).toUpperCase()==='ACTIVE';}))out.push({role:'INSTRUCTOR',scopeType:'OFFERING',scopeId:'*'});
- if(!out.some(function(r){return ['SYSTEM_ADMIN','COURSE_COORDINATOR','INSTRUCTOR'].indexOf(r.role)>=0;}))out.push({role:'STUDENT',scopeType:'SELF',scopeId:String(uid)});
+ if(!out.some(function(r){return r.role==='STUDENT';}))out.push({role:'STUDENT',scopeType:'SELF',scopeId:String(uid)});
  return out;
 }
 function getPrimaryRoleForUser_(uid){var a=getEffectiveRolesForUser_(uid),p=['SYSTEM_ADMIN','COURSE_COORDINATOR','INSTRUCTOR','STUDENT'];for(var i=0;i<p.length;i++)if(a.some(function(r){return r.role===p[i];}))return p[i];return 'STUDENT';}
