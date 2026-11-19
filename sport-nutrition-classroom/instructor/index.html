@@ -40,7 +40,7 @@ function render(items){
 }
 async function load(){note('กำลังโหลด Course Offering…');const items=await api('offering.list');render(items||[]);note('โหลดข้อมูลสำเร็จ','success');}
 $('login-btn').onclick=()=>liff.login({redirectUri:location.href});$('logout-btn').onclick=()=>{liff.logout();location.reload();};$('refresh-btn').onclick=()=>load().catch(e=>note(e.message,'error'));
-async function boot(){try{await liff.init({liffId:LIFF_ID});if(!liff.isLoggedIn()){$('auth-panel').hidden=false;note('กรุณาเข้าสู่ระบบ LINE');return;}const me=await api('auth.me');if(me.accountStatus!=='LINKED')throw new Error('บัญชี LINE ยังไม่ได้เชื่อมกับบัญชีผู้ใช้');if(!(me.roles||[]).some(r=>r.role==='INSTRUCTOR'))throw new Error('บัญชีนี้ยังไม่ได้รับมอบหมายสิทธิ์ INSTRUCTOR');$('account-label').textContent=me.user?(me.user.firstName+' '+me.user.lastName):'Instructor';$('logout-btn').hidden=false;$('auth-panel').hidden=true;$('instructor-workspace').hidden=false;await load();}catch(e){note(e.message,'error');$('auth-panel').hidden=!(!liff||!liff.isLoggedIn());}}
+async function boot(){try{await liff.init({liffId:LIFF_ID});if(!liff.isLoggedIn()){$('auth-panel').hidden=false;note('กรุณาเข้าสู่ระบบ LINE');return;}const me=await api('auth.me');if(me.accountStatus!=='LINKED')throw new Error('บัญชี LINE ยังไม่ได้เชื่อมกับบัญชีผู้ใช้');if(!(me.roles||[]).some(r=>r.role==='INSTRUCTOR'))throw new Error('บัญชีนี้ยังไม่ได้รับมอบหมายสิทธิ์ INSTRUCTOR');$('account-label').textContent=me.user?(me.user.firstName+' '+me.user.lastName):'Instructor';$('logout-btn').hidden=false;$('auth-panel').hidden=true;$('instructor-workspace').hidden=false;await load();}catch(e){note(e.message,'error');$('auth-panel').hidden=Boolean(window.liff&&liff.isLoggedIn());}}
 boot();
 })();
 </script>
