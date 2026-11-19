@@ -64,8 +64,10 @@ function handleAssignmentManagementAction_(action,actor,p,requestId){
         if(offeringId&&String(a.OfferingID)!==offeringId)return false;
         return true;
       });
-      return rows.filter(function(a){amCanManage_(actor,a);return true;})
-        .sort(function(a,b){return new Date(b.CreatedAt)-new Date(a.CreatedAt);})
+      return rows.filter(function(a){
+        var linkedOffering=cmGet_('CourseOfferings','OfferingID',a.OfferingID);
+        return Boolean(linkedOffering)&&cmCanOffering_(actor,linkedOffering);
+      }).sort(function(a,b){return new Date(b.CreatedAt)-new Date(a.CreatedAt);})
         .map(amPublic_);
     }
     if(action==='assignment.get'){
