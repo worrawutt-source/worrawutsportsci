@@ -45,7 +45,7 @@ function thaiParts(v){
 function thaiDate(v){const p=thaiParts(v);return p?p.day+'/'+p.month+'/'+(Number(p.year)+543):'—';}
 function thaiDateTime(v){const p=thaiParts(v);return p?thaiDate(v)+' '+p.hour+':'+p.minute:'—';}
 function dateTimeFields(v){
- const p=thaiParts(v);return p?{date:p.day+'/'+p.month+'/'+(Number(p.year)+543),time:p.hour+':'+p.minute}:{date:'',time:''};
+ const p=thaiParts(v);return p?{date:p.day+'/'+p.month+'/'+(Number(p.year)+543),time:p.hour+':'+p.minute,iso:p.year+'-'+p.month+'-'+p.day}:{date:'',time:'',iso:''};
 }
 function parseThaiDateTime(dateValue,timeValue,label){
  const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(dateValue||'').trim());
@@ -59,7 +59,7 @@ function parseThaiDateTime(dateValue,timeValue,label){
 function dateTimeControl(prefix,label,enabled,values,required){
  const checked=required?'':(enabled?'checked':'');
  const disabled=required?'':'disabled';
- return '<div class="snc-field full"><label>'+label+(required?'':' <input type="checkbox" name="'+prefix+'Enabled" '+checked+' style="width:auto;margin-left:8px"> เปิดใช้งาน')+'</label><div class="snc-form-grid" style="grid-template-columns:1fr 150px"><input name="'+prefix+'Date" type="text" inputmode="numeric" placeholder="วว/ดด/ปปปป (พ.ศ.)" pattern="\\d{1,2}/\\d{1,2}/\\d{4}" value="'+esc(values.date)+'" '+disabled+(required?' required':'')+'><input name="'+prefix+'Time" type="time" step="60" value="'+esc(values.time||'23:59')+'" '+disabled+(required?' required':'')+'></div></div>';
+ return '<div class="snc-field full"><label>'+label+(required?'':' <input type="checkbox" name="'+prefix+'Enabled" '+checked+' style="width:auto;margin-left:8px"> เปิดใช้งาน')+'</label><div class="snc-form-grid" style="grid-template-columns:minmax(0,1fr) 46px 150px"><input name="'+prefix+'Date" type="text" inputmode="numeric" placeholder="วว/ดด/ปปปป (พ.ศ.)" pattern="\\d{1,2}/\\d{1,2}/\\d{4}" value="'+esc(values.date)+'" '+disabled+(required?' required':'')+'><input name="'+prefix+'Picker" type="date" title="เลือกวันที่" value="'+esc(values.iso||'')+'" style="width:46px;padding:6px" '+disabled+'><input name="'+prefix+'Time" type="time" step="60" value="'+esc(values.time||'23:59')+'" '+disabled+(required?' required':'')+'></div></div>';
 }
 let currentOfferingId=null,currentOfferingLabel='',assignments=[],offeringCache=[];
 function render(items){
@@ -96,9 +96,10 @@ function assignmentForm(a){
  const form=$('assignment-form'),type=form.elements.submissionType,limit=$('group-limit-field');
  function toggleLimit(){limit.hidden=type.value!=='GROUP';}
  function bindSchedule(prefix){
-  const toggle=form.elements[prefix+'Enabled'],date=form.elements[prefix+'Date'],time=form.elements[prefix+'Time'];
-  if(!toggle)return;const sync=()=>{date.disabled=!toggle.checked;time.disabled=!toggle.checked;date.required=toggle.checked;time.required=toggle.checked;};
-  toggle.addEventListener('change',sync);sync();
+  const toggle=form.elements[prefix+'Enabled'],date=form.elements[prefix+'Date'],picker=form.elements[prefix+'Picker'],time=form.elements[prefix+'Time'];
+  const sync=()=>{const active=!toggle||toggle.checked;date.disabled=!active;picker.disabled=!active;time.disabled=!active;date.required=Boolean(toggle&&active);time.required=Boolean(toggle&&active);};
+  if(toggle)toggle.addEventListener('change',sync);sync();
+  picker.addEventListener('change',()=>{if(!picker.value)return;const parts=picker.value.split('-');date.value=parts[2]+'/'+parts[1]+'/'+(Number(parts[0])+543);});
  }
  bindSchedule('open');bindSchedule('close');toggleLimit();if(!edit)type.addEventListener('change',toggleLimit);
  $('cancel-assignment').onclick=()=>$('modal').hidden=true;
