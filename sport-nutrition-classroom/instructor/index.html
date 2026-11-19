@@ -48,8 +48,8 @@ function dateTimeFields(v){
  const p=thaiParts(v);return p?{date:p.day+'/'+p.month+'/'+(Number(p.year)+543),time:p.hour+':'+p.minute}:{date:'',time:''};
 }
 function parseThaiDateTime(dateValue,timeValue,label){
- const m=/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/.exec(String(dateValue||'').trim());
- const t=/^(\\d{2}):(\\d{2})$/.exec(String(timeValue||'').trim());
+ const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(dateValue||'').trim());
+ const t=/^(\d{2}):(\d{2})$/.exec(String(timeValue||'').trim());
  if(!m||!t)throw new Error(label+' กรุณาระบุวันที่ พ.ศ. และเวลา 24 ชั่วโมงให้ถูกต้อง');
  const day=Number(m[1]),month=Number(m[2]),beYear=Number(m[3]),year=beYear-543,hour=Number(t[1]),minute=Number(t[2]);
  const d=new Date(Date.UTC(year,month-1,day));
