@@ -155,3 +155,16 @@ function testAssignmentSubmissionConfigUnit(){
   var out={success:passed===cases.length,mode:'PURE_UNIT_ASSIGNMENT_SUBMISSION_CONFIG',database:'NONE',passed:passed,failed:cases.length-passed,total:cases.length,writesExpected:0,cases:cases};
   console.log(JSON.stringify(out,null,2));return out;
 }
+
+
+/** Read-only schema preflight for the TEST spreadsheet. */
+function testAssignmentManagementSchemaPreflight(){
+  var TEST_SPREADSHEET_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk';
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  if(!ss||ss.getId()!==TEST_SPREADSHEET_ID)throw new Error('SAFETY_STOP: TEST spreadsheet only.');
+  var expected=['AssignmentID','OfferingID','Title','Description','Instructions','MaxScore','Deadline','SubmissionType','MinGroupMembers','MaxGroupMembers','Status','OpenedAt','ClosedAt','CreatedAt','UpdatedAt','CreatedByUserID'];
+  var sh=ss.getSheetByName('Assignments'),actual=sh?sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0]:[];
+  var ok=Boolean(sh)&&actual.length===expected.length&&expected.every(function(h,i){return actual[i]===h;});
+  var result={success:ok,mode:'READ_ONLY_ASSIGNMENT_SCHEMA_PREFLIGHT',database:'TEST',sheetExists:Boolean(sh),headersMatch:ok,rowCount:sh?Math.max(0,sh.getLastRow()-1):null,expectedColumns:expected.length,actualColumns:actual.length,writesExpected:0};
+  console.log(JSON.stringify(result,null,2));return result;
+}
