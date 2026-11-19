@@ -195,6 +195,10 @@ function runAssignmentScheduler(){
   if(configured!==TEST_ID)throw new Error('SAFETY_STOP: TEST scheduler has not been explicitly configured.');
   return amProcessDueSchedules_(new Date(),ss);
 }
+function amEnsureScheduleAudit_(requestId,action,assignmentId,details){
+  var exists=cmRows_('AuditLogs').some(function(r){return String(r.RequestID)===String(requestId);});
+  if(!exists)appendAudit_('SYSTEM',action,'Assignment',assignmentId,details,requestId);
+}
 function amProcessDueSchedules_(now,ss){
   var lock=LockService.getScriptLock();lock.waitLock(30000);
   try{
@@ -210,17 +214,19 @@ function amProcessDueSchedules_(now,ss){
       if(od){
         var t=new Date(now);
         if(status!=='OPEN'){
+          var openRequestId='SCHED-OPEN-'+id;
+          amEnsureScheduleAudit_(openRequestId,'ASSIGNMENT_AUTO_OPENED',id,{status:'OPEN',scheduledAt:new Date(a.ScheduledOpenAt).toISOString()});
           sh.getRange(a._row,ix.Status).setValue('OPEN');sh.getRange(a._row,ix.OpenedAt).setValue(t);
-          sh.getRange(a._row,ix.ClosedAt).setValue('');sh.getRange(a._row,ix.UpdatedAt).setValue(t);
-          appendAudit_('SYSTEM','ASSIGNMENT_AUTO_OPENED','Assignment',id,{status:'OPEN',scheduledAt:new Date(a.ScheduledOpenAt).toISOString()},'SCHED-OPEN-'+id);out.opened++;
+          sh.getRange(a._row,ix.ClosedAt).setValue('');sh.getRange(a._row,ix.UpdatedAt).setValue(t);out.opened++;
         }else out.skipped++;
         sh.getRange(a._row,ix.AutoOpenProcessedAt).setValue(t);out.processed++;status='OPEN';
       }
       if(cd){
         var tc=new Date(now);
         if(status!=='CLOSED'){
-          sh.getRange(a._row,ix.Status).setValue('CLOSED');sh.getRange(a._row,ix.ClosedAt).setValue(tc);sh.getRange(a._row,ix.UpdatedAt).setValue(tc);
-          appendAudit_('SYSTEM','ASSIGNMENT_AUTO_CLOSED','Assignment',id,{status:'CLOSED',scheduledAt:new Date(a.ScheduledCloseAt).toISOString()},'SCHED-CLOSE-'+id);out.closed++;
+          var closeRequestId='SCHED-CLOSE-'+id;
+          amEnsureScheduleAudit_(closeRequestId,'ASSIGNMENT_AUTO_CLOSED',id,{status:'CLOSED',scheduledAt:new Date(a.ScheduledCloseAt).toISOString()});
+          sh.getRange(a._row,ix.Status).setValue('CLOSED');sh.getRange(a._row,ix.ClosedAt).setValue(tc);sh.getRange(a._row,ix.UpdatedAt).setValue(tc);out.closed++;
         }else out.skipped++;
         sh.getRange(a._row,ix.AutoCloseProcessedAt).setValue(tc);out.processed++;
       }
