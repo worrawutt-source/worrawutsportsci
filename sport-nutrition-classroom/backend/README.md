@@ -152,7 +152,9 @@ CR-001 supersedes the former manual-only BR-001 rule. Due Date remains separate 
 - One-shot processed timestamps make repeated trigger invocations idempotent.
 - `installAssignmentSchedulerTrigger()` installs a one-minute time-driven trigger only when the active bound spreadsheet matches the hard-coded TEST spreadsheet ID. It records `SNC_ASSIGNMENT_SCHEDULER_SPREADSHEET_ID` and refuses mismatches.
 - `testAssignmentSchedulerPreflight()` is read-only.
-- `testAssignmentSchedulerLogicUnit()` is pure unit testing.
+- `testAssignmentSchedulerLogicUnit()` is pure unit testing (11 cases).
+- `testAssignmentSchedulerIntegration()` creates three marked TEST fixtures and verifies real Sheet transitions, duplicate invocation/audit idempotency and manual Open/Close. Fixtures are persistent; no cleanup is performed.
+- `createAssignmentSchedulerTriggerFixtures()` creates two marked future-dated TEST records for the actual time-driven trigger; wait at least three minutes, then run `verifyAssignmentSchedulerTriggerFixtures()` (read-only).
 - Apps Script triggers are best-effort and may run slightly after the scheduled minute.
 
 ### TEST rollout
