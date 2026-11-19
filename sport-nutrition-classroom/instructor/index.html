@@ -101,7 +101,7 @@ function assignmentForm(a){
   if(toggle)toggle.addEventListener('change',sync);sync();
   picker.addEventListener('change',()=>{if(!picker.value)return;const parts=picker.value.split('-');date.value=parts[2]+'/'+parts[1]+'/'+(Number(parts[0])+543);});
  }
- bindSchedule('open');bindSchedule('close');toggleLimit();if(!edit)type.addEventListener('change',toggleLimit);
+ bindSchedule('open');bindSchedule('due');bindSchedule('close');toggleLimit();if(!edit)type.addEventListener('change',toggleLimit);
  $('cancel-assignment').onclick=()=>$('modal').hidden=true;
  form.addEventListener('submit',async e=>{
   e.preventDefault();const btn=form.querySelector('[type=submit]');btn.disabled=true;
