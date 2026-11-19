@@ -189,7 +189,7 @@ function testAssignmentManagementSchemaPreflight(){
 
 /** Process due schedule events once. Trigger is installed only in the TEST-bound project. */
 function runAssignmentScheduler(){
-  var TEST_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk',ss=SpreadsheetApp.getActiveSpreadsheet();
+  var TEST_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk',ss=SpreadsheetApp.openById(TEST_ID);
   if(!ss||ss.getId()!==TEST_ID)throw new Error('SAFETY_STOP: Assignment scheduler is TEST-only.');
   var configured=PropertiesService.getScriptProperties().getProperty('SNC_ASSIGNMENT_SCHEDULER_SPREADSHEET_ID');
   if(configured!==TEST_ID)throw new Error('SAFETY_STOP: TEST scheduler has not been explicitly configured.');
