@@ -7,6 +7,12 @@ function cmRows_(n){return rowsAsObjects_(cmSheet_(n));}
 function cmText_(v,max,key,required){var s=typeof v==='string'?v.trim():'';if((required&&!s)||s.length>max)throw apiError_('VALIDATION_ERROR',key+' is required or too long.');return s;}
 function cmDate_(v,key){if(typeof v!=='string'||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(v))throw apiError_('VALIDATION_ERROR',key+' must use YYYY-MM-DD.');var d=new Date(v+'T00:00:00Z');if(isNaN(d.getTime())||d.toISOString().slice(0,10)!==v)throw apiError_('VALIDATION_ERROR',key+' is invalid.');return d;}
 function cmGet_(table,key,id){return cmRows_(table).filter(function(r){return String(r[key])===String(id);})[0]||null;}
+function cmHasDuplicateOffering_(rows,courseId,semesterId,section){
+ return (rows||[]).some(function(o){
+  return String(o.CourseID)===String(courseId)&&String(o.SemesterID)===String(semesterId)&&
+   String(o.Section)===String(section)&&String(o.Status).toUpperCase()!=='DELETED';
+ });
+}
 function getEffectiveRolesForUserFromRows_(uid,roleRows,instructorRows){
  var out=(roleRows||[]).filter(function(r){
   return String(r.UserID)===String(uid)&&String(r.Status).toUpperCase()==='ACTIVE';
@@ -73,7 +79,7 @@ function handleCourseManagementActionForActor_(action,a,p,requestId){
   if(action==='offering.create'){
    var cid=cmText_(p.courseId,100,'courseId',true),sid2=cmText_(p.semesterId,100,'semesterId',true),c=cmGet_('Courses','CourseID',cid),sem2=cmGet_('Semesters','SemesterID',sid2);
    if(!c||!sem2)throw apiError_('NOT_FOUND','Course or semester not found.');if(!cmCanCourse_(a,cid)||!cmCanSemester_(a,sid2))throw apiError_('FORBIDDEN','Cannot create offering for this course/semester.');
-   var sec=cmText_(p.section,30,'section',false);if(cmRows_('CourseOfferings').some(function(o){return o.CourseID===cid&&o.SemesterID===sid2&&o.Section===sec&&o.Status!=='DELETED';}))throw apiError_('DUPLICATE','Offering already exists.');
+   var sec=cmText_(p.section,30,'section',false);if(cmHasDuplicateOffering_(cmRows_('CourseOfferings'),cid,sid2,sec))throw apiError_('DUPLICATE','Offering already exists.');
    var oid=Utilities.getUuid(),now2=new Date();cmSheet_('CourseOfferings').appendRow([oid,cid,sid2,sec,'ACTIVE',now2,now2,a.userId]);appendAudit_(a.userId,'OFFERING_CREATED','CourseOffering',oid,{courseId:cid,semesterId:sid2,section:sec},requestId);return cmGet_('CourseOfferings','OfferingID',oid);
   }
   if(action==='offering.update'){
@@ -694,5 +700,76 @@ function testDataIntegrityAuditLogReadOnly(){
   rowCounts:{users:data.Users.length,lineAccounts:data.LINEAccounts.length,userRoles:data.UserRoles.length,courses:data.Courses.length,semesters:data.Semesters.length,offerings:data.CourseOfferings.length,instructorAssignments:data.CourseInstructors.length,auditLogs:data.AuditLogs.length},
   passed:passed,failed:failed,blocked:0,total:checks.length,checks:checks,
   note:'Read-only structural, key, reference and audit metadata checks. No sheet values changed. This does not prove tamper resistance or duplicate-request idempotency.'};
+ console.log(JSON.stringify(out,null,2));return out;
+}
+
+
+/**
+ * Pure unit tests for Offering duplicate detection.
+ * No Spreadsheet access and no writes.
+ */
+function testOfferingDuplicatePredicateUnit(){
+ var rows=[
+  {CourseID:'C1',SemesterID:'S1',Section:'A',Status:'ACTIVE'},
+  {CourseID:'C1',SemesterID:'S1',Section:'B',Status:'INACTIVE'},
+  {CourseID:'C2',SemesterID:'S1',Section:'A',Status:'ACTIVE'},
+  {CourseID:'C1',SemesterID:'S1',Section:'C',Status:'DELETED'}
+ ];
+ var cases=[
+  {name:'same active business key is duplicate',actual:cmHasDuplicateOffering_(rows,'C1','S1','A'),expected:true},
+  {name:'same inactive business key remains duplicate',actual:cmHasDuplicateOffering_(rows,'C1','S1','B'),expected:true},
+  {name:'different course is not duplicate',actual:cmHasDuplicateOffering_(rows,'C2','S1','B'),expected:false},
+  {name:'different semester is not duplicate',actual:cmHasDuplicateOffering_(rows,'C1','S2','A'),expected:false},
+  {name:'different section is not duplicate',actual:cmHasDuplicateOffering_(rows,'C1','S1','Z'),expected:false},
+  {name:'deleted business key can be reused',actual:cmHasDuplicateOffering_(rows,'C1','S1','C'),expected:false},
+  {name:'empty rows are not duplicate',actual:cmHasDuplicateOffering_([], 'C1','S1','A'),expected:false}
+ ];
+ cases.forEach(function(x){x.result=x.actual===x.expected?'PASS':'FAIL';});
+ var passed=cases.filter(function(x){return x.result==='PASS';}).length;
+ var out={success:passed===cases.length,mode:'PURE_UNIT_DUPLICATE_PREDICATE',database:'NONE',passed:passed,failed:cases.length-passed,total:cases.length,writesExpected:0,cases:cases};
+ console.log(JSON.stringify(out,null,2));return out;
+}
+
+/**
+ * Read-only duplicate-request and audit-consistency test.
+ * Uses the pre-existing SCOPE-ISOLATION-NEG Offering as a known duplicate.
+ * TEST spreadsheet only; no record creation, update, or deletion.
+ */
+function testDuplicateRequestAuditConsistencyReadOnly(){
+ var TEST_SPREADSHEET_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk';
+ var ss=SpreadsheetApp.getActiveSpreadsheet();
+ if(!ss||ss.getId()!==TEST_SPREADSHEET_ID)throw new Error('SAFETY_STOP: TEST spreadsheet only.');
+ var offerings=cmRows_('CourseOfferings'),fixture=offerings.filter(function(o){
+  return String(o.Section)==='SCOPE-ISOLATION-NEG'&&String(o.Status).toUpperCase()!=='DELETED';
+ })[0];
+ if(!fixture)throw new Error('TEST_BLOCKED: Existing SCOPE-ISOLATION-NEG fixture is required.');
+ var admin=cmRows_('UserRoles').filter(function(r){
+  return String(r.Role)==='SYSTEM_ADMIN'&&String(r.Status).toUpperCase()==='ACTIVE'&&
+   (String(r.ScopeType)==='SYSTEM'||String(r.ScopeType)==='ALL');
+ })[0];
+ if(!admin)throw new Error('TEST_BLOCKED: Active System Admin role is required in TEST.');
+ var actor={userId:String(admin.UserID),roles:[{role:'SYSTEM_ADMIN',scopeType:String(admin.ScopeType),scopeId:String(admin.ScopeID||'*')}]};
+ var audit=cmRows_('AuditLogs'),before={offerings:offerings.length,audits:audit.length};
+ var requestId='DUP-READONLY-'+Utilities.getUuid();
+ function invoke(rid){
+  try{
+   handleCourseManagementActionForActor_('offering.create',actor,{
+    courseId:String(fixture.CourseID),semesterId:String(fixture.SemesterID),section:String(fixture.Section)
+   },rid);
+   return {code:'UNEXPECTED_SUCCESS'};
+  }catch(err){return {code:err&&err.apiCode?err.apiCode:'INTERNAL_ERROR'};}
+ }
+ var same1=invoke(requestId),same2=invoke(requestId),different=invoke(requestId+'-RETRY');
+ var afterOfferings=cmRows_('CourseOfferings'),afterAudit=cmRows_('AuditLogs');
+ var checks=[
+  {test:'same RequestID first duplicate rejected',result:same1.code==='DUPLICATE'?'PASS':'FAIL',actual:same1.code},
+  {test:'same RequestID retry rejected as duplicate',result:same2.code==='DUPLICATE'?'PASS':'FAIL',actual:same2.code},
+  {test:'different RequestID duplicate rejected',result:different.code==='DUPLICATE'?'PASS':'FAIL',actual:different.code},
+  {test:'offering row count unchanged',result:afterOfferings.length===before.offerings?'PASS':'FAIL',actual:afterOfferings.length,before:before.offerings},
+  {test:'audit row count unchanged for rejected requests',result:afterAudit.length===before.audits?'PASS':'FAIL',actual:afterAudit.length,before:before.audits},
+  {test:'known fixture remains unchanged',result:afterOfferings.some(function(o){return String(o.OfferingID)===String(fixture.OfferingID)&&String(o.Section)===String(fixture.Section);})?'PASS':'FAIL'}
+ ];
+ var passed=checks.filter(function(x){return x.result==='PASS';}).length;
+ var out={success:passed===checks.length,mode:'READ_ONLY_DUPLICATE_REQUEST_AUDIT_CONSISTENCY',database:'TEST',passed:passed,failed:checks.length-passed,total:checks.length,writesExpected:0,requestIdBehavior:'RequestID is logged but is not an idempotency key; duplicate business key returns DUPLICATE.',checks:checks};
  console.log(JSON.stringify(out,null,2));return out;
 }
