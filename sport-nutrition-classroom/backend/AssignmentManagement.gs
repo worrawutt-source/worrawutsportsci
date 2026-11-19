@@ -5,12 +5,22 @@
  */
 
 function amDate_(value,key){
-  if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)){
-    throw apiError_('VALIDATION_ERROR',key+' must use YYYY-MM-DDTHH:mm.');
-  }
-  var d=new Date(value);
-  if(isNaN(d.getTime()))throw apiError_('VALIDATION_ERROR',key+' is invalid.');
+  if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value))throw apiError_('VALIDATION_ERROR',key+' must use YYYY-MM-DDTHH:mm in Asia/Bangkok local time.');
+  var d=new Date(value+':00+07:00');
+  if(isNaN(d.getTime())||Utilities.formatDate(d,'Asia/Bangkok',"yyyy-MM-dd'T'HH:mm")!==value)throw apiError_('VALIDATION_ERROR',key+' is invalid.');
   return d;
+}
+function amEnabled_(v){return v===true||String(v).toLowerCase()==='true'||String(v)==='1';}
+function amScheduleConfig_(p,current){
+  var oe=p.autoOpenEnabled===undefined?(current?amEnabled_(current.AutoOpenEnabled):false):amEnabled_(p.autoOpenEnabled);
+  var ce=p.autoCloseEnabled===undefined?(current?amEnabled_(current.AutoCloseEnabled):false):amEnabled_(p.autoCloseEnabled);
+  var ov=p.scheduledOpenAt===undefined?(current?current.ScheduledOpenAt:''):p.scheduledOpenAt;
+  var cv=p.scheduledCloseAt===undefined?(current?current.ScheduledCloseAt:''):p.scheduledCloseAt;
+  var oa=oe?amDate_(ov,'scheduledOpenAt'):'',ca=ce?amDate_(cv,'scheduledCloseAt'):'';
+  if(oe&&ce&&ca<=oa)throw apiError_('VALIDATION_ERROR','Scheduled close must be later than scheduled open.');
+  var oc=!current||oe!==amEnabled_(current.AutoOpenEnabled)||(oe&&new Date(current.ScheduledOpenAt).getTime()!==oa.getTime());
+  var cc=!current||ce!==amEnabled_(current.AutoCloseEnabled)||(ce&&new Date(current.ScheduledCloseAt).getTime()!==ca.getTime());
+  return {AutoOpenEnabled:oe,ScheduledOpenAt:oa,AutoOpenProcessedAt:oc?'':(current?current.AutoOpenProcessedAt||'':''),AutoCloseEnabled:ce,ScheduledCloseAt:ca,AutoCloseProcessedAt:cc?'':(current?current.AutoCloseProcessedAt||'':'')};
 }
 
 function amSubmissionConfig_(submissionType,maxGroupMembers){
@@ -51,6 +61,8 @@ function amPublic_(a){
     MinGroupMembers:a.MinGroupMembers===''?'':Number(a.MinGroupMembers),
     MaxGroupMembers:a.MaxGroupMembers===''?'':Number(a.MaxGroupMembers),
     Status:String(a.Status),OpenedAt:a.OpenedAt||'',ClosedAt:a.ClosedAt||'',
+    AutoOpenEnabled:amEnabled_(a.AutoOpenEnabled),ScheduledOpenAt:a.ScheduledOpenAt||'',AutoOpenProcessedAt:a.AutoOpenProcessedAt||'',
+    AutoCloseEnabled:amEnabled_(a.AutoCloseEnabled),ScheduledCloseAt:a.ScheduledCloseAt||'',AutoCloseProcessedAt:a.AutoCloseProcessedAt||'',
     CreatedAt:a.CreatedAt,UpdatedAt:a.UpdatedAt,CreatedByUserID:String(a.CreatedByUserID)
   };
 }
@@ -87,10 +99,13 @@ function handleAssignmentManagementAction_(action,actor,p,requestId){
       if(!isFinite(maxScore)||maxScore<=0||maxScore>100000)throw apiError_('VALIDATION_ERROR','MaxScore must be greater than zero.');
       var deadline=amDate_(p.deadline,'deadline');
       var config=amSubmissionConfig_(p.submissionType,p.maxGroupMembers);
+      var schedule=amScheduleConfig_(p,null);
       var id=Utilities.getUuid(),now=new Date();
       cmSheet_('Assignments').appendRow([
         id,oid,title,description,instructions,maxScore,deadline,config.SubmissionType,
-        config.MinGroupMembers,config.MaxGroupMembers,'DRAFT','', '',now,now,actor.userId
+        config.MinGroupMembers,config.MaxGroupMembers,'DRAFT','', '',now,now,actor.userId,
+        schedule.AutoOpenEnabled,schedule.ScheduledOpenAt,schedule.AutoOpenProcessedAt,
+        schedule.AutoCloseEnabled,schedule.ScheduledCloseAt,schedule.AutoCloseProcessedAt
       ]);
       appendAudit_(actor.userId,'ASSIGNMENT_CREATED','Assignment',id,{
         offeringId:oid,submissionType:config.SubmissionType,maxGroupMembers:config.MaxGroupMembers
@@ -112,6 +127,9 @@ function handleAssignmentManagementAction_(action,actor,p,requestId){
         if(String(current.SubmissionType)!=='GROUP')throw apiError_('VALIDATION_ERROR','Only GROUP assignments have MaxGroupMembers.');
         if(amHasSubmissions_(aid))throw apiError_('CONFLICT','Group size rules cannot change after the first submission.');
         updates.MaxGroupMembers=amSubmissionConfig_('GROUP',p.maxGroupMembers).MaxGroupMembers;
+      }
+      if(p.autoOpenEnabled!==undefined||p.scheduledOpenAt!==undefined||p.autoCloseEnabled!==undefined||p.scheduledCloseAt!==undefined){
+        var scheduleUpdate=amScheduleConfig_(p,current);Object.keys(scheduleUpdate).forEach(function(k){updates[k]=scheduleUpdate[k];});
       }
       Object.keys(updates).forEach(function(k){sh.getRange(current._row,headers.indexOf(k)+1).setValue(updates[k]);});
       sh.getRange(current._row,headers.indexOf('UpdatedAt')+1).setValue(new Date());
@@ -167,4 +185,80 @@ function testAssignmentManagementSchemaPreflight(){
   var ok=Boolean(sh)&&actual.length===expected.length&&expected.every(function(h,i){return actual[i]===h;});
   var result={success:ok,mode:'READ_ONLY_ASSIGNMENT_SCHEMA_PREFLIGHT',database:'TEST',sheetExists:Boolean(sh),headersMatch:ok,rowCount:sh?Math.max(0,sh.getLastRow()-1):null,expectedColumns:expected.length,actualColumns:actual.length,writesExpected:0};
   console.log(JSON.stringify(result,null,2));return result;
+}
+
+/** Process due schedule events once. Trigger is installed only in the TEST-bound project. */
+function runAssignmentScheduler(){
+  var TEST_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk',ss=SpreadsheetApp.getActiveSpreadsheet();
+  if(!ss||ss.getId()!==TEST_ID)throw new Error('SAFETY_STOP: Assignment scheduler is TEST-only.');
+  var configured=PropertiesService.getScriptProperties().getProperty('SNC_ASSIGNMENT_SCHEDULER_SPREADSHEET_ID');
+  if(configured!==TEST_ID)throw new Error('SAFETY_STOP: TEST scheduler has not been explicitly configured.');
+  return amProcessDueSchedules_(new Date(),ss);
+}
+function amProcessDueSchedules_(now,ss){
+  var lock=LockService.getScriptLock();lock.waitLock(30000);
+  try{
+    var sh=ss.getSheetByName('Assignments');
+    if(!sh||sh.getLastRow()<2)return {success:true,processed:0,opened:0,closed:0,skipped:0};
+    var rows=rowsAsObjects_(sh),headers=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0],ix={};
+    headers.forEach(function(h,i){ix[h]=i+1;});
+    var out={success:true,processed:0,opened:0,closed:0,skipped:0};
+    rows.forEach(function(a){
+      var id=String(a.AssignmentID||''),status=String(a.Status||'').toUpperCase();if(!id)return;
+      var od=amEnabled_(a.AutoOpenEnabled)&&!a.AutoOpenProcessedAt&&a.ScheduledOpenAt&&new Date(a.ScheduledOpenAt)<=now;
+      var cd=amEnabled_(a.AutoCloseEnabled)&&!a.AutoCloseProcessedAt&&a.ScheduledCloseAt&&new Date(a.ScheduledCloseAt)<=now;
+      if(od){
+        var t=new Date(now);
+        if(status!=='OPEN'){
+          sh.getRange(a._row,ix.Status).setValue('OPEN');sh.getRange(a._row,ix.OpenedAt).setValue(t);
+          sh.getRange(a._row,ix.ClosedAt).setValue('');sh.getRange(a._row,ix.UpdatedAt).setValue(t);
+          appendAudit_('SYSTEM','ASSIGNMENT_AUTO_OPENED','Assignment',id,{status:'OPEN',scheduledAt:new Date(a.ScheduledOpenAt).toISOString()},'SCHED-OPEN-'+id);out.opened++;
+        }else out.skipped++;
+        sh.getRange(a._row,ix.AutoOpenProcessedAt).setValue(t);out.processed++;status='OPEN';
+      }
+      if(cd){
+        var tc=new Date(now);
+        if(status!=='CLOSED'){
+          sh.getRange(a._row,ix.Status).setValue('CLOSED');sh.getRange(a._row,ix.ClosedAt).setValue(tc);sh.getRange(a._row,ix.UpdatedAt).setValue(tc);
+          appendAudit_('SYSTEM','ASSIGNMENT_AUTO_CLOSED','Assignment',id,{status:'CLOSED',scheduledAt:new Date(a.ScheduledCloseAt).toISOString()},'SCHED-CLOSE-'+id);out.closed++;
+        }else out.skipped++;
+        sh.getRange(a._row,ix.AutoCloseProcessedAt).setValue(tc);out.processed++;
+      }
+    });
+    return out;
+  }finally{lock.releaseLock();}
+}
+function installAssignmentSchedulerTrigger(){
+  var TEST_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk',ss=SpreadsheetApp.getActiveSpreadsheet();
+  if(!ss||ss.getId()!==TEST_ID)throw new Error('SAFETY_STOP: TEST spreadsheet only.');
+  var props=PropertiesService.getScriptProperties(),configured=props.getProperty('SNC_ASSIGNMENT_SCHEDULER_SPREADSHEET_ID');
+  if(configured&&configured!==TEST_ID)throw new Error('SAFETY_STOP: scheduler spreadsheet property mismatch.');
+  props.setProperty('SNC_ASSIGNMENT_SCHEDULER_SPREADSHEET_ID',TEST_ID);
+  ScriptApp.getProjectTriggers().forEach(function(t){if(t.getHandlerFunction()==='runAssignmentScheduler')ScriptApp.deleteTrigger(t);});
+  var trigger=ScriptApp.newTrigger('runAssignmentScheduler').timeBased().everyMinutes(1).create();
+  return {success:true,environment:'TEST',intervalMinutes:1,triggerId:trigger.getUniqueId()};
+}
+function testAssignmentSchedulerPreflight(){
+  var TEST_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk',ss=SpreadsheetApp.getActiveSpreadsheet();
+  if(!ss||ss.getId()!==TEST_ID)throw new Error('SAFETY_STOP: TEST spreadsheet only.');
+  var sh=ss.getSheetByName('Assignments'),expected=['AssignmentID','OfferingID','Title','Description','Instructions','MaxScore','Deadline','SubmissionType','MinGroupMembers','MaxGroupMembers','Status','OpenedAt','ClosedAt','CreatedAt','UpdatedAt','CreatedByUserID','AutoOpenEnabled','ScheduledOpenAt','AutoOpenProcessedAt','AutoCloseEnabled','ScheduledCloseAt','AutoCloseProcessedAt'];
+  var actual=sh?sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0]:[],ok=Boolean(sh)&&actual.length===expected.length&&expected.every(function(h,i){return actual[i]===h;});
+  var count=ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()==='runAssignmentScheduler';}).length;
+  return {success:ok,mode:'READ_ONLY_ASSIGNMENT_SCHEDULER_PREFLIGHT',database:'TEST',headersMatch:ok,assignmentRows:sh?Math.max(0,sh.getLastRow()-1):null,matchingTriggerCount:count,writesExpected:0};
+}
+function testAssignmentSchedulerLogicUnit(){
+  var cases=[],now=new Date('2026-11-20T00:00:00Z');
+  function check(n,fn,e){var a=fn();cases.push({test:n,result:a===e?'PASS':'FAIL',actual:a});}
+  function due(enabled,processed,at){return amEnabled_(enabled)&&!processed&&Boolean(at)&&new Date(at)<=now;}
+  check('Disabled schedule never runs',function(){return due(false,'','2026-11-19T00:00:00Z');},false);
+  check('Enabled past schedule runs',function(){return due(true,'','2026-11-19T00:00:00Z');},true);
+  check('Future schedule waits',function(){return due(true,'','2026-11-21T00:00:00Z');},false);
+  check('Processed schedule cannot run twice',function(){return due(true,'2026-11-19T01:00:00Z','2026-11-19T00:00:00Z');},false);
+  check('Boolean TRUE string supported',function(){return amEnabled_('TRUE');},true);
+  check('False remains disabled',function(){return amEnabled_(false);},false);
+  check('Missing enabled schedule rejected',function(){try{amScheduleConfig_({autoOpenEnabled:true,scheduledOpenAt:''},null);return false;}catch(e){return e.apiCode==='VALIDATION_ERROR';}},true);
+  check('Close not later than open rejected',function(){try{amScheduleConfig_({autoOpenEnabled:true,scheduledOpenAt:'2026-11-20T10:00',autoCloseEnabled:true,scheduledCloseAt:'2026-11-20T10:00'},null);return false;}catch(e){return e.apiCode==='VALIDATION_ERROR';}},true);
+  check('Disabled stale timestamp cleared',function(){return amScheduleConfig_({autoOpenEnabled:false,scheduledOpenAt:''},null).ScheduledOpenAt;},'');
+  var passed=cases.filter(function(x){return x.result==='PASS';}).length;
+  var out={success:passed===cases.length,mode:'PURE_UNIT_ASSIGNMENT_SCHEDULER',database:'NONE',passed:passed,failed:cases.length-passed,total:cases.length,writesExpected:0,cases:cases};console.log(JSON.stringify(out,null,2));return out;
 }
