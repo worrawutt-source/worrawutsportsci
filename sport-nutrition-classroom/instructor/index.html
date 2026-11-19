@@ -97,7 +97,7 @@ function assignmentForm(a){
  function toggleLimit(){limit.hidden=type.value!=='GROUP';}
  function bindSchedule(prefix){
   const toggle=form.elements[prefix+'Enabled'],date=form.elements[prefix+'Date'],picker=form.elements[prefix+'Picker'],time=form.elements[prefix+'Time'];
-  const sync=()=>{const active=!toggle||toggle.checked;date.disabled=!active;picker.disabled=!active;time.disabled=!active;date.required=Boolean(toggle&&active);time.required=Boolean(toggle&&active);};
+  const sync=()=>{const active=!toggle||toggle.checked;date.disabled=!active;picker.disabled=!active;time.disabled=!active;date.required=toggle?active:prefix==='due';time.required=toggle?active:prefix==='due';};
   if(toggle)toggle.addEventListener('change',sync);sync();
   picker.addEventListener('change',()=>{if(!picker.value)return;const parts=picker.value.split('-');date.value=parts[2]+'/'+parts[1]+'/'+(Number(parts[0])+543);});
  }
