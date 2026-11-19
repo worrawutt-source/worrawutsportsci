@@ -263,6 +263,8 @@ function testAssignmentSchedulerLogicUnit(){
   check('Boolean TRUE string supported',function(){return amEnabled_('TRUE');},true);
   check('False remains disabled',function(){return amEnabled_(false);},false);
   check('Missing enabled schedule rejected',function(){try{amScheduleConfig_({autoOpenEnabled:true,scheduledOpenAt:''},null);return false;}catch(e){return e.apiCode==='VALIDATION_ERROR';}},true);
+  check('Asia/Bangkok local date-time converts to the correct instant',function(){return amDate_('2026-02-21T02:03','test').toISOString();},'2026-02-20T19:03:00.000Z');
+  check('Invalid calendar date is rejected',function(){try{amDate_('2026-02-30T02:03','test');return false;}catch(e){return e.apiCode==='VALIDATION_ERROR';}},true);
   check('Close not later than open rejected',function(){try{amScheduleConfig_({autoOpenEnabled:true,scheduledOpenAt:'2026-11-20T10:00',autoCloseEnabled:true,scheduledCloseAt:'2026-11-20T10:00'},null);return false;}catch(e){return e.apiCode==='VALIDATION_ERROR';}},true);
   check('Disabled stale timestamp cleared',function(){return amScheduleConfig_({autoOpenEnabled:false,scheduledOpenAt:''},null).ScheduledOpenAt;},'');
   check('Changing an already processed schedule rearms only that event',function(){var x=amScheduleConfig_({autoOpenEnabled:true,scheduledOpenAt:'2026-11-20T11:00'}, {AutoOpenEnabled:true,ScheduledOpenAt:new Date('2026-11-20T03:00:00Z'),AutoOpenProcessedAt:new Date('2026-11-20T03:01:00Z'),AutoCloseEnabled:false,ScheduledCloseAt:'',AutoCloseProcessedAt:''});return x.AutoOpenProcessedAt;},'');
