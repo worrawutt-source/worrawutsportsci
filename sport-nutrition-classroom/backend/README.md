@@ -102,19 +102,18 @@ Added `AssignmentManagement.gs` and authenticated API actions:
 - `assignment.list` — list assignments only for CourseOfferings the actor can manage.
 - `assignment.get` — retrieve one assignment after offering-scope authorization.
 - `assignment.create` / `assignment.update` — manage title, instructions, score, deadline and approved submission rules.
-- `assignment.open` / `assignment.close` — instructor-controlled status transitions; no automatic deadline closure.
+- `assignment.open` / `assignment.close` — instructor-controlled manual status transitions.
+- `assignment.create` / `assignment.update` also accept optional automatic opening/closing configuration.
 
 The additive `Assignments` sheet uses:
 `AssignmentID, OfferingID, Title, Description, Instructions, MaxScore, Deadline,
 SubmissionType, MinGroupMembers, MaxGroupMembers, Status, OpenedAt, ClosedAt,
-CreatedAt, UpdatedAt, CreatedByUserID`.
+CreatedAt, UpdatedAt, CreatedByUserID, AutoOpenEnabled, ScheduledOpenAt,
+AutoOpenProcessedAt, AutoCloseEnabled, ScheduledCloseAt, AutoCloseProcessedAt`.
 
 For GROUP assignments, the backend enforces `MinGroupMembers=2`; `MaxGroupMembers`
 may be empty (unlimited) or an integer >= 2. INDIVIDUAL assignments cannot carry
-group-size limits. Assignment creation starts in `DRAFT`; only explicit
-`assignment.open` changes it to `OPEN`, and only explicit `assignment.close`
-changes it to `CLOSED`. Deadline is stored for late-status/reminder logic and
-does not change the assignment status automatically.
+group-size limits. Assignment creation starts in `DRAFT`. Instructors may independently enable scheduled opening and scheduled closing; when a toggle is disabled, that transition remains manual. `Deadline` is separate and does not change Assignment status.
 
 ### TEST rollout for Assignment Management
 
@@ -122,7 +121,7 @@ does not change the assignment status automatically.
    `Code.gs`, `CourseManagement.gs`, `AssignmentManagement.gs`, and `setup.gs`.
 2. Confirm the active spreadsheet is the TEST spreadsheet.
 3. Run `setupAccountLinkingSheets()` once. It creates the new `Assignments` sheet
-   when missing and preserves all existing sheets/rows. Expected schema version: `1.3.0`.
+   when missing and preserves all existing sheets/rows. Expected schema version: `1.4.0`. The setup migration adds six scheduling columns to the existing Assignments sheet without rewriting or deleting existing rows; existing assignments default to both automation toggles disabled.
 4. Run `testAssignmentSubmissionConfigUnit()` (pure unit tests; no sheet writes).
 5. Deploy a new TEST Web App version before testing Assignment APIs.
 6. Use the Instructor Portal on TEST LIFF to create an assignment, edit it,
@@ -132,3 +131,37 @@ does not change the assignment status automatically.
 The current Assignment phase does not yet implement Student Import/Enrollment,
 Group Management, Submission/File Upload, Grading, Grade Review, or notifications.
 Those modules must enforce the DOC-02/DOC-05/DOC-06/DOC-08 rules before student use.
+
+## Phase 1.4 — Scheduled Assignment Opening and Closing (CR-001)
+
+CR-001 supersedes the former manual-only BR-001 rule. Due Date remains separate and is used for late-submission/reminder behavior only.
+
+### API schedule fields
+
+`assignment.create` and `assignment.update` accept:
+- `autoOpenEnabled` (boolean)
+- `scheduledOpenAt` (Asia/Bangkok local `YYYY-MM-DDTHH:mm`, required when enabled)
+- `autoCloseEnabled` (boolean)
+- `scheduledCloseAt` (Asia/Bangkok local `YYYY-MM-DDTHH:mm`, required when enabled)
+
+`assignment.list` and `assignment.get` return the six schedule fields, including processed timestamps. Existing manual actions remain unchanged.
+
+### Backend scheduler
+
+- `runAssignmentScheduler()` processes due events under ScriptLock and writes `ASSIGNMENT_AUTO_OPENED` / `ASSIGNMENT_AUTO_CLOSED` AuditLogs as actor `SYSTEM`.
+- One-shot processed timestamps make repeated trigger invocations idempotent.
+- `installAssignmentSchedulerTrigger()` installs a one-minute time-driven trigger only when the active bound spreadsheet matches the hard-coded TEST spreadsheet ID. It records `SNC_ASSIGNMENT_SCHEDULER_SPREADSHEET_ID` and refuses mismatches.
+- `testAssignmentSchedulerPreflight()` is read-only.
+- `testAssignmentSchedulerLogicUnit()` is pure unit testing.
+- Apps Script triggers are best-effort and may run slightly after the scheduled minute.
+
+### TEST rollout
+
+1. Update TEST Apps Script with latest `Code.gs`, `CourseManagement.gs`, `AssignmentManagement.gs`, and `setup.gs`.
+2. Confirm the container-bound spreadsheet is TEST ID `1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk`.
+3. Run `setupAccountLinkingSheets()` once. The additive migration appends the six scheduling columns; existing assignment data is retained.
+4. Run `testAssignmentSchedulerPreflight()` and `testAssignmentSchedulerLogicUnit()`.
+5. Run `installAssignmentSchedulerTrigger()` once and verify exactly one trigger for `runAssignmentScheduler`.
+6. Deploy a new TEST Web App version and update the TEST Instructor Portal source.
+7. Verify schedule create/update, due-date independence, automatic opening/closing, duplicate trigger invocation, manual override and AuditLogs.
+8. Do not install triggers, run setup or deploy this version against Production.
