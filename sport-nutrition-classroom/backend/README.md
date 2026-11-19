@@ -94,3 +94,41 @@ spreadsheet is selected, run `setupAccountLinkingSheets()`, set the initial
 admin Student ID property, run `bootstrapInitialAdminRole()` once, remove
 that property, then run `testCourseManagementPreflight()`. Do not execute
 schema setup or bootstrap against production.
+
+
+## Phase 1.3 — Assignment Management (development)
+
+Added `AssignmentManagement.gs` and authenticated API actions:
+- `assignment.list` — list assignments only for CourseOfferings the actor can manage.
+- `assignment.get` — retrieve one assignment after offering-scope authorization.
+- `assignment.create` / `assignment.update` — manage title, instructions, score, deadline and approved submission rules.
+- `assignment.open` / `assignment.close` — instructor-controlled status transitions; no automatic deadline closure.
+
+The additive `Assignments` sheet uses:
+`AssignmentID, OfferingID, Title, Description, Instructions, MaxScore, Deadline,
+SubmissionType, MinGroupMembers, MaxGroupMembers, Status, OpenedAt, ClosedAt,
+CreatedAt, UpdatedAt, CreatedByUserID`.
+
+For GROUP assignments, the backend enforces `MinGroupMembers=2`; `MaxGroupMembers`
+may be empty (unlimited) or an integer >= 2. INDIVIDUAL assignments cannot carry
+group-size limits. Assignment creation starts in `DRAFT`; only explicit
+`assignment.open` changes it to `OPEN`, and only explicit `assignment.close`
+changes it to `CLOSED`. Deadline is stored for late-status/reminder logic and
+does not change the assignment status automatically.
+
+### TEST rollout for Assignment Management
+
+1. Fetch the latest `development` backend files into the TEST Apps Script project:
+   `Code.gs`, `CourseManagement.gs`, `AssignmentManagement.gs`, and `setup.gs`.
+2. Confirm the active spreadsheet is the TEST spreadsheet.
+3. Run `setupAccountLinkingSheets()` once. It creates the new `Assignments` sheet
+   when missing and preserves all existing sheets/rows. Expected schema version: `1.3.0`.
+4. Run `testAssignmentSubmissionConfigUnit()` (pure unit tests; no sheet writes).
+5. Deploy a new TEST Web App version before testing Assignment APIs.
+6. Use the Instructor Portal on TEST LIFF to create an assignment, edit it,
+   open it, close it, and verify the resulting rows and AuditLogs.
+7. Do not run setup or deployment against Production.
+
+The current Assignment phase does not yet implement Student Import/Enrollment,
+Group Management, Submission/File Upload, Grading, Grade Review, or notifications.
+Those modules must enforce the DOC-02/DOC-05/DOC-06/DOC-08 rules before student use.
