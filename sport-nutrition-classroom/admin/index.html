@@ -1,32 +1,114 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin Portal | SPORT NUTRITION CLASSROOM</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../assets/css/app.css">
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    .snc-layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:22px}.snc-side,.snc-panel{border:1px solid var(--snc-color-border);border-radius:var(--snc-radius-lg);background:var(--snc-color-surface);padding:18px}.snc-side{height:max-content;position:sticky;top:82px}.snc-nav{display:grid;gap:7px;margin-top:14px}.snc-nav button,.snc-tab{width:100%;text-align:left;background:transparent;color:var(--snc-color-text);border:1px solid transparent;border-radius:8px;padding:10px 12px;cursor:pointer}.snc-nav button[aria-current=true],.snc-tab[aria-selected=true]{background:var(--snc-color-bg);border-color:var(--snc-color-border);font-weight:600}.snc-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.snc-actions{display:flex;gap:8px;flex-wrap:wrap}.snc-button.secondary{background:transparent;color:var(--snc-color-text);border-color:var(--snc-color-border)}.snc-button.danger{background:#8f2929;border-color:#8f2929;color:#fff}.snc-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.snc-field.full{grid-column:1/-1}.snc-table-wrap{overflow:auto;margin-top:14px}.snc-table{width:100%;border-collapse:collapse;min-width:650px}.snc-table th,.snc-table td{padding:11px 10px;border-bottom:1px solid var(--snc-color-border);text-align:left;vertical-align:top}.snc-table th{font-size:.82rem;color:var(--snc-color-muted);font-weight:600}.snc-table td small{display:block;color:var(--snc-color-muted)}.snc-message{padding:12px 14px;border:1px solid var(--snc-color-border);border-radius:9px;margin:12px 0}.snc-message[data-kind=error]{border-color:var(--snc-color-danger);color:var(--snc-color-danger)}.snc-message[data-kind=success]{border-color:var(--snc-color-success)}.snc-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}.snc-kpi{padding:16px;border:1px solid var(--snc-color-border);border-radius:12px;background:var(--snc-color-surface)}.snc-kpi strong{display:block;font-size:1.5rem}.snc-modal{position:fixed;inset:0;z-index:50;background:#0009;display:grid;place-items:center;padding:18px}.snc-modal[hidden], [hidden]{display:none!important}.snc-modal-card{width:min(620px,100%);max-height:90vh;overflow:auto;background:var(--snc-color-surface);border:1px solid var(--snc-color-border);border-radius:14px;padding:22px}.snc-modal-card form{display:grid;gap:12px}.snc-help{font-size:.82rem;color:var(--snc-color-muted)}@media(max-width:760px){.snc-layout{grid-template-columns:1fr}.snc-side{position:static}.snc-nav{grid-template-columns:repeat(2,minmax(0,1fr))}.snc-kpis{grid-template-columns:1fr 1fr}}@media(max-width:520px){.snc-form-grid{grid-template-columns:1fr}.snc-field.full{grid-column:auto}.snc-kpis{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
-  <header class="snc-topbar"><div class="snc-container snc-topbar-inner">
-    <a class="snc-brand" href="../index.html">SPORT SCI <span>CLASSROOM</span></a>
-    <a href="../index.html" class="snc-muted">กลับหน้าหลัก</a>
-  </div></header>
-  <main class="snc-container snc-main">
-    <div class="snc-eyebrow">SYSTEM ADMINISTRATION</div>
-    <h1>Admin Portal</h1>
-    <p class="snc-muted">พื้นที่สำหรับผู้ดูแลระบบจัดการบัญชี บทบาท ภาคการศึกษา รายวิชา และการตั้งค่าระบบ โดยไม่เปิดเผยข้อมูลหรือสิทธิ์เกินขอบเขตที่ได้รับมอบหมาย</p>
-    <p style="margin:18px 0"><span class="snc-status" data-status="warning">โครงสร้างหน้าจอระยะพัฒนา — ยังไม่เชื่อมระบบยืนยันตัวตนหรือฐานข้อมูล</span></p>
-    <h2 style="margin:32px 0 16px">เมนูหลัก</h2>
-    <section class="snc-grid">
-      <article class="snc-card"><div class="snc-eyebrow">MODULE 01</div><h3>User & Role Management</h3><p class="snc-muted">จัดการบัญชีผู้ใช้และกำหนดบทบาทตาม Permission Matrix</p><p style="margin-top:16px"><span class="snc-status">รอพัฒนา</span></p></article>
-<article class="snc-card"><div class="snc-eyebrow">MODULE 02</div><h3>Semester & Course Setup</h3><p class="snc-muted">ตั้งค่าภาคการศึกษา รายวิชา และ Course Offering</p><p style="margin-top:16px"><span class="snc-status">รอพัฒนา</span></p></article>
-<article class="snc-card"><div class="snc-eyebrow">MODULE 03</div><h3>System Settings</h3><p class="snc-muted">ตั้งค่าระบบที่อนุญาตให้ผู้ดูแลดำเนินการ</p><p style="margin-top:16px"><span class="snc-status">รอพัฒนา</span></p></article>
-<article class="snc-card"><div class="snc-eyebrow">MODULE 04</div><h3>Audit & Operations</h3><p class="snc-muted">ตรวจสอบบันทึกกิจกรรมและเหตุการณ์สำคัญของระบบ</p><p style="margin-top:16px"><span class="snc-status">รอพัฒนา</span></p></article>
-    </section>
-  </main>
-  <script src="../assets/js/app.js"></script>
-</body>
-</html>
+<header class="snc-topbar"><div class="snc-container snc-topbar-inner"><a class="snc-brand" href="../index.html">SPORT SCI <span>CLASSROOM</span></a><div class="snc-actions"><span id="account-label" class="snc-muted">กำลังตรวจสอบบัญชี…</span><button id="logout-btn" class="snc-button secondary" hidden>ออกจากระบบ</button></div></div></header>
+<main class="snc-container snc-main">
+  <div class="snc-eyebrow">SYSTEM ADMINISTRATION</div><h1>Admin Portal</h1>
+  <p class="snc-muted">จัดการรายวิชา ภาคการศึกษา Course Offering และผู้สอน โดยทุกคำสั่งตรวจสิทธิ์ที่ Backend</p>
+  <div id="notice" class="snc-message" role="status">กำลังเชื่อมต่อระบบ…</div>
+  <section id="auth-actions" class="snc-panel" hidden><h2>เข้าสู่ระบบผู้ดูแล</h2><p class="snc-muted">ใช้บัญชี LINE ที่เชื่อมกับบัญชีผู้ใช้และได้รับสิทธิ์ผู้ดูแลระบบ</p><button id="login-btn" class="snc-button">เข้าสู่ระบบด้วย LINE</button></section>
+  <section id="workspace" class="snc-layout" hidden>
+    <aside class="snc-side"><strong>เมนูจัดการ</strong><nav class="snc-nav" aria-label="เมนูผู้ดูแล">
+      <button data-view="overview" aria-current="true">ภาพรวม</button><button data-view="courses">รายวิชา</button><button data-view="semesters">ภาคการศึกษา</button><button data-view="offerings">Course Offering</button>
+    </nav><p class="snc-help">สิทธิ์: <span id="role-label">—</span></p></aside>
+    <div>
+      <section id="view-overview" class="snc-view">
+        <div class="snc-toolbar"><div><h2>ภาพรวมระบบ</h2><p class="snc-muted">ข้อมูลที่บัญชีนี้มีสิทธิ์เข้าถึง</p></div><button id="refresh-all" class="snc-button secondary">รีเฟรชข้อมูล</button></div>
+        <div class="snc-kpis"><div class="snc-kpi"><span class="snc-muted">รายวิชา</span><strong id="kpi-courses">—</strong></div><div class="snc-kpi"><span class="snc-muted">ภาคการศึกษา</span><strong id="kpi-semesters">—</strong></div><div class="snc-kpi"><span class="snc-muted">Course Offering</span><strong id="kpi-offerings">—</strong></div></div>
+        <div class="snc-panel"><h3>รายการ Course Offering ล่าสุด</h3><div id="overview-offerings" class="snc-table-wrap"></div></div>
+      </section>
+      <section id="view-courses" class="snc-view" hidden><div class="snc-toolbar"><div><h2>จัดการรายวิชา</h2><p class="snc-muted">สร้างและปรับปรุงข้อมูลรายวิชา</p></div><button id="add-course" class="snc-button">+ เพิ่มรายวิชา</button></div><div id="courses-table" class="snc-table-wrap"></div></section>
+      <section id="view-semesters" class="snc-view" hidden><div class="snc-toolbar"><div><h2>จัดการภาคการศึกษา</h2><p class="snc-muted">กำหนดปีการศึกษา ภาคเรียน และช่วงวันที่</p></div><button id="add-semester" class="snc-button">+ เพิ่มภาคการศึกษา</button></div><div id="semesters-table" class="snc-table-wrap"></div></section>
+      <section id="view-offerings" class="snc-view" hidden><div class="snc-toolbar"><div><h2>Course Offering</h2><p class="snc-muted">เปิดรายวิชาในภาคการศึกษาและกำหนดผู้สอน</p></div><button id="add-offering" class="snc-button">+ เพิ่ม Offering</button></div><div id="offerings-table" class="snc-table-wrap"></div></section>
+    </div>
+  </section>
+</main>
+<div id="modal" class="snc-modal" hidden><div class="snc-modal-card"><div class="snc-toolbar"><h2 id="modal-title">จัดการข้อมูล</h2><button id="modal-close" class="snc-button secondary" type="button">ปิด</button></div><div id="modal-body"></div></div></div>
+<script>
+(function(){
+'use strict';
+const LIFF_ID='2012654701-hrl5IzaQ';
+const API_URL='https://script.google.com/macros/s/AKfycbwIvdYeUa4IqFZVKAuwfc4ANtGUrLRBilXv51t2YPuSAOj3tFKi9HCBtGhWuN7HwTT0/exec';
+const $=id=>document.getElementById(id);
+let account=null, courses=[], semesters=[], offerings=[];
+function note(message,kind){$('notice').textContent=message;$('notice').dataset.kind=kind||'';$('notice').hidden=false;}
+function requestId(){return window.SNCApp?SNCApp.createRequestId():('snc-'+Date.now()+'-'+Math.random().toString(36).slice(2));}
+async function api(action,payload={}){
+ const token=window.liff&&liff.getIDToken();if(!token)throw new Error('ไม่พบ LINE ID Token กรุณาเข้าสู่ระบบใหม่');
+ const res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({action,requestId:requestId(),payload:{...payload,idToken:token}})});
+ const body=await res.json();if(!res.ok||!body.success){const e=new Error((body.error&&body.error.message)||'API request failed');e.code=body.error&&body.error.code;e.requestId=body.requestId;throw e;}return body.data;
+}
+function hasAdminRole(data){return (data.roles||[]).some(r=>r.role==='SYSTEM_ADMIN'&&(r.scopeType==='SYSTEM'||r.scopeType==='ALL'))||(data.roles||[]).some(r=>r.role==='COURSE_COORDINATOR'&&(r.scopeType==='SYSTEM'||r.scopeType==='ALL'));}
+function safeCell(value){return String(value==null?'':value);}
+function dateText(v){if(!v)return '—';const d=new Date(v);return isNaN(d)?'—':new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'short',year:'numeric'}).format(d);}
+function table(headers,rows){if(!rows.length)return '<p class="snc-muted">ยังไม่มีข้อมูล</p>';return '<table class="snc-table"><thead><tr>'+headers.map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>'+rows.join('')+'</tbody></table>';}
+function escapeHtml(s){return safeCell(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function courseRows(){return courses.map(c=>'<tr><td><strong>'+escapeHtml(c.CourseCode)+'</strong><small>'+escapeHtml(c.CourseID)+'</small></td><td>'+escapeHtml(c.CourseName)+'</td><td>'+escapeHtml(c.Status)+'</td><td><button class="snc-button secondary" data-edit-course="'+escapeHtml(c.CourseID)+'">แก้ไข</button></td></tr>');}
+function semesterRows(){return semesters.map(s=>'<tr><td><strong>'+escapeHtml(s.AcademicYear)+' / '+escapeHtml(s.Term)+'</strong><small>'+escapeHtml(s.SemesterID)+'</small></td><td>'+dateText(s.StartDate)+' – '+dateText(s.EndDate)+'</td><td>'+escapeHtml(s.Status)+'</td><td><button class="snc-button secondary" data-edit-semester="'+escapeHtml(s.SemesterID)+'">แก้ไข</button></td></tr>');}
+function offeringRows(){return offerings.map(x=>{const o=x.offering||{},c=x.course||{},s=x.semester||{};return '<tr><td><strong>'+escapeHtml(c.CourseCode||o.CourseID)+'</strong><small>'+escapeHtml(c.CourseName||'')+'</small></td><td>'+escapeHtml(s.AcademicYear||'')+'/'+escapeHtml(s.Term||'')+'</td><td>'+escapeHtml(o.Section||'—')+'</td><td>'+escapeHtml(o.Status)+'</td><td><div class="snc-actions"><button class="snc-button secondary" data-edit-offering="'+escapeHtml(o.OfferingID)+'">แก้ไข</button><button class="snc-button secondary" data-assign="'+escapeHtml(o.OfferingID)+'">กำหนดผู้สอน</button></div></td></tr>';});}
+function render(){
+ $('kpi-courses').textContent=courses.length;$('kpi-semesters').textContent=semesters.length;$('kpi-offerings').textContent=offerings.length;
+ $('courses-table').innerHTML=table(['รหัสรายวิชา','ชื่อรายวิชา','สถานะ','จัดการ'],courseRows());
+ $('semesters-table').innerHTML=table(['ปีการศึกษา / ภาคเรียน','ช่วงวันที่','สถานะ','จัดการ'],semesterRows());
+ $('offerings-table').innerHTML=table(['รายวิชา','ภาคการศึกษา','Section','สถานะ','จัดการ'],offeringRows());
+ $('overview-offerings').innerHTML=table(['รายวิชา','ภาคการศึกษา','Section','สถานะ'],offeringRows().map(r=>r.replace(/<td><div class="snc-actions">.*?<\/div><\/td>/,'')));
+}
+async function refresh(){
+ note('กำลังโหลดข้อมูล…');
+ const [c,s,o]=await Promise.all([api('course.list'),api('semester.list'),api('offering.list')]);
+ courses=c||[];semesters=s||[];offerings=o||[];render();note('โหลดข้อมูลสำเร็จ','success');
+}
+function showView(name){document.querySelectorAll('.snc-view').forEach(x=>x.hidden=x.id!=='view-'+name);document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-current',String(b.dataset.view===name)));}
+function openModal(title,html,onSubmit){
+ $('modal-title').textContent=title;$('modal-body').innerHTML=html;$('modal').hidden=false;
+ const form=$('modal-body').querySelector('form');if(form)form.addEventListener('submit',async e=>{e.preventDefault();const btn=form.querySelector('[type=submit]');btn.disabled=true;try{await onSubmit(new FormData(form));$('modal').hidden=true;await refresh();note('บันทึกข้อมูลสำเร็จ','success');}catch(err){note(err.message+' ['+(err.code||'ERROR')+']','error');}finally{btn.disabled=false;}});
+}
+function courseForm(c={}){openModal(c.CourseID?'แก้ไขรายวิชา':'เพิ่มรายวิชา',`<form><div class="snc-form-grid">
+<div class="snc-field"><label>รหัสรายวิชา</label><input name="courseCode" required maxlength="40" value="${escapeHtml(c.CourseCode||'')}" ${c.CourseID?'disabled':''}></div>
+<div class="snc-field"><label>ชื่อรายวิชา</label><input name="courseName" required maxlength="200" value="${escapeHtml(c.CourseName||'')}"></div>
+<div class="snc-field full"><label>รายละเอียด</label><textarea name="description" rows="3" maxlength="2000">${escapeHtml(c.Description||'')}</textarea></div>
+${c.CourseID?'<div class="snc-field"><label>สถานะ</label><select name="status"><option '+(c.Status==='ACTIVE'?'selected':'')+'>ACTIVE</option><option '+(c.Status==='INACTIVE'?'selected':'')+'>INACTIVE</option></select></div>':''}
+</div><div class="snc-actions"><button class="snc-button" type="submit">บันทึก</button></div></form>`,async f=>{const p={courseName:f.get('courseName'),description:f.get('description')};if(c.CourseID){p.courseId=c.CourseID;p.status=f.get('status');await api('course.update',p);}else{p.courseCode=f.get('courseCode');await api('course.create',p);}});}
+function semesterForm(s={}){const fmt=v=>v?new Date(v).toISOString().slice(0,10):'';openModal(s.SemesterID?'แก้ไขภาคการศึกษา':'เพิ่มภาคการศึกษา',`<form><div class="snc-form-grid">
+${s.SemesterID?'':'<div class="snc-field"><label>ปีการศึกษา (พ.ศ.)</label><input name="academicYear" type="number" min="2500" max="2700" required></div><div class="snc-field"><label>ภาคเรียน / Term</label><input name="term" required maxlength="20"></div>'}
+<div class="snc-field"><label>วันเริ่มต้น</label><input name="startDate" type="date" required value="${fmt(s.StartDate)}"></div><div class="snc-field"><label>วันสิ้นสุด</label><input name="endDate" type="date" required value="${fmt(s.EndDate)}"></div>
+${s.SemesterID?'<div class="snc-field"><label>สถานะ</label><select name="status"><option '+(s.Status==='ACTIVE'?'selected':'')+'>ACTIVE</option><option '+(s.Status==='INACTIVE'?'selected':'')+'>INACTIVE</option></select></div>':''}
+</div><p class="snc-help">วันที่จัดเก็บผ่าน API ในรูปแบบ ค.ศ. (YYYY-MM-DD) ตามข้อกำหนดข้อมูลภายใน</p><button class="snc-button" type="submit">บันทึก</button></form>`,async f=>{const p={startDate:f.get('startDate'),endDate:f.get('endDate')};if(s.SemesterID){p.semesterId=s.SemesterID;p.status=f.get('status');await api('semester.update',p);}else{p.academicYear=Number(f.get('academicYear'));p.term=f.get('term');await api('semester.create',p);}});}
+function offeringForm(o={}){openModal(o.OfferingID?'แก้ไข Course Offering':'เพิ่ม Course Offering',`<form><div class="snc-form-grid">
+${o.OfferingID?'':'<div class="snc-field full"><label>รายวิชา</label><select name="courseId" required>'+courses.filter(x=>x.Status==='ACTIVE').map(x=>'<option value="'+escapeHtml(x.CourseID)+'">'+escapeHtml(x.CourseCode+' — '+x.CourseName)+'</option>').join('')+'</select></div><div class="snc-field full"><label>ภาคการศึกษา</label><select name="semesterId" required>'+semesters.filter(x=>x.Status==='ACTIVE').map(x=>'<option value="'+escapeHtml(x.SemesterID)+'">'+escapeHtml(x.AcademicYear+'/'+x.Term)+'</option>').join('')+'</select></div>'}
+<div class="snc-field"><label>Section</label><input name="section" maxlength="30" value="${escapeHtml(o.Section||'')}" placeholder="เช่น 01"></div>
+${o.OfferingID?'<div class="snc-field"><label>สถานะ</label><select name="status"><option '+(o.Status==='ACTIVE'?'selected':'')+'>ACTIVE</option><option '+(o.Status==='INACTIVE'?'selected':'')+'>INACTIVE</option></select></div>':''}
+</div><button class="snc-button" type="submit">บันทึก</button></form>`,async f=>{if(o.OfferingID)await api('offering.update',{offeringId:o.OfferingID,section:f.get('section'),status:f.get('status')});else await api('offering.create',{courseId:f.get('courseId'),semesterId:f.get('semesterId'),section:f.get('section')});});}
+function assignForm(offeringId){openModal('กำหนดผู้สอน',`<form><div class="snc-field"><label>รหัสนักศึกษาของผู้สอน</label><input name="studentId" required maxlength="20" autocomplete="off"></div><p class="snc-help">ระบบจะตรวจสอบบัญชีผู้ใช้ที่มีสถานะ ACTIVE และบันทึกการมอบหมายใน CourseInstructors</p><button class="snc-button" type="submit">กำหนดผู้สอน</button></form>`,async f=>{await api('instructor.assign',{offeringId,studentId:f.get('studentId').trim()});});}
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
+$('add-course').onclick=()=>courseForm();$('add-semester').onclick=()=>semesterForm();$('add-offering').onclick=()=>{if(!courses.length||!semesters.length){note('ต้องมีรายวิชาและภาคการศึกษาก่อนจึงจะสร้าง Offering ได้','error');return;}offeringForm();};
+$('refresh-all').onclick=()=>refresh().catch(e=>note(e.message,'error'));
+$('modal-close').onclick=()=>$('modal').hidden=true;$('modal').addEventListener('click',e=>{if(e.target===$('modal'))$('modal').hidden=true;});
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.editCourse)courseForm(courses.find(x=>x.CourseID===b.dataset.editCourse));if(b.dataset.editSemester)semesterForm(semesters.find(x=>x.SemesterID===b.dataset.editSemester));if(b.dataset.editOffering){const x=offerings.find(x=>x.offering.OfferingID===b.dataset.editOffering);if(x)offeringForm(x.offering);}if(b.dataset.assign)assignForm(b.dataset.assign);});
+$('login-btn').onclick=()=>liff.login({redirectUri:location.href});
+$('logout-btn').onclick=()=>{liff.logout();location.reload();};
+async function boot(){
+ try{await liff.init({liffId:LIFF_ID});if(!liff.isLoggedIn()){$('auth-actions').hidden=false;$('workspace').hidden=true;note('กรุณาเข้าสู่ระบบ LINE','');return;}
+ const data=await api('auth.me');account=data;$('account-label').textContent=data.user?(data.user.firstName+' '+data.user.lastName):'LINE Account';$('logout-btn').hidden=false;
+ if(data.accountStatus!=='LINKED')throw new Error('บัญชี LINE ยังไม่ได้เชื่อมกับบัญชีผู้ใช้');
+ if(!hasAdminRole(data))throw new Error('บัญชีนี้ไม่มีสิทธิ์ System Admin หรือ System Course Coordinator');
+ $('role-label').textContent=(data.roles||[]).filter(r=>r.role==='SYSTEM_ADMIN'||r.role==='COURSE_COORDINATOR').map(r=>r.role).join(', ');
+ $('auth-actions').hidden=true;$('workspace').hidden=false;await refresh();
+ }catch(e){note(e.message,'error');$('workspace').hidden=true;if(e.message.includes('ไม่มีสิทธิ์'))$('auth-actions').hidden=true;else $('auth-actions').hidden=false;}
+}
+boot();
+})();
+</script>
+<script src="../assets/js/app.js"></script>
+</body></html>
