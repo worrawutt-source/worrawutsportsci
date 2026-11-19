@@ -13,7 +13,7 @@
  */
 
 const SNC_SETUP = Object.freeze({
-  VERSION: '1.3.0',
+  VERSION: '1.4.0',
   IMPORT_SHEET: 'StudentImport',
   IMPORT_HEADERS: ['EMAIL', 'DISPLAY_NAME', 'STUDENT_ID'],
   TABLES: {
@@ -64,7 +64,7 @@ const SNC_SETUP = Object.freeze({
     Semesters: ['SemesterID','AcademicYear','Term','StartDate','EndDate','Status','CreatedAt','UpdatedAt','CreatedByUserID'],
     CourseOfferings: ['OfferingID','CourseID','SemesterID','Section','Status','CreatedAt','UpdatedAt','CreatedByUserID'],
     CourseInstructors: ['CourseInstructorID','OfferingID','InstructorUserID','AssignedByUserID','Status','CreatedAt','UpdatedAt'],
-    Assignments: ['AssignmentID','OfferingID','Title','Description','Instructions','MaxScore','Deadline','SubmissionType','MinGroupMembers','MaxGroupMembers','Status','OpenedAt','ClosedAt','CreatedAt','UpdatedAt','CreatedByUserID']
+    Assignments: ['AssignmentID','OfferingID','Title','Description','Instructions','MaxScore','Deadline','SubmissionType','MinGroupMembers','MaxGroupMembers','Status','OpenedAt','ClosedAt','CreatedAt','UpdatedAt','CreatedByUserID','AutoOpenEnabled','ScheduledOpenAt','AutoOpenProcessedAt','AutoCloseEnabled','ScheduledCloseAt','AutoCloseProcessedAt']
   }
 });
 
@@ -131,6 +131,21 @@ function setupAccountLinkingSheets() {
         sheet.getRange(1, 13, 1, extraHeaders.length).setValues([extraHeaders]);
         lastColumn = sheet.getLastColumn();
         report.push('Added EmailOTPChallenges purpose/user/email columns (data preserved)');
+      }
+
+      // Additive Assignment scheduling migration. Preserve all existing rows and values.
+      if (tableName === 'Assignments' && lastColumn === 16) {
+        var scheduleHeaders = headers.slice(16);
+        sheet.getRange(1, 17, 1, scheduleHeaders.length).setValues([scheduleHeaders]);
+        if (lastRow > 1) {
+          var defaults = [];
+          for (var assignmentRow = 2; assignmentRow <= lastRow; assignmentRow++) {
+            defaults.push([false, '', '', false, '', '']);
+          }
+          sheet.getRange(2, 17, defaults.length, 6).setValues(defaults);
+        }
+        lastColumn = sheet.getLastColumn();
+        report.push('Added six Assignment scheduling columns; existing assignments preserved with automation disabled');
       }
 
       if (lastRow === 0 || (lastRow === 1 && lastColumn === 0)) {
