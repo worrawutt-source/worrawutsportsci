@@ -624,3 +624,75 @@ function testSecurityRevocationSpoofingAndAudit(){
   note:'No data writes expected. Inactive identity/role checks are BLOCKED when suitable inactive records do not exist; no test records are created.'};
  console.log(JSON.stringify(out,null,2));return out;
 }
+
+
+/**
+ * Read-only Data Integrity & Audit Log inspection.
+ * TEST spreadsheet only. Does not modify records or emit personal identifiers.
+ */
+function testDataIntegrityAuditLogReadOnly(){
+ var TEST_SPREADSHEET_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk';
+ var ss=SpreadsheetApp.getActiveSpreadsheet();
+ if(!ss||ss.getId()!==TEST_SPREADSHEET_ID)throw new Error('SAFETY_STOP: TEST spreadsheet only.');
+ var checks=[];
+ function add(name,ok,detail){checks.push({test:name,result:ok?'PASS':'FAIL',detail:detail||''});}
+ function rows(name){var sh=ss.getSheetByName(name);return sh?rowsAsObjects_(sh):null;}
+ function uniqueNonEmpty(arr,key){var seen={};for(var i=0;i<arr.length;i++){var v=String(arr[i][key]||'').trim();if(!v||seen[v])return false;seen[v]=true;}return true;}
+ function allReferencesValid(child,childKey,parent,parentKey){
+  var ids={};parent.forEach(function(x){ids[String(x[parentKey])]=true;});
+  return child.every(function(x){return Boolean(ids[String(x[childKey])]);});
+ }
+ var required={
+  Users:['UserID','StudentID','FirstName','LastName','Email','Status','CreatedAt','UpdatedAt'],
+  LINEAccounts:['LINEAccountID','UserID','Provider','ProviderSubject','DisplayName','PictureUrl','Status','LinkedAt','CreatedAt','UpdatedAt'],
+  UserRoles:['UserRoleID','UserID','Role','ScopeType','ScopeID','Status','CreatedAt','UpdatedAt','CreatedByUserID'],
+  Courses:['CourseID','CourseCode','CourseName','Description','Status','CreatedAt','UpdatedAt','CreatedByUserID'],
+  Semesters:['SemesterID','AcademicYear','Term','StartDate','EndDate','Status','CreatedAt','UpdatedAt','CreatedByUserID'],
+  CourseOfferings:['OfferingID','CourseID','SemesterID','Section','Status','CreatedAt','UpdatedAt','CreatedByUserID'],
+  CourseInstructors:['CourseInstructorID','OfferingID','InstructorUserID','AssignedByUserID','Status','CreatedAt','UpdatedAt'],
+  AuditLogs:['AuditID','ActorUserID','Action','EntityType','EntityID','DetailsJson','CreatedAt','RequestID']
+ };
+ var data={},schemaOk=true;
+ Object.keys(required).forEach(function(name){
+  var sh=ss.getSheetByName(name),ok=Boolean(sh);
+  if(ok){var h=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0];ok=h.length===required[name].length&&required[name].every(function(v,i){return h[i]===v;});}
+  add('Schema headers: '+name,ok,ok?'headers match expected schema':'missing sheet or header mismatch');
+  if(!ok)schemaOk=false;else data[name]=rows(name);
+ });
+ if(!schemaOk){
+  var failed=checks.filter(function(x){return x.result==='FAIL';}).length;
+  var early={success:false,mode:'READ_ONLY_DATA_INTEGRITY_AUDIT',database:'TEST',passed:checks.length-failed,failed:failed,blocked:0,total:checks.length,checks:checks,note:'Schema mismatch prevents reliable integrity checks; no writes performed.'};
+  console.log(JSON.stringify(early,null,2));return early;
+ }
+ add('Users have unique UserID',uniqueNonEmpty(data.Users,'UserID'),'duplicate or blank primary key check');
+ add('LINEAccounts have unique LINEAccountID',uniqueNonEmpty(data.LINEAccounts,'LINEAccountID'),'duplicate or blank primary key check');
+ add('UserRoles have unique UserRoleID',uniqueNonEmpty(data.UserRoles,'UserRoleID'),'duplicate or blank primary key check');
+ add('Courses have unique CourseID',uniqueNonEmpty(data.Courses,'CourseID'),'duplicate or blank primary key check');
+ add('Semesters have unique SemesterID',uniqueNonEmpty(data.Semesters,'SemesterID'),'duplicate or blank primary key check');
+ add('CourseOfferings have unique OfferingID',uniqueNonEmpty(data.CourseOfferings,'OfferingID'),'duplicate or blank primary key check');
+ add('CourseInstructors have unique CourseInstructorID',uniqueNonEmpty(data.CourseInstructors,'CourseInstructorID'),'duplicate or blank primary key check');
+ add('AuditLogs have unique AuditID',uniqueNonEmpty(data.AuditLogs,'AuditID'),'duplicate or blank audit key check');
+ add('LINEAccounts reference existing Users',allReferencesValid(data.LINEAccounts,'UserID',data.Users,'UserID'),'foreign-key consistency');
+ add('UserRoles reference existing Users',allReferencesValid(data.UserRoles,'UserID',data.Users,'UserID'),'foreign-key consistency');
+ add('CourseOfferings reference existing Courses',allReferencesValid(data.CourseOfferings,'CourseID',data.Courses,'CourseID'),'foreign-key consistency');
+ add('CourseOfferings reference existing Semesters',allReferencesValid(data.CourseOfferings,'SemesterID',data.Semesters,'SemesterID'),'foreign-key consistency');
+ add('CourseInstructors reference existing Offerings',allReferencesValid(data.CourseInstructors,'OfferingID',data.CourseOfferings,'OfferingID'),'foreign-key consistency');
+ add('CourseInstructors reference existing Users',allReferencesValid(data.CourseInstructors,'InstructorUserID',data.Users,'UserID'),'foreign-key consistency');
+ var auditRequired=['ActorUserID','Action','EntityType','EntityID','DetailsJson','CreatedAt','RequestID'];
+ var auditRowsOk=true,invalidDetails=0,invalidDates=0;
+ data.AuditLogs.forEach(function(r){
+  auditRequired.forEach(function(k){if(String(r[k]||'').trim()==='')auditRowsOk=false;});
+  try{var parsed=JSON.parse(String(r.DetailsJson));if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))invalidDetails++;}catch(e){invalidDetails++;}
+  if(!r.CreatedAt||isNaN(new Date(r.CreatedAt).getTime()))invalidDates++;
+ });
+ add('Audit entries contain required metadata',auditRowsOk,'required fields checked across '+data.AuditLogs.length+' rows');
+ add('Audit DetailsJson is valid JSON object',invalidDetails===0,'invalidRows='+invalidDetails);
+ add('Audit CreatedAt values are valid dates',invalidDates===0,'invalidRows='+invalidDates);
+ var passed=checks.filter(function(x){return x.result==='PASS';}).length;
+ var failed=checks.filter(function(x){return x.result==='FAIL';}).length;
+ var out={success:failed===0,mode:'READ_ONLY_DATA_INTEGRITY_AUDIT',database:'TEST',
+  rowCounts:{users:data.Users.length,lineAccounts:data.LINEAccounts.length,userRoles:data.UserRoles.length,courses:data.Courses.length,semesters:data.Semesters.length,offerings:data.CourseOfferings.length,instructorAssignments:data.CourseInstructors.length,auditLogs:data.AuditLogs.length},
+  passed:passed,failed:failed,blocked:0,total:checks.length,checks:checks,
+  note:'Read-only structural, key, reference and audit metadata checks. No sheet values changed. This does not prove tamper resistance or duplicate-request idempotency.'};
+ console.log(JSON.stringify(out,null,2));return out;
+}
