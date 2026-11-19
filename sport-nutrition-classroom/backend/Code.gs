@@ -86,7 +86,7 @@ function doPost(e) {
       return jsonResponse_(success_(requestId, handleCourseManagementAction_(action, managementIdentity, payload, requestId)));
     }
 
-    if (/^assignment\\./.test(action)) {
+    if (/^assignment\./.test(action)) {
       var assignmentIdentity = verifyLiffIdentity_(payload.idToken);
       var assignmentActor = cmActor_(assignmentIdentity);
       return jsonResponse_(success_(requestId, handleAssignmentManagementAction_(action, assignmentActor, payload, requestId)));
