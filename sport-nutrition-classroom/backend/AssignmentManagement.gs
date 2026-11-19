@@ -180,7 +180,7 @@ function testAssignmentManagementSchemaPreflight(){
   var TEST_SPREADSHEET_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk';
   var ss=SpreadsheetApp.getActiveSpreadsheet();
   if(!ss||ss.getId()!==TEST_SPREADSHEET_ID)throw new Error('SAFETY_STOP: TEST spreadsheet only.');
-  var expected=['AssignmentID','OfferingID','Title','Description','Instructions','MaxScore','Deadline','SubmissionType','MinGroupMembers','MaxGroupMembers','Status','OpenedAt','ClosedAt','CreatedAt','UpdatedAt','CreatedByUserID'];
+  var expected=['AssignmentID','OfferingID','Title','Description','Instructions','MaxScore','Deadline','SubmissionType','MinGroupMembers','MaxGroupMembers','Status','OpenedAt','ClosedAt','CreatedAt','UpdatedAt','CreatedByUserID','AutoOpenEnabled','ScheduledOpenAt','AutoOpenProcessedAt','AutoCloseEnabled','ScheduledCloseAt','AutoCloseProcessedAt'];
   var sh=ss.getSheetByName('Assignments'),actual=sh?sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0]:[];
   var ok=Boolean(sh)&&actual.length===expected.length&&expected.every(function(h,i){return actual[i]===h;});
   var result={success:ok,mode:'READ_ONLY_ASSIGNMENT_SCHEMA_PREFLIGHT',database:'TEST',sheetExists:Boolean(sh),headersMatch:ok,rowCount:sh?Math.max(0,sh.getLastRow()-1):null,expectedColumns:expected.length,actualColumns:actual.length,writesExpected:0};
@@ -261,4 +261,46 @@ function testAssignmentSchedulerLogicUnit(){
   check('Disabled stale timestamp cleared',function(){return amScheduleConfig_({autoOpenEnabled:false,scheduledOpenAt:''},null).ScheduledOpenAt;},'');
   var passed=cases.filter(function(x){return x.result==='PASS';}).length;
   var out={success:passed===cases.length,mode:'PURE_UNIT_ASSIGNMENT_SCHEDULER',database:'NONE',passed:passed,failed:cases.length-passed,total:cases.length,writesExpected:0,cases:cases};console.log(JSON.stringify(out,null,2));return out;
+}
+
+/**
+ * TEST-only deployed integration test. Creates three persistent marked fixtures.
+ * Tests real Sheets writes, scheduler idempotency, AuditLogs and manual transitions.
+ * No existing row is edited or deleted.
+ */
+function testAssignmentSchedulerIntegration(){
+  var TEST_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk',ss=SpreadsheetApp.getActiveSpreadsheet();
+  if(!ss||ss.getId()!==TEST_ID)throw new Error('SAFETY_STOP: TEST spreadsheet only.');
+  var assignments=ss.getSheetByName('Assignments'),audit=ss.getSheetByName('AuditLogs');
+  if(!assignments||!audit)throw new Error('Required TEST sheets are missing.');
+  var instructor=cmRows_('CourseInstructors').filter(function(x){return String(x.Status).toUpperCase()==='ACTIVE';})[0];
+  if(!instructor)throw new Error('BLOCKED: No active TEST instructor assignment is available.');
+  var offering=cmGet_('CourseOfferings','OfferingID',instructor.OfferingID);
+  if(!offering||String(offering.Status).toUpperCase()!=='ACTIVE')throw new Error('BLOCKED: No active TEST offering is available.');
+  var actor={userId:String(instructor.InstructorUserID),roles:[{role:'INSTRUCTOR',scopeType:'OFFERING',scopeId:'*'}]};
+  var now=new Date(),past=new Date(now.getTime()-120000),tag='[SCHED-TEST] '+Utilities.getUuid();
+  function addFixture(title,status,autoOpen,openAt,autoClose,closeAt){
+    var id=Utilities.getUuid();
+    assignments.appendRow([id,offering.OfferingID,tag+' '+title,'TEST fixture','TEST only',100,new Date(now.getTime()+86400000),'INDIVIDUAL','','',status,status==='OPEN'?now:'',status==='CLOSED'?now:'',now,now,actor.userId,autoOpen,openAt||'', '',autoClose,closeAt||'', '']);
+    return id;
+  }
+  var openId=addFixture('AUTO-OPEN','DRAFT',true,past,false,'');
+  var closeId=addFixture('AUTO-CLOSE','OPEN',false,'',true,past);
+  var manualId=addFixture('MANUAL','DRAFT',false,'',false,'');
+  var first=amProcessDueSchedules_(now,ss);
+  var auditAfterFirst=cmRows_('AuditLogs').filter(function(x){return (String(x.EntityID)===openId&&x.Action==='ASSIGNMENT_AUTO_OPENED')||(String(x.EntityID)===closeId&&x.Action==='ASSIGNMENT_AUTO_CLOSED');}).length;
+  var second=amProcessDueSchedules_(new Date(now.getTime()+60000),ss);
+  var auditAfterSecond=cmRows_('AuditLogs').filter(function(x){return (String(x.EntityID)===openId&&x.Action==='ASSIGNMENT_AUTO_OPENED')||(String(x.EntityID)===closeId&&x.Action==='ASSIGNMENT_AUTO_CLOSED');}).length;
+  var manualOpen=handleAssignmentManagementAction_('assignment.open',actor,{assignmentId:manualId},'SCHED-MANUAL-OPEN-'+manualId);
+  var manualClose=handleAssignmentManagementAction_('assignment.close',actor,{assignmentId:manualId},'SCHED-MANUAL-CLOSE-'+manualId);
+  var finalOpen=amGet_(openId),finalClose=amGet_(closeId),finalManual=amGet_(manualId);
+  var cases=[
+    {test:'Due scheduled opening changes DRAFT to OPEN',result:finalOpen.Status==='OPEN'&&Boolean(finalOpen.AutoOpenProcessedAt)?'PASS':'FAIL'},
+    {test:'Due scheduled closing changes OPEN to CLOSED',result:finalClose.Status==='CLOSED'&&Boolean(finalClose.AutoCloseProcessedAt)?'PASS':'FAIL'},
+    {test:'Second scheduler invocation does not add duplicate audit events',result:auditAfterFirst===2&&auditAfterSecond===2?'PASS':'FAIL',auditAfterFirst:auditAfterFirst,auditAfterSecond:auditAfterSecond},
+    {test:'Manual Open/Close works when both schedules are disabled',result:manualOpen.Status==='OPEN'&&manualClose.Status==='CLOSED'&&finalManual.Status==='CLOSED'?'PASS':'FAIL'}
+  ];
+  var passed=cases.filter(function(x){return x.result==='PASS';}).length;
+  var out={success:passed===cases.length,mode:'DEPLOYED_TEST_ASSIGNMENT_SCHEDULER_INTEGRATION',database:'TEST',passed:passed,failed:cases.length-passed,total:cases.length,firstRun:first,secondRun:second,fixturesCreated:3,fixturesPersistent:true,cleanupPerformed:false,cases:cases};
+  console.log(JSON.stringify(out,null,2));return out;
 }
