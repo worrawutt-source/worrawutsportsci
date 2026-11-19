@@ -7,7 +7,7 @@
 const SNC = Object.freeze({
   LINE_VERIFY_URL: 'https://api.line.me/oauth2/v2.1/verify',
   MAX_TOKEN_LENGTH: 12000,
-  API_VERSION: '1.2.0'
+  API_VERSION: '1.3.0'
 });
 
 function doGet() {
@@ -84,6 +84,12 @@ function doPost(e) {
     if (/^(course|semester|offering|instructor)\./.test(action)) {
       var managementIdentity = verifyLiffIdentity_(payload.idToken);
       return jsonResponse_(success_(requestId, handleCourseManagementAction_(action, managementIdentity, payload, requestId)));
+    }
+
+    if (/^assignment\\./.test(action)) {
+      var assignmentIdentity = verifyLiffIdentity_(payload.idToken);
+      var assignmentActor = cmActor_(assignmentIdentity);
+      return jsonResponse_(success_(requestId, handleAssignmentManagementAction_(action, assignmentActor, payload, requestId)));
     }
 
     return jsonResponse_(failure_(requestId, 'NOT_IMPLEMENTED', 'This API action is not implemented yet.'));
