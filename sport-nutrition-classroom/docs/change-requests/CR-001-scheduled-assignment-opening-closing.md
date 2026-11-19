@@ -3,7 +3,7 @@
 - Project: SPORT NUTRITION CLASSROOM
 - Change ID: CR-001
 - Status: Approved by Project Owner
-- Approved: 19 November 2026
+- Approved: 20 November 2026
 - Branch: development
 - Replaces: DOC-02 BR-001 (manual-only opening/closing)
 - Scope: Assignment Management, database schema, backend scheduler, Instructor Portal, API, workflow, tests and change log
