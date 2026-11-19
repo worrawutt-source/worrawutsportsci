@@ -21,7 +21,7 @@
 <div class="snc-grid" id="offering-cards"></div>
 <section class="snc-panel"><h3>รายละเอียดรายการสอน</h3><div id="offering-table" class="snc-table-wrap"></div></section>
 <section id="assignment-panel" class="snc-panel" hidden>
-<div class="snc-toolbar"><div><h2 id="assignment-heading">Assignments</h2><p class="snc-muted">ผู้สอนควบคุมการเปิด/ปิดงานด้วยตนเอง ไม่มีการปิดงานอัตโนมัติตาม Deadline</p></div><div class="snc-actions"><button id="new-assignment" class="snc-button">+ สร้าง Assignment</button><button id="close-assignment-panel" class="snc-button secondary">กลับ</button></div></div>
+<div class="snc-toolbar"><div><h2 id="assignment-heading">Assignments</h2><p class="snc-muted">ผู้สอนกำหนดเวลาเปิด/ปิดอัตโนมัติได้ หรือควบคุมด้วยตนเอง โดย Deadline แยกจากวันปิดรับงาน</p></div><div class="snc-actions"><button id="new-assignment" class="snc-button">+ สร้าง Assignment</button><button id="close-assignment-panel" class="snc-button secondary">กลับ</button></div></div>
 <div id="assignment-table" class="snc-table-wrap"></div>
 </section>
 </section>
@@ -37,7 +37,30 @@ function note(t,k){$('notice').textContent=t;$('notice').dataset.kind=k||'';}
 function reqId(){return 'ins-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);}
 async function api(action,payload={}){const token=liff.getIDToken();if(!token)throw new Error('ไม่พบ LINE ID Token กรุณาเข้าสู่ระบบใหม่');const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({action,requestId:reqId(),payload:{...payload,idToken:token}})});const j=await r.json();if(!r.ok||!j.success){const e=new Error(j.error?.message||'API error');e.code=j.error?.code;throw e;}return j.data;}
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function thaiDate(v){if(!v)return '—';const d=new Date(v);return isNaN(d)?'—':new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'long',year:'numeric'}).format(d);}
+function thaiParts(v){
+ if(!v)return null;const d=new Date(v);if(isNaN(d))return null;
+ const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(d);
+ const o={};parts.forEach(p=>o[p.type]=p.value);return o;
+}
+function thaiDate(v){const p=thaiParts(v);return p?p.day+'/'+p.month+'/'+(Number(p.year)+543):'—';}
+function thaiDateTime(v){const p=thaiParts(v);return p?thaiDate(v)+' '+p.hour+':'+p.minute:'—';}
+function dateTimeFields(v){
+ const p=thaiParts(v);return p?{date:p.day+'/'+p.month+'/'+(Number(p.year)+543),time:p.hour+':'+p.minute}:{date:'',time:''};
+}
+function parseThaiDateTime(dateValue,timeValue,label){
+ const m=/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/.exec(String(dateValue||'').trim());
+ const t=/^(\\d{2}):(\\d{2})$/.exec(String(timeValue||'').trim());
+ if(!m||!t)throw new Error(label+' กรุณาระบุวันที่ พ.ศ. และเวลา 24 ชั่วโมงให้ถูกต้อง');
+ const day=Number(m[1]),month=Number(m[2]),beYear=Number(m[3]),year=beYear-543,hour=Number(t[1]),minute=Number(t[2]);
+ const d=new Date(Date.UTC(year,month-1,day));
+ if(beYear<2500||d.getUTCFullYear()!==year||d.getUTCMonth()!==month-1||d.getUTCDate()!==day||hour>23||minute>59)throw new Error(label+' มีค่าไม่ถูกต้อง');
+ return String(year).padStart(4,'0')+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0')+'T'+String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0');
+}
+function dateTimeControl(prefix,label,enabled,values,required){
+ const checked=required?'':(enabled?'checked':'');
+ const disabled=required?'':'disabled';
+ return '<div class="snc-field full"><label>'+label+(required?'':' <input type="checkbox" name="'+prefix+'Enabled" '+checked+' style="width:auto;margin-left:8px"> เปิดใช้งาน')+'</label><div class="snc-form-grid" style="grid-template-columns:1fr 150px"><input name="'+prefix+'Date" type="text" inputmode="numeric" placeholder="วว/ดด/ปปปป (พ.ศ.)" pattern="\\d{1,2}/\\d{1,2}/\\d{4}" value="'+esc(values.date)+'" '+disabled+(required?' required':'')+'><input name="'+prefix+'Time" type="time" step="60" value="'+esc(values.time||'23:59')+'" '+disabled+(required?' required':'')+'></div></div>';
+}
 let currentOfferingId=null,currentOfferingLabel='',assignments=[],offeringCache=[];
 function render(items){
  offeringCache=items||[];
@@ -46,8 +69,11 @@ function render(items){
  $('offering-table').innerHTML=rows.length?'<table class="snc-table"><thead><tr><th>รายวิชา</th><th>ภาคการศึกษา</th><th>Section</th><th>ช่วงวันที่</th><th>สถานะ</th><th>งาน</th></tr></thead><tbody>'+rows.join('')+'</tbody></table>':'<p class="snc-muted">ไม่มีข้อมูลให้แสดง</p>';
 }
 function renderAssignments(){
- const rows=assignments.map(a=>'<tr><td><strong>'+esc(a.Title)+'</strong><small>'+esc(a.SubmissionType)+' · คะแนนเต็ม '+esc(a.MaxScore)+'</small></td><td>'+esc(a.Status)+'</td><td>'+thaiDate(a.Deadline)+'</td><td><div class="snc-actions"><button class="snc-button small secondary" data-edit-assignment="'+esc(a.AssignmentID)+'">แก้ไข</button>'+(a.Status==='OPEN'?'<button class="snc-button small secondary" data-close-assignment="'+esc(a.AssignmentID)+'">ปิดรับงาน</button>':'<button class="snc-button small" data-open-assignment="'+esc(a.AssignmentID)+'">เปิดรับงาน</button>')+'</div></td></tr>');
- $('assignment-table').innerHTML=rows.length?'<table class="snc-table"><thead><tr><th>Assignment</th><th>สถานะ</th><th>กำหนดส่ง</th><th>จัดการ</th></tr></thead><tbody>'+rows.join('')+'</tbody></table>':'<p class="snc-muted">ยังไม่มี Assignment ในรายวิชานี้</p>';
+ const rows=assignments.map(a=>{
+  const schedules=(a.AutoOpenEnabled?'เปิดอัตโนมัติ '+thaiDateTime(a.ScheduledOpenAt):'เปิดด้วยตนเอง')+' · '+(a.AutoCloseEnabled?'ปิดอัตโนมัติ '+thaiDateTime(a.ScheduledCloseAt):'ปิดด้วยตนเอง');
+  return '<tr><td><strong>'+esc(a.Title)+'</strong><small>'+esc(a.SubmissionType)+' · คะแนนเต็ม '+esc(a.MaxScore)+'</small><small>'+esc(schedules)+'</small></td><td>'+esc(a.Status)+'</td><td>'+thaiDateTime(a.Deadline)+'</td><td><div class="snc-actions"><button class="snc-button small secondary" data-edit-assignment="'+esc(a.AssignmentID)+'">แก้ไข</button>'+(a.Status==='OPEN'?'<button class="snc-button small secondary" data-close-assignment="'+esc(a.AssignmentID)+'">ปิดรับงาน</button>':'<button class="snc-button small" data-open-assignment="'+esc(a.AssignmentID)+'">เปิดรับงาน</button>')+'</div></td></tr>';
+ }).join('');
+ $('assignment-table').innerHTML=rows?'<table class="snc-table"><thead><tr><th>Assignment</th><th>สถานะ</th><th>กำหนดส่ง</th><th>จัดการ</th></tr></thead><tbody>'+rows+'</tbody></table>':'<p class="snc-muted">ยังไม่มี Assignment ในรายวิชานี้</p>';
 }
 async function openAssignments(id){
  const item=offeringCache.find(x=>String(x.offering.OfferingID)===String(id));if(!item)return;
@@ -56,26 +82,36 @@ async function openAssignments(id){
 }
 async function loadAssignments(){note('กำลังโหลด Assignment…');assignments=await api('assignment.list',{offeringId:currentOfferingId})||[];renderAssignments();note('โหลด Assignment สำเร็จ','success');}
 function assignmentForm(a){
- const dt=a&&a.Deadline?new Date(a.Deadline):null;
- const local=dt&&!isNaN(dt)?new Date(dt.getTime()-dt.getTimezoneOffset()*60000).toISOString().slice(0,16):'';
- const edit=Boolean(a);
+ const edit=Boolean(a),due=dateTimeFields(a&&a.Deadline),open=dateTimeFields(a&&a.ScheduledOpenAt),close=dateTimeFields(a&&a.ScheduledCloseAt);
  $('modal-title').textContent=edit?'แก้ไข Assignment':'สร้าง Assignment';
  let html='<form id="assignment-form"><div class="snc-form-grid"><div class="snc-field full"><label>ชื่อ Assignment</label><input name="title" required maxlength="200" value="'+esc(a?a.Title:'')+'"></div>';
- html+='<div class="snc-field"><label>คะแนนเต็ม</label><input name="maxScore" type="number" min="0.01" step="0.01" required value="'+esc(a?a.MaxScore:100)+'"></div><div class="snc-field"><label>กำหนดส่ง</label><input name="deadline" type="datetime-local" required value="'+local+'"></div>';
+ html+='<div class="snc-field"><label>คะแนนเต็ม</label><input name="maxScore" type="number" min="0.01" step="0.01" required value="'+esc(a?a.MaxScore:100)+'"></div>';
  html+='<div class="snc-field"><label>ประเภทงาน</label><select name="submissionType" '+(edit?'disabled':'')+'><option value="INDIVIDUAL" '+(a&&a.SubmissionType==='INDIVIDUAL'?'selected':'')+'>Individual · งานเดี่ยว</option><option value="GROUP" '+(a&&a.SubmissionType==='GROUP'?'selected':'')+'>Group · งานกลุ่ม</option></select></div>';
  html+='<div class="snc-field" id="group-limit-field"><label>จำนวนสมาชิกสูงสุด (เว้นว่าง = ไม่จำกัด)</label><input name="maxGroupMembers" type="number" min="2" step="1" value="'+(a&&a.MaxGroupMembers!==''?esc(a.MaxGroupMembers):'')+'"></div>';
- html+='<div class="snc-field full"><label>รายละเอียด</label><textarea name="description" rows="2">'+esc(a?a.Description:'')+'</textarea></div><div class="snc-field full"><label>คำชี้แจง/วิธีส่งงาน</label><textarea name="instructions" rows="3">'+esc(a?a.Instructions:'')+'</textarea></div></div><p class="snc-muted">Group Assignment กำหนดสมาชิกขั้นต่ำ 2 คนโดยระบบ</p><div class="snc-actions"><button class="snc-button" type="submit">บันทึก</button><button class="snc-button secondary" type="button" id="cancel-assignment">ยกเลิก</button></div></form>';
+ html+=dateTimeControl('open','วันและเวลาเปิดรับงานอัตโนมัติ',Boolean(a&&a.AutoOpenEnabled),open,false);
+ html+=dateTimeControl('due','วันครบกำหนดส่ง (Due Date)',true,due,true);
+ html+=dateTimeControl('close','วันและเวลาปิดรับงานอัตโนมัติ',Boolean(a&&a.AutoCloseEnabled),close,false);
+ html+='<div class="snc-field full"><label>รายละเอียด</label><textarea name="description" rows="2">'+esc(a?a.Description:'')+'</textarea></div><div class="snc-field full"><label>คำชี้แจง/วิธีส่งงาน</label><textarea name="instructions" rows="3">'+esc(a?a.Instructions:'')+'</textarea></div></div><p class="snc-muted">กำหนดวันเปิดและวันปิดแยกจาก Due Date ได้ หากไม่เปิดสวิตช์ ผู้สอนควบคุมด้วยตนเอง · วันที่ใช้ พ.ศ. และเวลา 24 ชั่วโมง</p><div class="snc-actions"><button class="snc-button" type="submit">บันทึก</button><button class="snc-button secondary" type="button" id="cancel-assignment">ยกเลิก</button></div></form>';
  $('modal-body').innerHTML=html;$('modal').hidden=false;
  const form=$('assignment-form'),type=form.elements.submissionType,limit=$('group-limit-field');
  function toggleLimit(){limit.hidden=type.value!=='GROUP';}
- toggleLimit();if(!edit)type.addEventListener('change',toggleLimit);
+ function bindSchedule(prefix){
+  const toggle=form.elements[prefix+'Enabled'],date=form.elements[prefix+'Date'],time=form.elements[prefix+'Time'];
+  if(!toggle)return;const sync=()=>{date.disabled=!toggle.checked;time.disabled=!toggle.checked;date.required=toggle.checked;time.required=toggle.checked;};
+  toggle.addEventListener('change',sync);sync();
+ }
+ bindSchedule('open');bindSchedule('close');toggleLimit();if(!edit)type.addEventListener('change',toggleLimit);
  $('cancel-assignment').onclick=()=>$('modal').hidden=true;
- form.addEventListener('submit',async e=>{e.preventDefault();const btn=form.querySelector('[type=submit]');btn.disabled=true;try{
- const p={title:form.elements.title.value.trim(),description:form.elements.description.value.trim(),instructions:form.elements.instructions.value.trim(),maxScore:Number(form.elements.maxScore.value),deadline:form.elements.deadline.value};
- if(edit){p.assignmentId=a.AssignmentID;if(a.SubmissionType==='GROUP')p.maxGroupMembers=form.elements.maxGroupMembers.value||null;await api('assignment.update',p);}
- else{p.offeringId=currentOfferingId;p.submissionType=type.value;p.maxGroupMembers=type.value==='GROUP'?(form.elements.maxGroupMembers.value||null):null;await api('assignment.create',p);}
- $('modal').hidden=true;await loadAssignments();
- }catch(err){note(err.message+' ['+(err.code||'ERROR')+']','error');}finally{btn.disabled=false;}});
+ form.addEventListener('submit',async e=>{
+  e.preventDefault();const btn=form.querySelector('[type=submit]');btn.disabled=true;
+  try{
+   const p={title:form.elements.title.value.trim(),description:form.elements.description.value.trim(),instructions:form.elements.instructions.value.trim(),maxScore:Number(form.elements.maxScore.value),deadline:parseThaiDateTime(form.elements.dueDate.value,form.elements.dueTime.value,'Due Date'),autoOpenEnabled:form.elements.openEnabled.checked,scheduledOpenAt:form.elements.openEnabled.checked?parseThaiDateTime(form.elements.openDate.value,form.elements.openTime.value,'วันเปิดรับงาน'):'',autoCloseEnabled:form.elements.closeEnabled.checked,scheduledCloseAt:form.elements.closeEnabled.checked?parseThaiDateTime(form.elements.closeDate.value,form.elements.closeTime.value,'วันปิดรับงาน'):''};
+   if(p.autoOpenEnabled&&p.autoCloseEnabled&&p.scheduledCloseAt<=p.scheduledOpenAt)throw new Error('วันปิดรับงานต้องอยู่หลังวันเปิดรับงาน');
+   if(edit){p.assignmentId=a.AssignmentID;if(a.SubmissionType==='GROUP')p.maxGroupMembers=form.elements.maxGroupMembers.value||null;await api('assignment.update',p);}
+   else{p.offeringId=currentOfferingId;p.submissionType=type.value;p.maxGroupMembers=type.value==='GROUP'?(form.elements.maxGroupMembers.value||null):null;await api('assignment.create',p);}
+   $('modal').hidden=true;await loadAssignments();
+  }catch(err){note(err.message+' ['+(err.code||'VALIDATION_ERROR')+']','error');}finally{btn.disabled=false;}
+ });
 }
 document.addEventListener('click',async e=>{
  const b=e.target.closest('button');if(!b)return;
