@@ -52,7 +52,7 @@ function thaiParts(v){
 }
 function thaiDate(v){
  const p=thaiParts(v);if(!p)return '—';
- return Number(p.day)+' '+THAI_MONTHS[Number(p.month)-1]+' '+(Number(p.year)+543);
+ return Number(p.day)+' '+THAI_MONTHS[Number(p.month)-1]+' '+p.year;
 }
 function thaiDateTime(v){
  const p=thaiParts(v);return p?thaiDate(v)+' เวลา '+p.hour+':'+p.minute+' น.':'—';
