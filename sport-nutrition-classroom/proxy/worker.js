@@ -38,28 +38,6 @@ function failure(code, message) {
   };
 }
 
-async function readUpstreamResponse(response) {
-  // Apps Script ContentService may redirect to a one-time googleusercontent URL.
-  // Follow that redirect explicitly as GET for 301/302/303; preserve method for 307/308.
-  if ([301, 302, 303, 307, 308].includes(response.status)) {
-    const location = response.headers.get("Location");
-    if (!location) throw new Error("UPSTREAM_REDIRECT_WITHOUT_LOCATION");
-    const target = new URL(location, response.url);
-    if (target.protocol !== "https:" ||
-        !["script.googleusercontent.com", "script.google.com"].includes(target.hostname)) {
-      throw new Error("UPSTREAM_REDIRECT_HOST_REJECTED");
-    }
-    const method = [307, 308].includes(response.status) ? "POST" : "GET";
-    const follow = await fetch(target.toString(), {
-      method,
-      redirect: "follow",
-      headers: method === "POST" ? { "Content-Type": "text/plain;charset=UTF-8" } : undefined
-    });
-    return follow;
-  }
-  return response;
-}
-
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
@@ -129,21 +107,33 @@ export default {
     }
 
     try {
-      const upstreamRequest = new Request(upstreamUrl.toString(), {
+      // Let the Fetch runtime follow Google's ContentService redirect.
+      // GAS commonly responds to POST with a redirect to a one-time
+      // script.googleusercontent.com URL containing the JSON response.
+      const upstream = await fetch(upstreamUrl.toString(), {
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=UTF-8" },
         body: raw,
-        redirect: "manual"
+        redirect: "follow"
       });
-      const initial = await fetch(upstreamRequest);
-      const upstream = await readUpstreamResponse(initial);
-      const responseText = await upstream.text();
 
+      const responseText = await upstream.text();
       let responseBody;
       try {
         responseBody = JSON.parse(responseText);
       } catch (_) {
-        return jsonResponse(failure("UPSTREAM_INVALID_RESPONSE", "Backend returned an invalid response."), 502, origin);
+        const contentType = (upstream.headers.get("Content-Type") || "").toLowerCase();
+        const finalHost = upstream.url ? new URL(upstream.url).hostname : "unknown";
+        const diagnostic = {
+          upstreamStatus: upstream.status,
+          contentType: contentType.split(";")[0] || "unknown",
+          finalHost: ["script.google.com", "script.googleusercontent.com"].includes(finalHost)
+            ? finalHost : "other"
+        };
+        return jsonResponse({
+          ...failure("UPSTREAM_INVALID_RESPONSE", "Backend did not return JSON."),
+          diagnostic
+        }, 502, origin);
       }
 
       const status = upstream.ok ? 200 : upstream.status;
