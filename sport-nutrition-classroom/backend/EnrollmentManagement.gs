@@ -16,7 +16,7 @@ function emCanImport_(a,offering){
   return cmSystem_(a,'SYSTEM_ADMIN')||cmSystem_(a,'COURSE_COORDINATOR')||
     (a.roles||[]).some(function(r){return r.role==='COURSE_COORDINATOR'&&
       ((r.scopeType==='COURSE'&&String(r.scopeId)===String(offering.CourseID))||
-       (r.scopeType==='SEMESTER'&&String(r.scopeId)===String(offering.SemesterID));});
+       (r.scopeType==='SEMESTER'&&String(r.scopeId)===String(offering.SemesterID)));});
 }
 function emNormalizeRow_(row,index){
   row=row||{};
@@ -263,7 +263,7 @@ function testEnrollmentImportLogicUnit(){
   var inactiveUsers=[{UserID:'U2',StudentID:'67000000002',Email:'b@example.com',Status:'INACTIVE'}];
   var conflict=emValidateRowsAgainstCurrent_('O1',[valid],conflictUsers,[]);
   var inactive=emValidateRowsAgainstCurrent_('O1',[{rowNumber:1,studentId:'67000000002',email:'b@example.com',errors:[]}],inactiveUsers,[]);
-  var duplicate=emValidateRowsAgainstCurrent_('O1',[valid],[],[{OfferingID:'O1',UserID:'U1',Status:'ACTIVE'}]);
+  var duplicate=emValidateRowsAgainstCurrent_('O1',[valid],[{UserID:'U1',StudentID:valid.studentId,Email:valid.email,Status:'ACTIVE'}],[{OfferingID:'O1',UserID:'U1',Status:'ACTIVE'}]);
   results.push({name:'latest StudentID/Email conflict',pass:conflict.errors[0].errorCode==='STUDENT_ID_EMAIL_CONFLICT'});
   results.push({name:'latest inactive User rejected',pass:inactive.errors[0].errorCode==='USER_INACTIVE'});
   results.push({name:'latest active Enrollment rejected',pass:duplicate.errors[0].errorCode==='ALREADY_ENROLLED'});
