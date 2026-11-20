@@ -40,7 +40,6 @@ function amSubmissionConfig_(submissionType,maxGroupMembers){
   return {SubmissionType:'GROUP',MinGroupMembers:2,MaxGroupMembers:max};
 }
 
-function amGet_(id){return cmGet_('Assignments','AssignmentID',id);}
 function amCanManage_(actor,assignment){
   var offering=cmGet_('CourseOfferings','OfferingID',assignment.OfferingID);
   if(!offering)throw apiError_('NOT_FOUND','Course offering not found.');
@@ -83,7 +82,7 @@ function handleAssignmentManagementAction_(action,actor,p,requestId){
         .map(amPublic_);
     }
     if(action==='assignment.get'){
-      var found=amGet_(cmText_(p.assignmentId,100,'assignmentId',true));
+      var found=cmGet_('Assignments','AssignmentID',cmText_(p.assignmentId,100,'assignmentId',true));
       if(!found)throw apiError_('NOT_FOUND','Assignment not found.');
       amCanManage_(actor,found);return amPublic_(found);
     }
@@ -110,10 +109,10 @@ function handleAssignmentManagementAction_(action,actor,p,requestId){
       appendAudit_(actor.userId,'ASSIGNMENT_CREATED','Assignment',id,{
         offeringId:oid,submissionType:config.SubmissionType,maxGroupMembers:config.MaxGroupMembers
       },requestId);
-      return amPublic_(amGet_(id));
+      return amPublic_(cmGet_('Assignments','AssignmentID',id));
     }
     if(action==='assignment.update'){
-      var aid=cmText_(p.assignmentId,100,'assignmentId',true),current=amGet_(aid);
+      var aid=cmText_(p.assignmentId,100,'assignmentId',true),current=cmGet_('Assignments','AssignmentID',aid);
       if(!current)throw apiError_('NOT_FOUND','Assignment not found.');
       amCanManage_(actor,current);
       var sh=cmSheet_('Assignments'),headers=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0];
@@ -134,10 +133,10 @@ function handleAssignmentManagementAction_(action,actor,p,requestId){
       Object.keys(updates).forEach(function(k){sh.getRange(current._row,headers.indexOf(k)+1).setValue(updates[k]);});
       sh.getRange(current._row,headers.indexOf('UpdatedAt')+1).setValue(new Date());
       appendAudit_(actor.userId,'ASSIGNMENT_UPDATED','Assignment',aid,{fields:Object.keys(updates)},requestId);
-      return amPublic_(amGet_(aid));
+      return amPublic_(cmGet_('Assignments','AssignmentID',aid));
     }
     if(action==='assignment.open'||action==='assignment.close'){
-      var targetId=cmText_(p.assignmentId,100,'assignmentId',true),target=amGet_(targetId);
+      var targetId=cmText_(p.assignmentId,100,'assignmentId',true),target=cmGet_('Assignments','AssignmentID',targetId);
       if(!target)throw apiError_('NOT_FOUND','Assignment not found.');
       amCanManage_(actor,target);
       var next=action==='assignment.open'?'OPEN':'CLOSED';
@@ -149,7 +148,7 @@ function handleAssignmentManagementAction_(action,actor,p,requestId){
       sheet.getRange(target._row,head.indexOf(action==='assignment.open'?'OpenedAt':'ClosedAt')+1).setValue(now2);
       if(action==='assignment.open')sheet.getRange(target._row,head.indexOf('ClosedAt')+1).setValue('');
       appendAudit_(actor.userId,action==='assignment.open'?'ASSIGNMENT_OPENED':'ASSIGNMENT_CLOSED','Assignment',targetId,{status:next},requestId);
-      return amPublic_(amGet_(targetId));
+      return amPublic_(cmGet_('Assignments','AssignmentID',targetId));
     }
     throw apiError_('NOT_IMPLEMENTED','Assignment action is not implemented.');
   }finally{lock.releaseLock();}
@@ -296,7 +295,7 @@ function testAssignmentSchedulerIntegration(){
   var auditAfterSecond=cmRows_('AuditLogs').filter(function(x){return (String(x.EntityID)===openId&&x.Action==='ASSIGNMENT_AUTO_OPENED')||(String(x.EntityID)===closeId&&x.Action==='ASSIGNMENT_AUTO_CLOSED');}).length;
   var manualOpen=handleAssignmentManagementAction_('assignment.open',actor,{assignmentId:manualId},'SCHED-MANUAL-OPEN-'+manualId);
   var manualClose=handleAssignmentManagementAction_('assignment.close',actor,{assignmentId:manualId},'SCHED-MANUAL-CLOSE-'+manualId);
-  var finalOpen=amGet_(openId),finalClose=amGet_(closeId),finalManual=amGet_(manualId);
+  var finalOpen=cmGet_('Assignments','AssignmentID',openId),finalClose=cmGet_('Assignments','AssignmentID',closeId),finalManual=cmGet_('Assignments','AssignmentID',manualId);
   var cases=[
     {test:'Due scheduled opening changes DRAFT to OPEN',result:finalOpen.Status==='OPEN'&&Boolean(finalOpen.AutoOpenProcessedAt)?'PASS':'FAIL'},
     {test:'Due scheduled closing changes OPEN to CLOSED',result:finalClose.Status==='CLOSED'&&Boolean(finalClose.AutoCloseProcessedAt)?'PASS':'FAIL'},
