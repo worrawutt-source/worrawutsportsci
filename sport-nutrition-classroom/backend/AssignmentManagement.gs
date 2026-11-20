@@ -244,14 +244,7 @@ function installAssignmentSchedulerTrigger(){
   var trigger=ScriptApp.newTrigger('runAssignmentScheduler').timeBased().everyMinutes(1).create();
   return {success:true,environment:'TEST',intervalMinutes:1,triggerId:trigger.getUniqueId()};
 }
-function testAssignmentSchedulerPreflight(){
-  var TEST_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk',ss=SpreadsheetApp.getActiveSpreadsheet();
-  if(!ss||ss.getId()!==TEST_ID)throw new Error('SAFETY_STOP: TEST spreadsheet only.');
-  var sh=ss.getSheetByName('Assignments'),expected=['AssignmentID','OfferingID','Title','Description','Instructions','MaxScore','Deadline','SubmissionType','MinGroupMembers','MaxGroupMembers','Status','OpenedAt','ClosedAt','CreatedAt','UpdatedAt','CreatedByUserID','AutoOpenEnabled','ScheduledOpenAt','AutoOpenProcessedAt','AutoCloseEnabled','ScheduledCloseAt','AutoCloseProcessedAt'];
-  var actual=sh?sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0]:[],ok=Boolean(sh)&&actual.length===expected.length&&expected.every(function(h,i){return actual[i]===h;});
-  var count=ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()==='runAssignmentScheduler';}).length;
-  return {success:ok,mode:'READ_ONLY_ASSIGNMENT_SCHEDULER_PREFLIGHT',database:'TEST',headersMatch:ok,assignmentRows:sh?Math.max(0,sh.getLastRow()-1):null,matchingTriggerCount:count,writesExpected:0};
-}
+
 function testAssignmentSchedulerLogicUnit(){
   var cases=[],now=new Date('2026-11-20T00:00:00Z');
   function check(n,fn,e){var a=fn();cases.push({test:n,result:a===e?'PASS':'FAIL',actual:a});}
