@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/css/app.css"><script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <style>
-.snc-panel{border:1px solid var(--snc-color-border);border-radius:var(--snc-radius-lg);background:var(--snc-color-surface);padding:20px;margin-top:18px}.snc-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.snc-button.secondary{background:transparent;color:var(--snc-color-text);border-color:var(--snc-color-border)}.snc-grid{margin-top:20px}.snc-card h3{margin-top:8px}.snc-table-wrap{overflow:auto}.snc-table{width:100%;border-collapse:collapse;min-width:560px}.snc-table th,.snc-table td{padding:11px 10px;border-bottom:1px solid var(--snc-color-border);text-align:left}.snc-table th{font-size:.82rem;color:var(--snc-color-muted)}.snc-message{padding:12px 14px;border:1px solid var(--snc-color-border);border-radius:9px;margin:12px 0}.snc-message[data-kind=error]{color:var(--snc-color-danger)}.snc-message[data-kind=success]{color:var(--snc-color-success)}.snc-actions{display:flex;gap:8px;flex-wrap:wrap}.snc-button.small{min-height:34px;padding:5px 10px;font-size:.86rem}.snc-modal{position:fixed;inset:0;z-index:50;background:#0009;display:grid;place-items:center;padding:16px}.snc-modal-card{width:min(680px,100%);max-height:90vh;overflow:auto;background:var(--snc-color-surface);border:1px solid var(--snc-color-border);border-radius:14px;padding:20px}.snc-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.snc-form-grid .full{grid-column:1/-1}.snc-field input,.snc-field textarea,.snc-field select{width:100%;padding:9px 11px;border:1px solid var(--snc-color-border);border-radius:8px;background:var(--snc-color-bg);color:var(--snc-color-text)}[hidden]{display:none!important}@media(max-width:600px){.snc-grid{grid-template-columns:1fr}}
+.snc-panel{border:1px solid var(--snc-color-border);border-radius:var(--snc-radius-lg);background:var(--snc-color-surface);padding:20px;margin-top:18px}.snc-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.snc-button.secondary{background:transparent;color:var(--snc-color-text);border-color:var(--snc-color-border)}.snc-grid{margin-top:20px}.snc-card h3{margin-top:8px}.snc-table-wrap{overflow:auto}.snc-table{width:100%;border-collapse:collapse;min-width:560px}.snc-table th,.snc-table td{padding:11px 10px;border-bottom:1px solid var(--snc-color-border);text-align:left}.snc-table th{font-size:.82rem;color:var(--snc-color-muted)}.snc-message{padding:12px 14px;border:1px solid var(--snc-color-border);border-radius:9px;margin:12px 0}.snc-message[data-kind=error]{color:var(--snc-color-danger)}.snc-message[data-kind=success]{color:var(--snc-color-success)}.snc-actions{display:flex;gap:8px;flex-wrap:wrap}.snc-button.small{min-height:34px;padding:5px 10px;font-size:.86rem}.snc-modal{position:fixed;inset:0;z-index:50;background:#0009;display:grid;place-items:center;padding:16px}.snc-modal-card{width:min(680px,100%);max-height:90vh;overflow:auto;background:var(--snc-color-surface);border:1px solid var(--snc-color-border);border-radius:14px;padding:20px}.snc-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.snc-form-grid .full{grid-column:1/-1}.snc-date-wrap{display:grid;grid-template-columns:minmax(0,1fr) 42px;gap:6px;align-items:start}.snc-date-wrap>input{min-width:0}.snc-date-picker-btn{height:42px;border:1px solid var(--snc-color-border);border-radius:8px;background:var(--snc-color-bg);color:var(--snc-color-text);cursor:pointer;font-size:1.1rem}.snc-calendar{margin-top:7px;padding:10px;border:1px solid var(--snc-color-border);border-radius:10px;background:var(--snc-color-bg);box-shadow:0 8px 24px #0003;max-width:320px}.snc-calendar-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.snc-calendar-head button,.snc-calendar-foot button{border:1px solid var(--snc-color-border);border-radius:6px;background:transparent;color:var(--snc-color-text);padding:5px 9px;cursor:pointer}.snc-calendar-month{font-weight:600}.snc-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;text-align:center}.snc-calendar-grid span{font-size:.78rem;color:var(--snc-color-muted);padding:5px 0}.snc-calendar-grid button{border:0;border-radius:6px;background:transparent;color:var(--snc-color-text);padding:7px 2px;cursor:pointer}.snc-calendar-grid button:hover{background:var(--snc-color-border)}.snc-calendar-grid button.is-selected{background:var(--snc-color-primary);color:white}.snc-calendar-grid button.is-today{outline:1px solid var(--snc-color-primary)}.snc-calendar-foot{display:flex;justify-content:flex-end;margin-top:7px}.snc-field input,.snc-field textarea,.snc-field select{width:100%;padding:9px 11px;border:1px solid var(--snc-color-border);border-radius:8px;background:var(--snc-color-bg);color:var(--snc-color-text)}[hidden]{display:none!important}@media(max-width:600px){.snc-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -60,9 +60,19 @@ function thaiDateTime(v){
 function dateTimeFields(v){
  const p=thaiParts(v);return p?{date:p.day+'/'+p.month+'/'+p.year,time:p.hour+':'+p.minute,iso:String(Number(p.year)-543)+'-'+p.month+'-'+p.day}:{date:'',time:'',iso:''};
 }
+function normalizeTimeValue(value){
+ const raw=String(value||'').trim();
+ const digits=raw.replace(/[^0-9]/g,'');
+ if(digits.length!==3&&digits.length!==4)throw new Error('กรุณากรอกเวลา 4 หลัก เช่น 1630 หรือ 0830');
+ const padded=digits.padStart(4,'0'),hour=Number(padded.slice(0,2)),minute=Number(padded.slice(2));
+ if(hour>23||minute>59)throw new Error('เวลาไม่ถูกต้อง กรุณาระบุ 0000–2359');
+ return padded.slice(0,2)+':'+padded.slice(2);
+}
 function parseThaiDateTime(dateValue,timeValue,label){
  const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(dateValue||'').trim());
- const t=/^(\d{2}):(\d{2})$/.exec(String(timeValue||'').trim());
+ let normalizedTime;
+ try{normalizedTime=normalizeTimeValue(timeValue);}catch(e){throw new Error(label+' '+e.message);}
+ const t=/^(\d{2}):(\d{2})$/.exec(normalizedTime);
  if(!m||!t)throw new Error(label+' กรุณาระบุวันที่ พ.ศ. และเวลา 24 ชั่วโมงให้ถูกต้อง');
  const day=Number(m[1]),month=Number(m[2]),beYear=Number(m[3]),year=beYear-543,hour=Number(t[1]),minute=Number(t[2]);
  const d=new Date(Date.UTC(year,month-1,day));
@@ -72,7 +82,7 @@ function parseThaiDateTime(dateValue,timeValue,label){
 function dateTimeControl(prefix,label,enabled,values,required){
  const checked=required?'':(enabled?'checked':'');
  const disabled=required?'':'disabled';
- return '<div class="snc-field full"><label>'+label+(required?'':' <input type="checkbox" name="'+prefix+'Enabled" '+checked+' style="width:auto;margin-left:8px"> เปิดใช้งาน')+'</label><div class="snc-form-grid" style="grid-template-columns:minmax(0,1fr) minmax(110px,150px)"><input name="'+prefix+'Date" type="text" inputmode="numeric" autocomplete="off" placeholder="วว/ดด/ปปปป (พ.ศ.)" value="'+esc(values.date)+'" '+disabled+(required?' required':'')+'><input name="'+prefix+'Time" type="text" inputmode="numeric" autocomplete="off" placeholder="HH:mm" maxlength="5" value="'+esc(values.time||'23:59')+'" '+disabled+(required?' required':'')+'></div><small class="snc-muted">วันที่ พ.ศ. และเวลา 24 ชั่วโมง (HH:mm)</small></div>';
+ return '<div class="snc-field full"><label>'+label+(required?'':' <input type="checkbox" name="'+prefix+'Enabled" '+checked+' style="width:auto;margin-left:8px"> เปิดใช้งาน')+'</label><div class="snc-form-grid" style="grid-template-columns:minmax(0,1fr) minmax(110px,150px)"><div class="snc-date-wrap"><input name="'+prefix+'Date" type="text" inputmode="numeric" autocomplete="off" placeholder="วว/ดด/ปปปป (พ.ศ.)" value="'+esc(values.date)+'" '+disabled+(required?' required':'')+'><button type="button" class="snc-date-picker-btn" data-calendar-toggle="'+prefix+'" aria-label="เลือกวันที่" '+disabled+'>▦</button><div class="snc-calendar" data-calendar="'+prefix+'" hidden></div></div><input name="'+prefix+'Time" type="text" inputmode="numeric" autocomplete="off" placeholder="เช่น 1630 หรือ 16.30" maxlength="5" value="'+esc(values.time||'23:59')+'" '+disabled+(required?' required':'')+'></div><small class="snc-muted">วันที่ พ.ศ. และเวลา 24 ชั่วโมง เช่น 1630 ระบบจะแปลงเป็น 16:30</small></div>';
 }
 let currentOfferingId=null,currentOfferingLabel='',assignments=[],offeringCache=[];
 function render(items){
@@ -109,10 +119,29 @@ function assignmentForm(a){
  const form=$('assignment-form'),type=form.elements.submissionType,limit=$('group-limit-field');
  function toggleLimit(){limit.hidden=type.value!=='GROUP';}
  function bindSchedule(prefix){
-  const toggle=form.elements[prefix+'Enabled'],date=form.elements[prefix+'Date'],time=form.elements[prefix+'Time'];
-  const sync=()=>{const active=!toggle||toggle.checked;date.disabled=!active;time.disabled=!active;date.required=toggle?active:prefix==='due';time.required=toggle?active:prefix==='due';};
+  const toggle=form.elements[prefix+'Enabled'],date=form.elements[prefix+'Date'],time=form.elements[prefix+'Time'],picker=form.querySelector('[data-calendar-toggle="'+prefix+'"]'),calendar=form.querySelector('[data-calendar="'+prefix+'"]');
+  const sync=()=>{const active=!toggle||toggle.checked;date.disabled=!active;time.disabled=!active;picker.disabled=!active;date.required=toggle?active:prefix==='due';time.required=toggle?active:prefix==='due';};
   if(toggle)toggle.addEventListener('change',sync);sync();
-  time.addEventListener('input',()=>{time.value=time.value.replace(/[^0-9:]/g,'').slice(0,5);});
+  time.addEventListener('input',()=>{time.value=time.value.replace(/[^0-9.]/g,'').slice(0,5);});
+  time.addEventListener('blur',()=>{if(!time.value.trim())return;try{time.value=normalizeTimeValue(time.value);}catch(e){}});
+  let viewYear,viewMonth;
+  function selectedParts(){const m=/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/.exec(date.value.trim());return m?{day:Number(m[1]),month:Number(m[2])-1,year:Number(m[3])-543}:null;}
+  function renderCalendar(){
+   const selected=selectedParts(),now=new Date(),base=selected||{day:now.getDate(),month:now.getMonth(),year:now.getFullYear()};
+   if(viewYear===undefined){viewYear=base.year;viewMonth=base.month;}
+   const first=new Date(Date.UTC(viewYear,viewMonth,1)).getUTCDay(),days=new Date(Date.UTC(viewYear,viewMonth+1,0)).getUTCDate();
+   const weekdays=['อา','จ','อ','พ','พฤ','ศ','ส'];
+   let html='<div class="snc-calendar-head"><button type="button" data-cal-prev aria-label="เดือนก่อน">‹</button><strong class="snc-calendar-month">'+THAI_MONTHS[viewMonth]+' '+(viewYear+543)+'</strong><button type="button" data-cal-next aria-label="เดือนถัดไป">›</button></div><div class="snc-calendar-grid">'+weekdays.map(x=>'<span>'+x+'</span>').join('');
+   for(let i=0;i<first;i++)html+='<span></span>';
+   for(let day=1;day<=days;day++){const isSelected=selected&&selected.day===day&&selected.month===viewMonth&&selected.year===viewYear,isToday=now.getFullYear()===viewYear&&now.getMonth()===viewMonth&&now.getDate()===day;html+='<button type="button" data-cal-day="'+day+'" class="'+(isSelected?'is-selected ':'')+(isToday?'is-today':'')+'">'+day+'</button>';}
+   html+='</div><div class="snc-calendar-foot"><button type="button" data-cal-today>วันนี้</button></div>';calendar.innerHTML=html;
+   calendar.querySelector('[data-cal-prev]').onclick=()=>{viewMonth--;if(viewMonth<0){viewMonth=11;viewYear--;}renderCalendar();};
+   calendar.querySelector('[data-cal-next]').onclick=()=>{viewMonth++;if(viewMonth>11){viewMonth=0;viewYear++;}renderCalendar();};
+   calendar.querySelectorAll('[data-cal-day]').forEach(btn=>btn.onclick=()=>{date.value=String(Number(btn.dataset.calDay)).padStart(2,'0')+'/'+String(viewMonth+1).padStart(2,'0')+'/'+(viewYear+543);calendar.hidden=true;date.dispatchEvent(new Event('change',{bubbles:true}));});
+   calendar.querySelector('[data-cal-today]').onclick=()=>{const n=new Date();date.value=String(n.getDate()).padStart(2,'0')+'/'+String(n.getMonth()+1).padStart(2,'0')+'/'+(n.getFullYear()+543);viewYear=n.getFullYear();viewMonth=n.getMonth();renderCalendar();calendar.hidden=true;};
+  }
+  picker.addEventListener('click',()=>{calendar.hidden=!calendar.hidden;if(!calendar.hidden){viewYear=undefined;viewMonth=undefined;renderCalendar();}});
+  date.addEventListener('change',()=>{viewYear=undefined;viewMonth=undefined;});
  }
  bindSchedule('open');bindSchedule('due');bindSchedule('close');toggleLimit();if(!edit)type.addEventListener('change',toggleLimit);
  $('cancel-assignment').onclick=()=>$('modal').hidden=true;
