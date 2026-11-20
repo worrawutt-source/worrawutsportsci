@@ -7,7 +7,7 @@
 const SNC = Object.freeze({
   LINE_VERIFY_URL: 'https://api.line.me/oauth2/v2.1/verify',
   MAX_TOKEN_LENGTH: 12000,
-  API_VERSION: '1.4.0'
+  API_VERSION: '1.5.0'
 });
 
 function doGet() {
