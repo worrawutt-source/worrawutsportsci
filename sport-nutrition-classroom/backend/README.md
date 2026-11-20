@@ -167,3 +167,50 @@ CR-001 supersedes the former manual-only BR-001 rule. Due Date remains separate 
 6. Deploy a new TEST Web App version and update the TEST Instructor Portal source.
 7. Verify schedule create/update, due-date independence, automatic opening/closing, duplicate trigger invocation, manual override and AuditLogs.
 8. Do not install triggers, run setup or deploy this version against Production.
+
+## Phase 1.5 — Student Import & Enrollment (development)
+
+Implemented in `EnrollmentManagement.gs` with authenticated API actions:
+- `import.preview`: validates a batch without writing data.
+- `import.execute`: revalidates under ScriptLock, creates missing Users and Offering-scoped Enrollments, and records an ImportJob.
+- `import.result`: retrieves a job summary and row-level errors within the authorized offering scope.
+- `enrollment.list`: returns the authorized offering roster, or the current student's own active enrollments when no offeringId is supplied.
+- `enrollment.update`: activates/deactivates an enrollment for an authorized offering manager.
+
+Import payload:
+```json
+{
+  "offeringId": "COURSE_OFFERING_ID",
+  "fileName": "roster.xlsx",
+  "rows": [
+    {"studentId":"67000000001","firstName":"First","lastName":"Last","email":"student@example.com"}
+  ]
+}
+```
+
+Rules:
+- Student ID, First Name, Last Name and Email are mandatory; Student ID is 6–20 digits and Email must be valid.
+- One import job targets one active CourseOffering. The file parser is a client responsibility; the backend accepts normalized JSON rows (1–500 per request).
+- Existing Users are reused only when StudentID and Email match exactly; conflicting identity pairs are rejected. New users are created as ACTIVE without credentials; LINE account linking remains a separate flow.
+- Duplicate active enrollment in the same Offering is rejected. Existing user records are not overwritten.
+- Preview performs no writes. Execute refuses a batch containing preview validation errors; it revalidates under ScriptLock before committing.
+- System Admin and scoped Course Coordinator may import. Instructor import is denied by default because DOC-06 requires a separate grant and the current schema has no instructor import-grant field. Do not infer that assignment as instructor automatically grants import permission.
+- Enrollment status updates support ACTIVE/INACTIVE only. Withdrawal-specific policy remains unresolved in DOC-05 and is not implemented.
+- Import errors and job summaries are retained in ImportErrors/ImportJobs; successful changes are audited.
+
+### Schema v1.5.0
+
+Additive tables:
+- `Enrollments(EnrollmentID, OfferingID, UserID, Status, EnrolledAt, CreatedAt, UpdatedAt)`
+- `ImportJobs(ImportJobID, OfferingID, FileName, Status, TotalRows, SuccessCount, ErrorCount, CreatedByUserID, CreatedAt, CompletedAt)`
+- `ImportErrors(ImportErrorID, ImportJobID, RowNumber, StudentID, ErrorCode, ErrorMessage, CreatedAt)`
+
+### TEST rollout
+
+1. Update TEST Apps Script with latest `Code.gs`, `setup.gs`, `CourseManagement.gs`, `AssignmentManagement.gs`, and new `EnrollmentManagement.gs`.
+2. Confirm the active bound spreadsheet is TEST, not Production.
+3. Run `setupAccountLinkingSheets()` once. It creates the three additive tables and preserves existing rows. Expected schema version: `1.5.0`.
+4. Run `testEnrollmentSchemaPreflight()` and `testEnrollmentImportLogicUnit()`; expected 3/3 schema checks and 6/6 pure unit tests.
+5. Deploy a new TEST Web App version only after the schema preflight passes.
+6. Exercise preview, validation failure, duplicate identity, duplicate enrollment, execute, result retrieval, roster access and cross-offering authorization using synthetic TEST accounts/data.
+7. Do not use actual student accounts or import real rosters for test fixtures. Do not run setup or deploy against Production.
