@@ -263,7 +263,7 @@ function testEnrollmentImportLogicUnit(){
   var inactiveUsers=[{UserID:'U2',StudentID:'67000000002',Email:'b@example.com',Status:'INACTIVE'}];
   var conflict=emValidateRowsAgainstCurrent_('O1',[valid],conflictUsers,[]);
   var inactive=emValidateRowsAgainstCurrent_('O1',[{rowNumber:1,studentId:'67000000002',email:'b@example.com',errors:[]}],inactiveUsers,[]);
-  var duplicate=emValidateRowsAgainstCurrent_('O1',[valid],[{UserID:'U1',StudentID:valid.studentId,Email:valid.email,Status:'ACTIVE'}],[{OfferingID:'O1',UserID:'U1',Status:'ACTIVE'}]);
+  var duplicate=emValidateRowsAgainstCurrent_('O1',[{rowNumber:1,studentId:valid.studentId,email:valid.email,errors:[]}],[{UserID:'U1',StudentID:valid.studentId,Email:valid.email,Status:'ACTIVE'}],[{OfferingID:'O1',UserID:'U1',Status:'ACTIVE'}]);
   results.push({name:'latest StudentID/Email conflict',pass:conflict.errors[0].errorCode==='STUDENT_ID_EMAIL_CONFLICT'});
   results.push({name:'latest inactive User rejected',pass:inactive.errors[0].errorCode==='USER_INACTIVE'});
   results.push({name:'latest active Enrollment rejected',pass:duplicate.errors[0].errorCode==='ALREADY_ENROLLED'});
