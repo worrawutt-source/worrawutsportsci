@@ -37,13 +37,24 @@ function note(t,k){$('notice').textContent=t;$('notice').dataset.kind=k||'';}
 function reqId(){return 'ins-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);}
 async function api(action,payload={}){const token=liff.getIDToken();if(!token)throw new Error('ไม่พบ LINE ID Token กรุณาเข้าสู่ระบบใหม่');const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({action,requestId:reqId(),payload:{...payload,idToken:token}})});const j=await r.json();if(!r.ok||!j.success){const e=new Error(j.error?.message||'API error');e.code=j.error?.code;throw e;}return j.data;}
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+const THAI_MONTHS=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 function thaiParts(v){
- if(!v)return null;const d=new Date(v);if(isNaN(d))return null;
+ if(v===null||v===undefined||v==='')return null;
+ // Date-only values are calendar dates, not UTC instants; preserve their day.
+ const dateOnly=/^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(String(v).trim());
+ if(dateOnly)return {year:dateOnly[1],month:dateOnly[2],day:dateOnly[3],hour:'00',minute:'00'};
+ const d=v instanceof Date?new Date(v.getTime()):new Date(v);
+ if(isNaN(d.getTime()))return null;
  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(d);
  const o={};parts.forEach(p=>o[p.type]=p.value);return o;
 }
-function thaiDate(v){const p=thaiParts(v);return p?p.day+'/'+p.month+'/'+(Number(p.year)+543):'—';}
-function thaiDateTime(v){const p=thaiParts(v);return p?thaiDate(v)+' '+p.hour+':'+p.minute:'—';}
+function thaiDate(v){
+ const p=thaiParts(v);if(!p)return '—';
+ return Number(p.day)+' '+THAI_MONTHS[Number(p.month)-1]+' '+(Number(p.year)+543);
+}
+function thaiDateTime(v){
+ const p=thaiParts(v);return p?thaiDate(v)+' เวลา '+p.hour+':'+p.minute+' น.':'—';
+}
 function dateTimeFields(v){
  const p=thaiParts(v);return p?{date:p.day+'/'+p.month+'/'+(Number(p.year)+543),time:p.hour+':'+p.minute,iso:p.year+'-'+p.month+'-'+p.day}:{date:'',time:'',iso:''};
 }
