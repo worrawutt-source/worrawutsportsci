@@ -31,7 +31,7 @@
 (function(){
 'use strict';
 const LIFF_ID='2012654701-hrl5IzaQ';
-const API_URL='https://script.google.com/macros/s/AKfycbwIvdYeUa4IqFZVKAuwfc4ANtGUrLRBilXv51t2YPuSAOj3tFKi9HCBtGhWuN7HwTT0/exec';
+const API_URL='https://snc-test-api-proxy.worrawutt.workers.dev/';
 const $=id=>document.getElementById(id);
 function note(t,k){$('notice').textContent=t;$('notice').dataset.kind=k||'';}
 function reqId(){return 'ins-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);}
