@@ -10,8 +10,6 @@ function emSheet_(name){
   return sh;
 }
 function emRows_(name){return rowsAsObjects_(emSheet_(name));}
-function emRole_(a,role){return (a.roles||[]).some(function(r){return r.role===role;});}
-function emCanOffering_(a,offering){return cmCanOffering_(a,offering);}
 function emCanImport_(a,offering){
   return cmSystem_(a,'SYSTEM_ADMIN')||cmSystem_(a,'COURSE_COORDINATOR')||
     (a.roles||[]).some(function(r){return r.role==='COURSE_COORDINATOR'&&
@@ -57,7 +55,7 @@ function emOfferingForImport_(a,p){
   var offeringId=cmText_(p.offeringId,100,'offeringId',true);
   var offering=cmGet_('CourseOfferings','OfferingID',offeringId);
   if(!offering||String(offering.Status).toUpperCase()!=='ACTIVE')throw apiError_('NOT_FOUND','Active CourseOffering not found.');
-  if(!emCanOffering_(a,offering)||!emCanImport_(a,offering))throw apiError_('FORBIDDEN','You cannot import students into this offering.');
+  if(!cmCanOffering_(a,offering)||!emCanImport_(a,offering))throw apiError_('FORBIDDEN','You cannot import students into this offering.');
   return offering;
 }
 function emValidateRowsAgainstCurrent_(offeringId,rows,users,enrollments){
@@ -208,7 +206,7 @@ function handleEnrollmentManagementAction_(action,a,p,requestId){
       var off=cmGet_('CourseOfferings','OfferingID',job.OfferingID);
       // Import results contain StudentID and row-level validation details.
       // Only the same authorization that permits importing may read them.
-      if(!off||!emCanOffering_(a,off)||!emCanImport_(a,off))throw apiError_('FORBIDDEN','Cannot view this import job.');
+      if(!off||!cmCanOffering_(a,off)||!emCanImport_(a,off))throw apiError_('FORBIDDEN','Cannot view this import job.');
       return {job:{importJobId:job.ImportJobID,offeringId:job.OfferingID,fileName:job.FileName,status:job.Status,
         totalRows:Number(job.TotalRows)||0,successCount:Number(job.SuccessCount)||0,errorCount:Number(job.ErrorCount)||0,
         createdAt:job.CreatedAt,completedAt:job.CompletedAt},
@@ -222,7 +220,7 @@ function handleEnrollmentManagementAction_(action,a,p,requestId){
       if(offeringId){
         var off2=cmGet_('CourseOfferings','OfferingID',offeringId);
         if(!off2)throw apiError_('NOT_FOUND','Offering not found.');
-        if(!emCanOffering_(a,off2)&&!all.some(function(e){return String(e.OfferingID)===offeringId&&String(e.UserID)===a.userId;}))
+        if(!cmCanOffering_(a,off2)&&!all.some(function(e){return String(e.OfferingID)===offeringId&&String(e.UserID)===a.userId;}))
           throw apiError_('FORBIDDEN','Cannot view this offering roster.');
         return all.filter(function(e){return String(e.OfferingID)===offeringId&&String(e.Status).toUpperCase()==='ACTIVE';})
           .map(function(e){var u=cmGet_('Users','UserID',e.UserID);return {enrollment:e,student:u?{
@@ -235,7 +233,7 @@ function handleEnrollmentManagementAction_(action,a,p,requestId){
       var eid=cmText_(p.enrollmentId,100,'enrollmentId',true),en=cmGet_('Enrollments','EnrollmentID',eid);
       if(!en)throw apiError_('NOT_FOUND','Enrollment not found.');
       var off3=cmGet_('CourseOfferings','OfferingID',en.OfferingID);
-      if(!off3||!emCanOffering_(a,off3)||!emCanImport_(a,off3))throw apiError_('FORBIDDEN','Cannot update this enrollment.');
+      if(!off3||!cmCanOffering_(a,off3)||!emCanImport_(a,off3))throw apiError_('FORBIDDEN','Cannot update this enrollment.');
       var status=cmText_(p.status,20,'status',true).toUpperCase();
       if(['ACTIVE','INACTIVE'].indexOf(status)<0)throw apiError_('VALIDATION_ERROR','status must be ACTIVE or INACTIVE.');
       var sh=emSheet_('Enrollments'),heads=emHeaderMap_(sh,EM_SCHEMA_.Enrollments);
