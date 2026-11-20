@@ -86,7 +86,7 @@ function doPost(e) {
       return jsonResponse_(success_(requestId, handleCourseManagementAction_(action, managementIdentity, payload, requestId)));
     }
 
-    if (/^assignment\./.test(action)) {
+    if (/^(import|enrollment)\\./.test(action)) {\n      var enrollmentIdentity = verifyLiffIdentity_(payload.idToken);\n      var enrollmentActor = cmActor_(enrollmentIdentity);\n      return jsonResponse_(success_(requestId, handleEnrollmentManagementAction_(action, enrollmentActor, payload, requestId)));\n    }\n\n    if (/^assignment\./.test(action)) {
       var assignmentIdentity = verifyLiffIdentity_(payload.idToken);
       var assignmentActor = cmActor_(assignmentIdentity);
       return jsonResponse_(success_(requestId, handleAssignmentManagementAction_(action, assignmentActor, payload, requestId)));
