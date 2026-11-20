@@ -40,13 +40,15 @@ function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;',
 const THAI_MONTHS=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 function thaiParts(v){
  if(v===null||v===undefined||v==='')return null;
- // Date-only values are calendar dates, not UTC instants; preserve their day.
- const dateOnly=/^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(String(v).trim());
- if(dateOnly)return {year:dateOnly[1],month:dateOnly[2],day:dateOnly[3],hour:'00',minute:'00'};
+ const raw=String(v).trim();
+ // Values already carrying a Buddhist Era year must not receive another +543.
+ const iso=/^(\\d{4})-(\\d{2})-(\\d{2})(?:[T ](\\d{2}):(\\d{2})(?::\\d{2}(?:\\.\\d+)?)?(Z|[+-]\\d{2}:?\\d{2})?)?$/.exec(raw);
+ if(iso&&Number(iso[1])>=2400)return {year:iso[1],month:iso[2],day:iso[3],hour:iso[4]||'00',minute:iso[5]||'00'};
+ if(iso&&!iso[6])return {year:String(Number(iso[1])+543),month:iso[2],day:iso[3],hour:iso[4]||'00',minute:iso[5]||'00'};
  const d=v instanceof Date?new Date(v.getTime()):new Date(v);
  if(isNaN(d.getTime()))return null;
  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(d);
- const o={};parts.forEach(p=>o[p.type]=p.value);return o;
+ const o={};parts.forEach(p=>o[p.type]=p.value);o.year=String(Number(o.year)+543);return o;
 }
 function thaiDate(v){
  const p=thaiParts(v);if(!p)return '—';
@@ -70,7 +72,7 @@ function parseThaiDateTime(dateValue,timeValue,label){
 function dateTimeControl(prefix,label,enabled,values,required){
  const checked=required?'':(enabled?'checked':'');
  const disabled=required?'':'disabled';
- return '<div class="snc-field full"><label>'+label+(required?'':' <input type="checkbox" name="'+prefix+'Enabled" '+checked+' style="width:auto;margin-left:8px"> เปิดใช้งาน')+'</label><div class="snc-form-grid" style="grid-template-columns:minmax(0,1fr) 46px 150px"><input name="'+prefix+'Date" type="text" inputmode="numeric" placeholder="วว/ดด/ปปปป (พ.ศ.)" pattern="\\d{1,2}/\\d{1,2}/\\d{4}" value="'+esc(values.date)+'" '+disabled+(required?' required':'')+'><input name="'+prefix+'Picker" type="date" title="เลือกวันที่" value="'+esc(values.iso||'')+'" style="width:46px;padding:6px" '+disabled+'><input name="'+prefix+'Time" type="time" step="60" value="'+esc(values.time||'23:59')+'" '+disabled+(required?' required':'')+'></div></div>';
+ return '<div class="snc-field full"><label>'+label+(required?'':' <input type="checkbox" name="'+prefix+'Enabled" '+checked+' style="width:auto;margin-left:8px"> เปิดใช้งาน')+'</label><div class="snc-form-grid" style="grid-template-columns:minmax(0,1fr) minmax(110px,150px)"><input name="'+prefix+'Date" type="text" inputmode="numeric" autocomplete="off" placeholder="วว/ดด/ปปปป (พ.ศ.)" value="'+esc(values.date)+'" '+disabled+(required?' required':'')+'><input name="'+prefix+'Time" type="text" inputmode="numeric" autocomplete="off" placeholder="HH:mm" maxlength="5" value="'+esc(values.time||'23:59')+'" '+disabled+(required?' required':'')+'></div><small class="snc-muted">วันที่ พ.ศ. และเวลา 24 ชั่วโมง (HH:mm)</small></div>';
 }
 let currentOfferingId=null,currentOfferingLabel='',assignments=[],offeringCache=[];
 function render(items){
@@ -107,10 +109,10 @@ function assignmentForm(a){
  const form=$('assignment-form'),type=form.elements.submissionType,limit=$('group-limit-field');
  function toggleLimit(){limit.hidden=type.value!=='GROUP';}
  function bindSchedule(prefix){
-  const toggle=form.elements[prefix+'Enabled'],date=form.elements[prefix+'Date'],picker=form.elements[prefix+'Picker'],time=form.elements[prefix+'Time'];
-  const sync=()=>{const active=!toggle||toggle.checked;date.disabled=!active;picker.disabled=!active;time.disabled=!active;date.required=toggle?active:prefix==='due';time.required=toggle?active:prefix==='due';};
+  const toggle=form.elements[prefix+'Enabled'],date=form.elements[prefix+'Date'],time=form.elements[prefix+'Time'];
+  const sync=()=>{const active=!toggle||toggle.checked;date.disabled=!active;time.disabled=!active;date.required=toggle?active:prefix==='due';time.required=toggle?active:prefix==='due';};
   if(toggle)toggle.addEventListener('change',sync);sync();
-  picker.addEventListener('change',()=>{if(!picker.value)return;const parts=picker.value.split('-');date.value=parts[2]+'/'+parts[1]+'/'+(Number(parts[0])+543);});
+  time.addEventListener('input',()=>{time.value=time.value.replace(/[^0-9:]/g,'').slice(0,5);});
  }
  bindSchedule('open');bindSchedule('due');bindSchedule('close');toggleLimit();if(!edit)type.addEventListener('change',toggleLimit);
  $('cancel-assignment').onclick=()=>$('modal').hidden=true;
