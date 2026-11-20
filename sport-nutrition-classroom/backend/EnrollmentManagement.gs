@@ -147,3 +147,40 @@ function handleEnrollmentManagementAction_(action,a,p,requestId){
     throw apiError_('NOT_IMPLEMENTED','Enrollment action is not implemented.');
   }finally{lock.releaseLock();}
 }
+
+/** Pure validation tests; no Spreadsheet reads/writes. */
+function testEnrollmentImportLogicUnit(){
+  var cases=[
+    {name:'valid row',row:{studentId:'67000000001',firstName:'A',lastName:'B',email:'a@example.com'},pass:true},
+    {name:'missing StudentID',row:{studentId:'',firstName:'A',lastName:'B',email:'a@example.com'},pass:false,code:'INVALID_STUDENT_ID'},
+    {name:'missing first name',row:{studentId:'67000000001',firstName:'',lastName:'B',email:'a@example.com'},pass:false,code:'INVALID_FIRST_NAME'},
+    {name:'missing last name',row:{studentId:'67000000001',firstName:'A',lastName:'',email:'a@example.com'},pass:false,code:'INVALID_LAST_NAME'},
+    {name:'invalid email',row:{studentId:'67000000001',firstName:'A',lastName:'B',email:'bad'},pass:false,code:'INVALID_EMAIL'},
+    {name:'email normalized',row:{studentId:'67000000001',firstName:'A',lastName:'B',email:' A@EXAMPLE.COM '},pass:true,email:'a@example.com'}
+  ];
+  var results=cases.map(function(c,i){
+    var r=emNormalizeRow_(c.row,i),ok=c.pass?r.errors.length===0:(r.errors.indexOf(c.code)>=0);
+    if(c.email)ok=ok&&r.email===c.email;
+    return {name:c.name,pass:ok,errors:r.errors};
+  });
+  var passed=results.filter(function(x){return x.pass;}).length;
+  var out={success:passed===cases.length,mode:'PURE_UNIT_ENROLLMENT_IMPORT',passed:passed,failed:cases.length-passed,total:cases.length,writesExpected:0,results:results};
+  console.log(JSON.stringify(out));return out;
+}
+
+/** Read-only schema preflight for TEST/authorized environment. */
+function testEnrollmentSchemaPreflight(){
+  var expected={
+    Enrollments:['EnrollmentID','OfferingID','UserID','Status','EnrolledAt','CreatedAt','UpdatedAt'],
+    ImportJobs:['ImportJobID','OfferingID','FileName','Status','TotalRows','SuccessCount','ErrorCount','CreatedByUserID','CreatedAt','CompletedAt'],
+    ImportErrors:['ImportErrorID','ImportJobID','RowNumber','StudentID','ErrorCode','ErrorMessage','CreatedAt']
+  };
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),out={success:true,database:ss?ss.getName():null,checks:[]};
+  Object.keys(expected).forEach(function(name){
+    var sh=ss&&ss.getSheetByName(name),actual=sh?sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0]:[];
+    var pass=Boolean(sh)&&actual.length===expected[name].length&&expected[name].every(function(h,i){return actual[i]===h;});
+    out.checks.push({sheet:name,pass:pass,expectedColumns:expected[name].length,actualColumns:actual.length});
+    if(!pass)out.success=false;
+  });
+  console.log(JSON.stringify(out));return out;
+}
