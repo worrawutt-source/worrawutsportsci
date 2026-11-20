@@ -36,7 +36,8 @@
     @media(max-width:800px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:540px){.wrap{width:min(100% - 28px,1120px)}main{padding:38px 0 52px}.grid{grid-template-columns:1fr}.section-head{align-items:start;flex-direction:column}.nav{min-height:60px}}
   </style>
-  <link rel="stylesheet" href="assets/css/app.css">\n</head>
+  <link rel="stylesheet" href="assets/css/app.css">
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>\n</head>
 <body>
   <header class="topbar">
     <div class="wrap nav">
@@ -75,5 +76,19 @@
     </section>
     <footer class="footer"><span>SPORT NUTRITION CLASSROOM</span><span>Uttaradit Rajabhat University · 2026</span></footer>
   </main>
+  <script>
+    (function () {
+      "use strict";
+      const LIFF_ID = "2012654701-hrl5IzaQ";
+
+      // Initialize at the configured LIFF endpoint. The LIFF SDK restores
+      // the original path from liff.state after initialization; do not
+      // manually rewrite or remove LIFF query parameters before this finishes.
+      if (!window.liff) return;
+      window.liff.init({ liffId: LIFF_ID }).catch(function (error) {
+        console.error("SPORT NUTRITION CLASSROOM LIFF initialization failed:", error);
+      });
+    })();
+  </script>
   <script src="assets/js/app.js"></script>\n</body>
 </html>
