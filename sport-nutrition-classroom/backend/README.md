@@ -172,8 +172,9 @@ CR-001 supersedes the former manual-only BR-001 rule. Due Date remains separate 
 
 Implemented in `EnrollmentManagement.gs` with authenticated API actions:
 - `import.preview`: validates a batch without writing data.
-- `import.execute`: revalidates under ScriptLock, creates missing Users and Offering-scoped Enrollments, and records an ImportJob.
-- `import.result`: retrieves a job summary and row-level errors within the authorized offering scope.
+- `import.execute`: under one ScriptLock, runs Schema Preflight and re-reads current Users, StudentID, Email and Enrollments before the first data write. It then records an ImportJob and writes the new Users/Enrollments.
+- `import.result`: returns a minimized job summary and row-level errors only to System Admin or a Course Coordinator whose scope covers the Offering. Instructor access is denied even if the Instructor can view the roster.
+- Execute is **not an ACID transaction**. Google Sheets does not provide a transaction spanning Users, Enrollments, ImportJobs, ImportErrors and AuditLogs. The implementation uses a PROCESSING job marker and compensating rollback of rows created by that job. Recovery outcomes are `FAILED_RECOVERED` or `RECOVERY_REQUIRED`; the latter requires manual reconciliation before retrying.
 - `enrollment.list`: returns the authorized offering roster, or the current student's own active enrollments when no offeringId is supplied.
 - `enrollment.update`: activates/deactivates an enrollment for an authorized offering manager.
 
@@ -197,6 +198,9 @@ Rules:
 - System Admin and scoped Course Coordinator may import. Instructor import is denied by default because DOC-06 requires a separate grant and the current schema has no instructor import-grant field. Do not infer that assignment as instructor automatically grants import permission.
 - Enrollment status updates support ACTIVE/INACTIVE only. Withdrawal-specific policy remains unresolved in DOC-05 and is not implemented.
 - Import errors and job summaries are retained in ImportErrors/ImportJobs; successful changes are audited.
+- Schema Preflight validates exact headers for Users, Enrollments, ImportJobs, ImportErrors and AuditLogs before preview/execute/result/roster operations.
+- On an execution exception, the backend attempts to remove only the User/Enrollment IDs created by that job. It records `FAILED_RECOVERED` when compensation completes, or `RECOVERY_REQUIRED` when any part cannot be verified. Never blindly retry a job in `RECOVERY_REQUIRED`; reconcile its rows first.
+- `import.result` deliberately omits internal job fields such as CreatedByUserID and exposes row-level StudentID only to authorized import operators.
 
 ### Schema v1.5.0
 
@@ -214,3 +218,13 @@ Additive tables:
 5. Deploy a new TEST Web App version only after the schema preflight passes.
 6. Exercise preview, validation failure, duplicate identity, duplicate enrollment, execute, result retrieval, roster access and cross-offering authorization using synthetic TEST accounts/data.
 7. Do not use actual student accounts or import real rosters for test fixtures. Do not run setup or deploy against Production.
+
+
+### Import hardening — regression checks
+
+Pure tests available in Apps Script:
+- `testEnrollmentImportLogicUnit()`: 9 checks for row validation, identity conflicts, inactive Users and current active Enrollments.
+- `testEnrollmentAuthorizationPredicatesUnit()`: 6 checks for System Admin, scoped Course Coordinator, Instructor denial, out-of-scope Coordinator and Student denial.
+- `testEnrollmentSchemaPreflight()`: read-only exact-header validation for the five required tables.
+
+These are unit/static checks only. They do not replace deployed TEST API/LIFF tests of Preview, Execute, Result, Enrollment List, injected write failures, or real cross-Offering access. Run those against synthetic TEST accounts and a dedicated TEST Offering; never use the Production spreadsheet or real student roster.
