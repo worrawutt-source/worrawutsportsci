@@ -58,7 +58,7 @@ function thaiDateTime(v){
  const p=thaiParts(v);return p?thaiDate(v)+' เวลา '+p.hour+':'+p.minute+' น.':'—';
 }
 function dateTimeFields(v){
- const p=thaiParts(v);return p?{date:p.day+'/'+p.month+'/'+(Number(p.year)+543),time:p.hour+':'+p.minute,iso:p.year+'-'+p.month+'-'+p.day}:{date:'',time:'',iso:''};
+ const p=thaiParts(v);return p?{date:p.day+'/'+p.month+'/'+p.year,time:p.hour+':'+p.minute,iso:String(Number(p.year)-543)+'-'+p.month+'-'+p.day}:{date:'',time:'',iso:''};
 }
 function parseThaiDateTime(dateValue,timeValue,label){
  const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(dateValue||'').trim());
