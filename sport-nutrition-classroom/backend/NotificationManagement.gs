@@ -83,11 +83,19 @@ function runDeadlineReminderNotifications(){
       });
     }else{
       var groups=gmRows_('Groups').filter(function(g){return String(g.OfferingID)===String(a.OfferingID)&&String(g.Status).toUpperCase()==='ACTIVE';});
+      var groupedUsers={};
       groups.forEach(function(g){
         var exists=cmRows_('Submissions').some(function(s){return String(s.AssignmentID)===String(a.AssignmentID)&&String(s.GroupID)===String(g.GroupID)&&!s.PreviousSubmissionID;});
         var members=gmMembers_(g.GroupID);
+        members.forEach(function(m){groupedUsers[String(m.UserID)]=true;});
         var duplicate=cmRows_('NotificationLogs').some(function(n){return String(n.EventType)==='DEADLINE_24H'&&String(n.RelatedEntityID)===String(a.AssignmentID+'|'+g.GroupID)&&String(n.Status)==='SENT';});
         if(!exists&&!duplicate)members.forEach(function(m){var r=ntSend_(m.UserID,'เตือน: งานกลุ่ม '+a.Title+' ใกล้ครบกำหนดภายใน 24 ชั่วโมง','DEADLINE_24H','Assignment',a.AssignmentID+'|'+g.GroupID);if(r.sent)sent++;else skipped++;});
+      });
+      enrolled.forEach(function(e){
+        if(groupedUsers[String(e.UserID)])return;
+        var entityId=a.AssignmentID+'|'+String(e.UserID);
+        var duplicate=cmRows_('NotificationLogs').some(function(n){return String(n.EventType)==='DEADLINE_24H'&&String(n.RelatedEntityID)===entityId&&String(n.Status)==='SENT';});
+        if(!duplicate){var r=ntSend_(e.UserID,'เตือน: งานกลุ่ม '+a.Title+' ใกล้ครบกำหนดภายใน 24 ชั่วโมง กรุณาจัดกลุ่มก่อนส่งงาน','DEADLINE_24H','Assignment',entityId);if(r.sent)sent++;else skipped++;}
       });
     }
   });
