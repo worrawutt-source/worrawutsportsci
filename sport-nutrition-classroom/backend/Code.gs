@@ -98,19 +98,19 @@ function doPost(e) {
       return jsonResponse_(success_(requestId, handleStudentPortalAction_(action, studentActor, payload)));
     }
 
-    if (/^file\\./.test(action)) {
+    if (/^file\./.test(action)) {
       var fileIdentity = verifyLiffIdentity_(payload.idToken);
       var fileActor = cmActor_(fileIdentity);
       return jsonResponse_(success_(requestId, handleFileManagementAction_(action, fileActor, payload, requestId)));
     }
 
-    if (/^audit\\./.test(action)) {
+    if (/^audit\./.test(action)) {
       var auditIdentity = verifyLiffIdentity_(payload.idToken);
       var auditActor = cmActor_(auditIdentity);
       return jsonResponse_(success_(requestId, handleAuditAction_(action, auditActor, payload)));
     }
 
-    if (/^notification\\./.test(action)) {
+    if (/^notification\./.test(action)) {
       var notificationIdentity = verifyLiffIdentity_(payload.idToken);
       var notificationActor = cmActor_(notificationIdentity);
       return jsonResponse_(success_(requestId, handleNotificationAction_(action, notificationActor, payload, requestId)));
@@ -122,13 +122,13 @@ function doPost(e) {
       return jsonResponse_(success_(requestId, handleGradingAction_(action, gradingActor, payload, requestId)));
     }
 
-    if (/^submission\\./.test(action)) {
+    if (/^submission\./.test(action)) {
       var submissionIdentity = verifyLiffIdentity_(payload.idToken);
       var submissionActor = cmActor_(submissionIdentity);
       return jsonResponse_(success_(requestId, handleSubmissionManagementAction_(action, submissionActor, payload, requestId)));
     }
 
-    if (/^group\\./.test(action)) {
+    if (/^group\./.test(action)) {
       var groupIdentity = verifyLiffIdentity_(payload.idToken);
       var groupActor = cmActor_(groupIdentity);
       return jsonResponse_(success_(requestId, handleGroupManagementAction_(action, groupActor, payload, requestId)));
