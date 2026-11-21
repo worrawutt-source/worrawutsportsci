@@ -92,6 +92,12 @@ function doPost(e) {
       return jsonResponse_(success_(requestId, handleEnrollmentManagementAction_(action, enrollmentActor, payload, requestId)));
     }
 
+    if (/^submission\\./.test(action)) {
+      var submissionIdentity = verifyLiffIdentity_(payload.idToken);
+      var submissionActor = cmActor_(submissionIdentity);
+      return jsonResponse_(success_(requestId, handleSubmissionManagementAction_(action, submissionActor, payload, requestId)));
+    }
+
     if (/^group\\./.test(action)) {
       var groupIdentity = verifyLiffIdentity_(payload.idToken);
       var groupActor = cmActor_(groupIdentity);
