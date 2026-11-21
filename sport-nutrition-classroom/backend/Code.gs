@@ -92,6 +92,12 @@ function doPost(e) {
       return jsonResponse_(success_(requestId, handleEnrollmentManagementAction_(action, enrollmentActor, payload, requestId)));
     }
 
+    if (/^file\\./.test(action)) {
+      var fileIdentity = verifyLiffIdentity_(payload.idToken);
+      var fileActor = cmActor_(fileIdentity);
+      return jsonResponse_(success_(requestId, handleFileManagementAction_(action, fileActor, payload, requestId)));
+    }
+
     if (/^notification\\./.test(action)) {
       var notificationIdentity = verifyLiffIdentity_(payload.idToken);
       var notificationActor = cmActor_(notificationIdentity);
