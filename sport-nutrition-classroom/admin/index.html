@@ -114,7 +114,7 @@ function offeringForm(o={}){
 let userRows=[],roleRows=[];
 function isSystemAdmin(){return (account?.roles||[]).some(r=>r.role==='SYSTEM_ADMIN'&&(r.scopeType==='SYSTEM'||r.scopeType==='ALL'));}
 function renderUsers(rows){
- $('users-table').innerHTML=table(['รหัสนักศึกษา','ชื่อ-นามสกุล','อีเมล','สถานะ','สิทธิ์','จัดการ'],rows.map(u=>'<tr><td>'+escapeHtml(u.studentId)+'</td><td>'+escapeHtml(u.firstName+' '+u.lastName)+'</td><td>'+escapeHtml(u.email)+'</td><td>'+escapeHtml(u.status)+'</td><td>'+escapeHtml((u.roles||[]).map(r=>r.role+' ['+r.scopeType+']').join(', '))+'</td><td><button class="snc-button secondary" data-grant-role="'+escapeHtml(u.studentId)+'">กำหนด Coordinator</button></td></tr>'));
+ $('users-table').innerHTML=table(['รหัสนักศึกษา','ชื่อ-นามสกุล','อีเมล','สถานะ','สิทธิ์','จัดการ'],rows.map(u=>'<tr><td>'+escapeHtml(u.studentId)+'</td><td>'+escapeHtml(u.firstName+' '+u.lastName)+'</td><td>'+escapeHtml(u.email)+'</td><td>'+escapeHtml(u.status)+'</td><td>'+escapeHtml((u.roles||[]).map(r=>r.role+' ['+r.scopeType+']').join(', '))+'</td><td><button class="snc-button secondary" data-grant-role="'+escapeHtml(u.studentId)+'">กำหนด Coordinator</button> <button class="snc-button '+(u.status==='ACTIVE'?'danger':'secondary')+'" data-user-status="'+escapeHtml(u.userId)+'" data-next-status="'+(u.status==='ACTIVE'?'INACTIVE':'ACTIVE')+'">'+(u.status==='ACTIVE'?'ระงับบัญชี':'เปิดใช้งาน')+'</button></td></tr>'));
 }
 async function loadUsers(){
  if(!isSystemAdmin())throw new Error('เฉพาะ System Admin เท่านั้นที่จัดการผู้ใช้ได้');
@@ -159,6 +159,13 @@ $('load-notifications').onclick=()=>loadNotifications().catch(e=>note(e.message,
 document.addEventListener('click',async e=>{
  const b=e.target.closest('button');if(!b)return;
  if(b.dataset.grantRole)grantRoleForm(b.dataset.grantRole);
+ if(b.dataset.userStatus){
+  const next=b.dataset.nextStatus;
+  if(confirm(next==='INACTIVE'?'ยืนยันระงับบัญชีผู้ใช้นี้?':'ยืนยันเปิดใช้งานบัญชีผู้ใช้นี้?')){
+   try{await api('user.status',{userId:b.dataset.userStatus,status:next});await loadUsers();note(next==='ACTIVE'?'เปิดใช้งานบัญชีแล้ว':'ระงับบัญชีแล้ว','success');}
+   catch(err){note(err.message,'error');}
+  }
+ }
  if(b.dataset.revokeRole&&confirm('ยืนยันถอนสิทธิ์ Course Coordinator?')){try{await api('role.revoke',{userRoleId:b.dataset.revokeRole});await loadRoles();await loadUsers();note('ถอนสิทธิ์แล้ว','success');}catch(err){note(err.message,'error');}}
 });
 $('login-btn').onclick=()=>liff.login({redirectUri:location.href});
