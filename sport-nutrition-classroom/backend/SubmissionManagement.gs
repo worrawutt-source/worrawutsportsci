@@ -58,6 +58,12 @@ function smCreateRevision_(actor,a,target,p,previous,requestId){
     if(typeof url!=='string'||url.length>2048||!/^https:\/\/(drive|docs)\\.google\\.com\//i.test(url))
       throw apiError_('FILE_INVALID','Only Google Drive or Google Docs HTTPS URLs are accepted.');
   });
+  stagedFiles.forEach(function(staged){
+    if(staged.DriveFileID&&typeof fmShareWithSubmissionActors_==='function'){
+      try{fmShareWithSubmissionActors_(DriveApp.getFileById(String(staged.DriveFileID)),actor,a,target);}
+      catch(e){throw apiError_('FILE_PERMISSION_FAILED','Unable to grant submission file access to authorized participants.');}
+    }
+  });
   var now=new Date(),deadline=new Date(a.Deadline),status=now.getTime()>deadline.getTime()?'LATE':'SUBMITTED';
   var id=Utilities.getUuid(),rev=previous?Number(previous.RevisionNumber)+1:1;
   cmSheet_('Submissions').appendRow([
