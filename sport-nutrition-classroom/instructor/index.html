@@ -23,6 +23,7 @@
 <section id="assignment-panel" class="snc-panel" hidden>
 <div class="snc-toolbar"><div><h2 id="assignment-heading">Assignments</h2><p class="snc-muted">ผู้สอนกำหนดเวลาเปิด/ปิดอัตโนมัติได้ หรือควบคุมด้วยตนเอง โดย Deadline แยกจากวันปิดรับงาน</p></div><div class="snc-actions"><button id="new-assignment" class="snc-button">+ สร้าง Assignment</button><button id="close-assignment-panel" class="snc-button secondary">กลับ</button></div></div>
 <div id="assignment-table" class="snc-table-wrap"></div>
+<div id="submission-review-panel" class="snc-panel" hidden><h3>รายการส่งงาน</h3><div id="submission-review-list"></div></div>
 </section>
 </section>
 </main>
@@ -94,7 +95,7 @@ function render(items){
 function renderAssignments(){
  const rows=assignments.map(a=>{
   const schedules=(a.AutoOpenEnabled?'เปิดอัตโนมัติ '+thaiDateTime(a.ScheduledOpenAt):'เปิดด้วยตนเอง')+' · '+(a.AutoCloseEnabled?'ปิดอัตโนมัติ '+thaiDateTime(a.ScheduledCloseAt):'ปิดด้วยตนเอง');
-  return '<tr><td><strong>'+esc(a.Title)+'</strong><small>'+esc(a.SubmissionType)+' · คะแนนเต็ม '+esc(a.MaxScore)+'</small><small>'+esc(schedules)+'</small></td><td>'+esc(a.Status)+'</td><td>'+thaiDateTime(a.Deadline)+'</td><td><div class="snc-actions"><button class="snc-button small secondary" data-edit-assignment="'+esc(a.AssignmentID)+'">แก้ไข</button>'+(a.Status==='OPEN'?'<button class="snc-button small secondary" data-close-assignment="'+esc(a.AssignmentID)+'">ปิดรับงาน</button>':'<button class="snc-button small" data-open-assignment="'+esc(a.AssignmentID)+'">เปิดรับงาน</button>')+'</div></td></tr>';
+  return '<tr><td><strong>'+esc(a.Title)+'</strong><small>'+esc(a.SubmissionType)+' · คะแนนเต็ม '+esc(a.MaxScore)+'</small><small>'+esc(schedules)+'</small></td><td>'+esc(a.Status)+'</td><td>'+thaiDateTime(a.Deadline)+'</td><td><div class="snc-actions"><button class="snc-button small secondary" data-edit-assignment="'+esc(a.AssignmentID)+'">แก้ไข</button>'+(a.Status==='OPEN'?'<button class="snc-button small secondary" data-close-assignment="'+esc(a.AssignmentID)+'">ปิดรับงาน</button>':'<button class="snc-button small" data-open-assignment="'+esc(a.AssignmentID)+'">เปิดรับงาน</button>')+'<button class="snc-button small" data-view-submissions="'+esc(a.AssignmentID)+'">ดูงานที่ส่ง</button></div></td></tr>';
  }).join('');
  $('assignment-table').innerHTML=rows?'<table class="snc-table"><thead><tr><th>Assignment</th><th>สถานะ</th><th>กำหนดส่ง</th><th>จัดการ</th></tr></thead><tbody>'+rows+'</tbody></table>':'<p class="snc-muted">ยังไม่มี Assignment ในรายวิชานี้</p>';
 }
@@ -102,6 +103,25 @@ async function openAssignments(id){
  const item=offeringCache.find(x=>String(x.offering.OfferingID)===String(id));if(!item)return;
  currentOfferingId=id;currentOfferingLabel=(item.course.CourseCode||'')+' '+(item.course.CourseName||'')+' · '+(item.semester.AcademicYear||'')+'/'+(item.semester.Term||'')+' · Section '+(item.offering.Section||'—');
  $('assignment-heading').textContent='Assignments · '+currentOfferingLabel;$('assignment-panel').hidden=false;await loadAssignments();
+}
+async function loadSubmissionReviews(assignmentId){
+ $('submission-review-panel').hidden=false;$('submission-review-list').textContent='กำลังโหลดรายการส่งงาน…';
+ const rows=await api('submission.list',{assignmentId});
+ if(!rows.length){$('submission-review-list').innerHTML='<p class="snc-muted">ยังไม่มีการส่งงาน</p>';return;}
+ const cards=[];
+ for(const s of rows){
+  const detail=await api('submission.get',{submissionId:s.SubmissionID});
+  const grade=await api('grade.get',{submissionId:s.SubmissionID});
+  const files=[];
+  for(const f of (detail.files||[])){try{const access=await api('file.access',{fileId:f.SubmissionFileID});files.push('<a href="'+esc(access.driveUrl||f.DriveUrl)+'" target="_blank" rel="noopener">เปิดไฟล์: '+esc(f.FileName)+'</a>');}catch(e){files.push('<span>'+esc(f.FileName)+' (ไม่มีสิทธิ์เข้าถึง)</span>');}}
+  cards.push('<article class="snc-card"><h4>Submission · '+esc(s.SubmissionID)+'</h4><p>ประเภท '+esc(s.SubmissionType)+' · Revision '+esc(s.RevisionNumber)+' · '+esc(s.SubmissionStatus)+'</p><p>ผู้ส่ง '+esc(s.SubmittedByUserID)+' · '+esc(s.SubmittedAt)+'</p>'+files.join('<br>')+'<form class="grade-form" data-submission="'+esc(s.SubmissionID)+'" data-grade="'+esc(grade?grade.gradeId:'')+'"><label>คะแนน</label><input class="snc-input" name="score" type="number" min="0" max="'+esc(assignments.find(a=>a.AssignmentID===assignmentId).MaxScore)+'" step="0.01" required value="'+(grade?esc(grade.score):'')+'"><label>ข้อเสนอแนะ</label><textarea class="snc-input" name="feedback" rows="3">'+(grade?esc(grade.feedback):'')+'</textarea>'+(grade?'<label>เหตุผลการเปลี่ยนคะแนน (จำเป็น)</label><input class="snc-input" name="reason" maxlength="1000">':'')+'<button class="snc-button" type="submit">'+(grade?'บันทึกการแก้ไขคะแนน':'บันทึกคะแนน')+'</button></form></article>');
+ }
+ $('submission-review-list').innerHTML=cards.join('');
+ $('submission-review-list').querySelectorAll('.grade-form').forEach(form=>form.addEventListener('submit',async e=>{
+  e.preventDefault();const f=e.currentTarget,btn=f.querySelector('[type=submit]');btn.disabled=true;
+  try{const payload={submissionId:f.dataset.submission,score:Number(f.elements.score.value),feedback:f.elements.feedback.value};if(f.dataset.grade){payload.reason=f.elements.reason.value;await api('grade.update',payload);}else await api('grade.create',payload);note('บันทึกคะแนนสำเร็จ','success');await loadSubmissionReviews(assignmentId);}
+  catch(err){note(err.message+' ['+(err.code||'ERROR')+']','error');}finally{btn.disabled=false;}
+ }));
 }
 async function loadAssignments(){note('กำลังโหลด Assignment…');assignments=await api('assignment.list',{offeringId:currentOfferingId})||[];renderAssignments();note('โหลด Assignment สำเร็จ','success');}
 function assignmentForm(a){
@@ -160,6 +180,7 @@ document.addEventListener('click',async e=>{
  const b=e.target.closest('button');if(!b)return;
  try{
  if(b.dataset.manageOffering)await openAssignments(b.dataset.manageOffering);
+ if(b.dataset.viewSubmissions)await loadSubmissionReviews(b.dataset.viewSubmissions);
  if(b.dataset.editAssignment){const a=assignments.find(x=>x.AssignmentID===b.dataset.editAssignment);if(a)assignmentForm(a);}
  if(b.dataset.openAssignment){b.disabled=true;await api('assignment.open',{assignmentId:b.dataset.openAssignment});await loadAssignments();}
  if(b.dataset.closeAssignment){if(!confirm('ยืนยันปิดรับ Assignment นี้?'))return;b.disabled=true;await api('assignment.close',{assignmentId:b.dataset.closeAssignment});await loadAssignments();}
