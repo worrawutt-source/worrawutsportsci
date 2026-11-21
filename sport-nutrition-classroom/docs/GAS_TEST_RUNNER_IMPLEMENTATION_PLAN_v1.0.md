@@ -264,3 +264,51 @@ The following are implementation details to finalize during Phase 1, not policy 
 - Runner runtime tests: not executed; Runner has not been implemented.
 
 **Next approval required:** Project Owner approval of Phase 1 source/security review and the final implementation work package. No source-code implementation begins before that approval.
+
+
+---
+
+## Review Amendment v1.0.1 — 21 November 2026
+
+This amendment is normative and supersedes conflicting statements in the original plan. See `GAS_TEST_RUNNER_SOURCE_SECURITY_REVIEW_2026-11-21.md`. Documentation only; no source implementation or deployment is authorized by this amendment.
+
+### Phase 1 must produce these additional deliverables
+
+1. Exact Worker route/auth design proving Origin/CORS is not used as authentication.
+2. Server-side Test Client/MCP authentication approach; no shared secret in ChatGPT prompt or browser.
+3. Deterministic HMAC canonicalization contract and known-answer test vectors.
+4. Atomic replay/duplicate request strategy, execution lease and stale-lease recovery.
+5. Proof that Runner never holds Script Lock while invoking test functions.
+6. GAS-side byte-size and strict request schema validation.
+7. Exact result adapter for every initial Test Registry entry.
+8. Confirmed trust boundary for GAS Script Properties and project editor access.
+9. Verified Runner-only replay/audit storage choice; no assumed Cloudflare binding.
+10. Explicit plan for direct GAS Web App access and independent GAS signature verification.
+
+### Corrected test risk classification
+
+- L1 pure/in-memory candidates include Assignment submission/scheduler unit tests, Course authorization logic, synthetic identity/role fixtures (in-memory), Offering duplicate predicate, Enrollment import/authorization unit tests and local API missing-token guard.
+- L2 candidates include schema preflights and live read-only TEST data checks only after the Runner-level TEST guard is verified.
+- Negative tests that invoke create/update handlers are L3 approval-gated unless refactored to prove no mutation path is reachable.
+- Persistent fixture, trigger-management, setup/migration and student import functions are excluded from Runner v1.0.
+
+### Revised implementation dependencies
+
+- Worker route isolation must be based on exact pathname and must not broaden the existing Classroom action allowlist.
+- Client-to-Worker and Worker-to-GAS credentials must be separate.
+- GAS independently validates HMAC, timestamp, nonce, request ID, schema, byte size and TEST environment before dispatch.
+- Replay state claim must be atomic. Script Lock may protect short state changes only and must be released before test invocation.
+- Worker validates/sanitizes Runner response; no raw stack traces or personal data.
+- The current ChatGPT session has no verified generic authenticated HTTP action for this Worker. Phase 6 remains BLOCKED until a supported authenticated tool integration is proven; an approved server-side Test Client may be used for a controlled pilot.
+
+### Revised release gates
+
+1. Source and configuration review complete.
+2. Threat model and security tests approved.
+3. Worker route regression passes without changing existing Classroom behavior.
+4. GAS rejects unauthenticated, malformed, oversized, replayed and wrong-environment requests.
+5. Static Registry prevents arbitrary function invocation.
+6. L0/L1/L2 result adapters pass and no unexpected side effects occur.
+7. L3 approval workflow passes negative tests before any Write Test is enabled.
+8. ChatGPT tool connectivity is demonstrated, or release is explicitly limited to a separately authenticated operator client.
+
