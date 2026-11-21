@@ -185,60 +185,8 @@ function testAssignmentManagementSchemaPreflight(){
 function runAssignmentScheduler(){
   return {success:true,disabled:true,reason:'MANUAL_ASSIGNMENT_CONTROL_REQUIRED',writesExpected:0};
 }
-function amEnsureScheduleAudit_(ss,requestId,action,assignmentId,details){
-  // Time-driven triggers must use the spreadsheet explicitly opened by the scheduler.
-  // Do not rely on getActiveSpreadsheet() in a trigger execution context.
-  var auditSheet=ss&&ss.getSheetByName('AuditLogs');
-  if(!auditSheet)throw apiError_('DATABASE_NOT_READY','Required AuditLogs table is unavailable.');
-  var headers=auditSheet.getLastColumn()>0
-    ?auditSheet.getRange(1,1,1,auditSheet.getLastColumn()).getDisplayValues()[0]:[];
-  var required=['AuditID','ActorUserID','Action','EntityType','EntityID','DetailsJson','CreatedAt','RequestID'];
-  if(headers.length!==required.length||!required.every(function(h,i){return headers[i]===h;})){
-    throw apiError_('DATABASE_NOT_READY','AuditLogs schema does not match the expected scheduler audit schema.');
-  }
-  var exists=rowsAsObjects_(auditSheet).some(function(r){return String(r.RequestID)===String(requestId);});
-  if(!exists){
-    auditSheet.appendRow([
-      Utilities.getUuid(),'SYSTEM',action,'Assignment',assignmentId,
-      JSON.stringify(details||{}),new Date(),requestId||''
-    ]);
-  }
-}
 function amProcessDueSchedules_(now,ss){
   return {success:true,disabled:true,reason:'MANUAL_ASSIGNMENT_CONTROL_REQUIRED',processed:0,opened:0,closed:0,skipped:0,writesExpected:0};
-  var lock=LockService.getScriptLock();lock.waitLock(30000);
-  try{
-    var sh=ss.getSheetByName('Assignments');
-    if(!sh||sh.getLastRow()<2)return {success:true,processed:0,opened:0,closed:0,skipped:0};
-    var rows=rowsAsObjects_(sh),headers=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0],ix={};
-    headers.forEach(function(h,i){ix[h]=i+1;});
-    var out={success:true,processed:0,opened:0,closed:0,skipped:0};
-    rows.forEach(function(a){
-      var id=String(a.AssignmentID||''),status=String(a.Status||'').toUpperCase();if(!id)return;
-      var od=amEnabled_(a.AutoOpenEnabled)&&!a.AutoOpenProcessedAt&&a.ScheduledOpenAt&&new Date(a.ScheduledOpenAt)<=now;
-      var cd=amEnabled_(a.AutoCloseEnabled)&&!a.AutoCloseProcessedAt&&a.ScheduledCloseAt&&new Date(a.ScheduledCloseAt)<=now;
-      if(od){
-        var t=new Date(now);
-        if(status!=='OPEN'){
-          var openRequestId='SCHED-OPEN-'+id;
-          amEnsureScheduleAudit_(ss,openRequestId,'ASSIGNMENT_AUTO_OPENED',id,{status:'OPEN',scheduledAt:new Date(a.ScheduledOpenAt).toISOString()});
-          sh.getRange(a._row,ix.Status).setValue('OPEN');sh.getRange(a._row,ix.OpenedAt).setValue(t);
-          sh.getRange(a._row,ix.ClosedAt).setValue('');sh.getRange(a._row,ix.UpdatedAt).setValue(t);out.opened++;
-        }else out.skipped++;
-        sh.getRange(a._row,ix.AutoOpenProcessedAt).setValue(t);out.processed++;status='OPEN';
-      }
-      if(cd){
-        var tc=new Date(now);
-        if(status!=='CLOSED'){
-          var closeRequestId='SCHED-CLOSE-'+id;
-          amEnsureScheduleAudit_(ss,closeRequestId,'ASSIGNMENT_AUTO_CLOSED',id,{status:'CLOSED',scheduledAt:new Date(a.ScheduledCloseAt).toISOString()});
-          sh.getRange(a._row,ix.Status).setValue('CLOSED');sh.getRange(a._row,ix.ClosedAt).setValue(tc);sh.getRange(a._row,ix.UpdatedAt).setValue(tc);out.closed++;
-        }else out.skipped++;
-        sh.getRange(a._row,ix.AutoCloseProcessedAt).setValue(tc);out.processed++;
-      }
-    });
-    return out;
-  }finally{lock.releaseLock();}
 }
 function installAssignmentSchedulerTrigger(){
   var removed=0;
@@ -249,24 +197,15 @@ function installAssignmentSchedulerTrigger(){
 }
 
 function testAssignmentSchedulerLogicUnit(){
-  var cases=[],now=new Date('2026-11-20T00:00:00Z');
-  function check(n,fn,e){var a=fn();cases.push({test:n,result:a===e?'PASS':'FAIL',actual:a});}
-  function due(enabled,processed,at){return amEnabled_(enabled)&&!processed&&Boolean(at)&&new Date(at)<=now;}
-  check('Disabled schedule never runs',function(){return due(false,'','2026-11-19T00:00:00Z');},false);
-  check('Enabled past schedule runs',function(){return due(true,'','2026-11-19T00:00:00Z');},true);
-  check('Future schedule waits',function(){return due(true,'','2026-11-21T00:00:00Z');},false);
-  check('Processed schedule cannot run twice',function(){return due(true,'2026-11-19T01:00:00Z','2026-11-19T00:00:00Z');},false);
-  check('Boolean TRUE string supported',function(){return amEnabled_('TRUE');},true);
-  check('False remains disabled',function(){return amEnabled_(false);},false);
-  check('Missing enabled schedule rejected',function(){try{amScheduleConfig_({autoOpenEnabled:true,scheduledOpenAt:''},null);return false;}catch(e){return e.apiCode==='VALIDATION_ERROR';}},true);
-  check('Asia/Bangkok local date-time converts to the correct instant',function(){return amDate_('2026-02-21T02:03','test').toISOString();},'2026-02-20T19:03:00.000Z');
-  check('Invalid calendar date is rejected',function(){try{amDate_('2026-02-30T02:03','test');return false;}catch(e){return e.apiCode==='VALIDATION_ERROR';}},true);
-  check('Close not later than open rejected',function(){try{amScheduleConfig_({autoOpenEnabled:true,scheduledOpenAt:'2026-11-20T10:00',autoCloseEnabled:true,scheduledCloseAt:'2026-11-20T10:00'},null);return false;}catch(e){return e.apiCode==='VALIDATION_ERROR';}},true);
-  check('Disabled stale timestamp cleared',function(){return amScheduleConfig_({autoOpenEnabled:false,scheduledOpenAt:''},null).ScheduledOpenAt;},'');
-  check('Changing an already processed schedule rearms only that event',function(){var x=amScheduleConfig_({autoOpenEnabled:true,scheduledOpenAt:'2026-11-20T11:00'}, {AutoOpenEnabled:true,ScheduledOpenAt:new Date('2026-11-20T03:00:00Z'),AutoOpenProcessedAt:new Date('2026-11-20T03:01:00Z'),AutoCloseEnabled:false,ScheduledCloseAt:'',AutoCloseProcessedAt:''});return x.AutoOpenProcessedAt;},'');
-  check('Unchanged processed schedule remains processed',function(){var x=amScheduleConfig_({autoOpenEnabled:true,scheduledOpenAt:'2026-11-20T10:00'}, {AutoOpenEnabled:true,ScheduledOpenAt:new Date('2026-11-20T03:00:00Z'),AutoOpenProcessedAt:new Date('2026-11-20T03:01:00Z'),AutoCloseEnabled:false,ScheduledCloseAt:'',AutoCloseProcessedAt:''});return Boolean(x.AutoOpenProcessedAt);},true);
+  var cases=[];
+  function check(name,fn){var passed=false;try{passed=fn();}catch(e){}cases.push({test:name,result:passed?'PASS':'FAIL'});}
+  check('Automatic opening is rejected',function(){try{amScheduleConfig_({autoOpenEnabled:true,scheduledOpenAt:'2026-11-23T10:00'},null);return false;}catch(e){return e.apiCode==='VALIDATION_ERROR';}});
+  check('Automatic closing is rejected',function(){try{amScheduleConfig_({autoCloseEnabled:true,scheduledCloseAt:'2026-11-23T10:00'},null);return false;}catch(e){return e.apiCode==='VALIDATION_ERROR';}});
+  check('Manual assignment settings remain disabled',function(){var x=amScheduleConfig_({},null);return x.AutoOpenEnabled===false&&x.AutoCloseEnabled===false&&!x.ScheduledOpenAt&&!x.ScheduledCloseAt;});
+  check('Scheduler handler performs no transitions',function(){var x=runAssignmentScheduler();return x.disabled===true&&x.writesExpected===0;});
   var passed=cases.filter(function(x){return x.result==='PASS';}).length;
-  var out={success:passed===cases.length,mode:'PURE_UNIT_ASSIGNMENT_SCHEDULER',database:'NONE',passed:passed,failed:cases.length-passed,total:cases.length,writesExpected:0,cases:cases};console.log(JSON.stringify(out,null,2));return out;
+  var out={success:passed===cases.length,mode:'PURE_UNIT_MANUAL_ASSIGNMENT_CONTROL',database:'NONE',passed:passed,failed:cases.length-passed,total:cases.length,writesExpected:0,cases:cases};
+  console.log(JSON.stringify(out,null,2));return out;
 }
 
 /**
@@ -275,40 +214,16 @@ function testAssignmentSchedulerLogicUnit(){
  * No existing row is edited or deleted.
  */
 function testAssignmentSchedulerIntegration(){
-  var TEST_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk',ss=SpreadsheetApp.getActiveSpreadsheet();
-  if(!ss||ss.getId()!==TEST_ID)throw new Error('SAFETY_STOP: TEST spreadsheet only.');
-  var assignments=ss.getSheetByName('Assignments'),audit=ss.getSheetByName('AuditLogs');
-  if(!assignments||!audit)throw new Error('Required TEST sheets are missing.');
-  var instructor=cmRows_('CourseInstructors').filter(function(x){return String(x.Status).toUpperCase()==='ACTIVE';})[0];
-  if(!instructor)throw new Error('BLOCKED: No active TEST instructor assignment is available.');
-  var offering=cmGet_('CourseOfferings','OfferingID',instructor.OfferingID);
-  if(!offering||String(offering.Status).toUpperCase()!=='ACTIVE')throw new Error('BLOCKED: No active TEST offering is available.');
-  var actor={userId:String(instructor.InstructorUserID),roles:[{role:'INSTRUCTOR',scopeType:'OFFERING',scopeId:'*'}]};
-  var now=new Date(),past=new Date(now.getTime()-120000),tag='[SCHED-TEST] '+Utilities.getUuid();
-  function addFixture(title,status,autoOpen,openAt,autoClose,closeAt){
-    var id=Utilities.getUuid();
-    assignments.appendRow([id,offering.OfferingID,tag+' '+title,'TEST fixture','TEST only',100,new Date(now.getTime()+86400000),'INDIVIDUAL','','',status,status==='OPEN'?now:'',status==='CLOSED'?now:'',now,now,actor.userId,autoOpen,openAt||'', '',autoClose,closeAt||'', '']);
-    return id;
-  }
-  var openId=addFixture('AUTO-OPEN','DRAFT',true,past,false,'');
-  var closeId=addFixture('AUTO-CLOSE','OPEN',false,'',true,past);
-  var manualId=addFixture('MANUAL','DRAFT',false,'',false,'');
-  var first=amProcessDueSchedules_(now,ss);
-  var auditAfterFirst=cmRows_('AuditLogs').filter(function(x){return (String(x.EntityID)===openId&&x.Action==='ASSIGNMENT_AUTO_OPENED')||(String(x.EntityID)===closeId&&x.Action==='ASSIGNMENT_AUTO_CLOSED');}).length;
-  var second=amProcessDueSchedules_(new Date(now.getTime()+60000),ss);
-  var auditAfterSecond=cmRows_('AuditLogs').filter(function(x){return (String(x.EntityID)===openId&&x.Action==='ASSIGNMENT_AUTO_OPENED')||(String(x.EntityID)===closeId&&x.Action==='ASSIGNMENT_AUTO_CLOSED');}).length;
-  var manualOpen=handleAssignmentManagementAction_('assignment.open',actor,{assignmentId:manualId},'SCHED-MANUAL-OPEN-'+manualId);
-  var manualClose=handleAssignmentManagementAction_('assignment.close',actor,{assignmentId:manualId},'SCHED-MANUAL-CLOSE-'+manualId);
-  var finalOpen=cmGet_('Assignments','AssignmentID',openId),finalClose=cmGet_('Assignments','AssignmentID',closeId),finalManual=cmGet_('Assignments','AssignmentID',manualId);
-  var cases=[
-    {test:'Due scheduled opening changes DRAFT to OPEN',result:finalOpen.Status==='OPEN'&&Boolean(finalOpen.AutoOpenProcessedAt)?'PASS':'FAIL'},
-    {test:'Due scheduled closing changes OPEN to CLOSED',result:finalClose.Status==='CLOSED'&&Boolean(finalClose.AutoCloseProcessedAt)?'PASS':'FAIL'},
-    {test:'Second scheduler invocation does not add duplicate audit events',result:auditAfterFirst===2&&auditAfterSecond===2?'PASS':'FAIL',auditAfterFirst:auditAfterFirst,auditAfterSecond:auditAfterSecond},
-    {test:'Manual Open/Close works when both schedules are disabled',result:manualOpen.Status==='OPEN'&&manualClose.Status==='CLOSED'&&finalManual.Status==='CLOSED'?'PASS':'FAIL'}
-  ];
-  var passed=cases.filter(function(x){return x.result==='PASS';}).length;
-  var out={success:passed===cases.length,mode:'DEPLOYED_TEST_ASSIGNMENT_SCHEDULER_INTEGRATION',database:'TEST',passed:passed,failed:cases.length-passed,total:cases.length,firstRun:first,secondRun:second,fixturesCreated:3,fixturesPersistent:true,cleanupPerformed:false,cases:cases};
-  console.log(JSON.stringify(out,null,2));return out;
+  return {success:true,disabled:true,reason:'Automatic assignment scheduling is not part of the approved workflow.',writesExpected:0};
+}
+
+/** Automatic scheduling fixtures are intentionally disabled under BR-001. */
+function createAssignmentSchedulerTriggerFixtures(){
+  return {success:true,disabled:true,writesExpected:0};
+}
+/** Read-only compatibility stub; no time-driven transition verification is required. */
+function verifyAssignmentSchedulerTriggerFixtures(){
+  return {success:true,disabled:true,writesExpected:0};
 }
 
 /** Create two persistent TEST records for verification by the actual one-minute time trigger. */
