@@ -70,6 +70,10 @@ function smCreateRevision_(actor,a,target,p,previous,requestId){
     id,a.AssignmentID,target.type,target.studentUserId,target.groupId,actor.userId,now,status,rev,
     previous?previous.SubmissionID:'',now
   ]);
+  if(target.type==='GROUP'&&!target.group.MembershipLockedAt){
+    var gs=gmSheet_('Groups'),gh=gs.getRange(1,1,1,gs.getLastColumn()).getDisplayValues()[0];
+    gs.getRange(target.group._row,gh.indexOf('MembershipLockedAt')+1).setValue(now);
+  }
   var fileSheet=cmSheet_('SubmissionFiles'),fileHeaders=fileSheet.getRange(1,1,1,fileSheet.getLastColumn()).getDisplayValues()[0];
   stagedFiles.forEach(function(staged){
     fileSheet.getRange(staged._row,fileHeaders.indexOf('SubmissionID')+1).setValue(id);
@@ -87,10 +91,6 @@ function smCreateRevision_(actor,a,target,p,previous,requestId){
     row[fileHeaders.indexOf('CreatedAt')]=now;
     fileSheet.appendRow(row);
   });
-  if(target.type==='GROUP'&&!target.group.MembershipLockedAt){
-    var gs=gmSheet_('Groups'),gh=gs.getRange(1,1,1,gs.getLastColumn()).getDisplayValues()[0];
-    gs.getRange(target.group._row,gh.indexOf('MembershipLockedAt')+1).setValue(now);
-  }
   appendAudit_(actor.userId,previous?'SUBMISSION_REVISED':'SUBMISSION_CREATED','Submission',id,{
     assignmentId:a.AssignmentID,submissionType:target.type,revisionNumber:rev,status:status
   },requestId);
