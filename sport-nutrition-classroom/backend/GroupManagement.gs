@@ -1,7 +1,7 @@
 /**
  * SPORT NUTRITION CLASSROOM — Group Management
  * Implements CourseOffering-scoped student-managed groups.
- * Requires Groups and GroupMembers sheets created by setupSNCFullSchema().
+ * Requires Groups and GroupMembers sheets created by setupAccountLinkingSheets().
  */
 const GM_SCHEMA_ = Object.freeze({
   Groups: ['GroupID','OfferingID','GroupName','CreatedByUserID','MembershipLockedAt','Status','CreatedAt','UpdatedAt'],
