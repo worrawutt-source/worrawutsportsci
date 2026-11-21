@@ -40,14 +40,17 @@ function handleNotificationAction_(action,actor,p,requestId){
     return result;
   }
   if(action==='notification.log'){
-    var rows=cmRows_('NotificationLogs');
-    return rows.filter(function(n){
+    var limit=Number(p.limit||200);
+    if(!Number.isInteger(limit)||limit<1||limit>500)throw apiError_('VALIDATION_ERROR','limit must be 1 to 500.');
+    var rows=cmRows_('NotificationLogs').filter(function(n){
       if(cmSystem_(actor,'SYSTEM_ADMIN'))return true;
       if(String(n.UserID)===String(actor.userId))return true;
-      var offeringId=n.RelatedEntityType==='Assignment'?(cmGet_('Assignments','AssignmentID',n.RelatedEntityID)||{}).OfferingID:null;
+      var relatedId=String(n.RelatedEntityID||'').split('|')[0];
+      var offeringId=n.RelatedEntityType==='Assignment'?(cmGet_('Assignments','AssignmentID',relatedId)||{}).OfferingID:null;
       var off=offeringId&&cmGet_('CourseOfferings','OfferingID',offeringId);
       return Boolean(off&&cmCanOffering_(actor,off));
     });
+    return rows.sort(function(a,b){return new Date(b.CreatedAt)-new Date(a.CreatedAt);}).slice(0,limit);
   }
   if(action==='notification.retry'){
     var nid=cmText_(p.notificationId,100,'notificationId',true),n=cmGet_('NotificationLogs','NotificationID',nid);
