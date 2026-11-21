@@ -14,6 +14,20 @@ function smCanView_(actor,submission){
   if(String(submission.SubmissionType)==='INDIVIDUAL')return String(submission.StudentUserID)===String(actor.userId);
   return gmMembers_(submission.GroupID).some(function(m){return String(m.UserID)===String(actor.userId);});
 }
+function smCanSubmitGroup_(member,requireRepresentative){
+  return Boolean(member)&&(!requireRepresentative||String(member.MemberRole).toUpperCase()==='LEADER');
+}
+function testGroupSubmissionRepresentativeUnit(){
+  var cases=[
+    {test:'Designated leader may submit group work',result:smCanSubmitGroup_({MemberRole:'LEADER'},true)?'PASS':'FAIL'},
+    {test:'Ordinary member cannot submit group work',result:!smCanSubmitGroup_({MemberRole:'MEMBER'},true)?'PASS':'FAIL'},
+    {test:'Ordinary member may still upload staged file',result:smCanSubmitGroup_({MemberRole:'MEMBER'},false)?'PASS':'FAIL'},
+    {test:'Non-member cannot submit or upload',result:!smCanSubmitGroup_(null,false)?'PASS':'FAIL'}
+  ];
+  var passed=cases.filter(function(x){return x.result==='PASS';}).length;
+  var out={success:passed===cases.length,mode:'PURE_UNIT_GROUP_SUBMISSION_AUTHORIZATION',database:'NONE',passed:passed,failed:cases.length-passed,total:cases.length,writesExpected:0,cases:cases};
+  console.log(JSON.stringify(out,null,2));return out;
+}
 function smValidateTarget_(actor,a,p,requireRepresentative){
   if(String(a.Status).toUpperCase()!=='OPEN')throw apiError_('ASSIGNMENT_CLOSED','Assignment is not open.');
   var type=String(a.SubmissionType).toUpperCase();
@@ -27,7 +41,7 @@ function smValidateTarget_(actor,a,p,requireRepresentative){
     throw apiError_('NOT_FOUND','Active group in this offering not found.');
   var activeMembers=gmMembers_(groupId),actorMember=activeMembers.filter(function(m){return String(m.UserID)===String(actor.userId);})[0];
   if(!actorMember)throw apiError_('GROUP_MEMBERSHIP_REQUIRED','Submitter must be an active member of the group.');
-  if(requireRepresentative&&String(actorMember.MemberRole).toUpperCase()!=='LEADER')
+  if(!smCanSubmitGroup_(actorMember,Boolean(requireRepresentative)))
     throw apiError_('FORBIDDEN','Only the designated group representative may submit group work.');
   var count=activeMembers.length,min=Number(a.MinGroupMembers||2),max=String(a.MaxGroupMembers||'').trim()===''?null:Number(a.MaxGroupMembers);
   if(count<min)throw apiError_('GROUP_MIN_MEMBERS_NOT_MET','Group must contain at least two active members.');
