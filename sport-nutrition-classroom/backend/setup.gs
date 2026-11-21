@@ -67,7 +67,16 @@ const SNC_SETUP = Object.freeze({
     Assignments: ['AssignmentID','OfferingID','Title','Description','Instructions','MaxScore','Deadline','SubmissionType','MinGroupMembers','MaxGroupMembers','Status','OpenedAt','ClosedAt','CreatedAt','UpdatedAt','CreatedByUserID','AutoOpenEnabled','ScheduledOpenAt','AutoOpenProcessedAt','AutoCloseEnabled','ScheduledCloseAt','AutoCloseProcessedAt'],
     Enrollments: ['EnrollmentID','OfferingID','UserID','Status','EnrolledAt','CreatedAt','UpdatedAt'],
     ImportJobs: ['ImportJobID','OfferingID','FileName','Status','TotalRows','SuccessCount','ErrorCount','CreatedByUserID','CreatedAt','CompletedAt'],
-    ImportErrors: ['ImportErrorID','ImportJobID','RowNumber','StudentID','ErrorCode','ErrorMessage','CreatedAt']
+    ImportErrors: ['ImportErrorID','ImportJobID','RowNumber','StudentID','ErrorCode','ErrorMessage','CreatedAt'],
+    Groups: ['GroupID','OfferingID','GroupName','CreatedByUserID','MembershipLockedAt','Status','CreatedAt','UpdatedAt'],
+    GroupMembers: ['GroupMemberID','GroupID','UserID','MemberRole','JoinedAt','LeftAt','Status'],
+    Submissions: ['SubmissionID','AssignmentID','SubmissionType','StudentUserID','GroupID','SubmittedByUserID','SubmittedAt','SubmissionStatus','RevisionNumber','PreviousSubmissionID','CreatedAt'],
+    SubmissionFiles: ['SubmissionFileID','SubmissionID','FileName','MimeType','FileSize','DriveFileID','DriveUrl','UploadedByUserID','CreatedAt'],
+    Grades: ['GradeID','SubmissionID','Score','Feedback','GradedByUserID','GradedAt','UpdatedAt'],
+    GradeHistory: ['GradeHistoryID','GradeID','OldScore','NewScore','OldFeedback','NewFeedback','ChangedByUserID','ChangeReason','ChangedAt'],
+    GradeReviewRequests: ['ReviewRequestID','GradeID','StudentUserID','RequestText','Status','InstructorResponse','ReviewedByUserID','CreatedAt','UpdatedAt'],
+    NotificationLogs: ['NotificationID','UserID','EventType','RelatedEntityType','RelatedEntityID','Message','Status','SentAt','ErrorCode','CreatedAt'],
+    IdempotencyKeys: ['IdempotencyKey','UserID','Action','RequestHash','ResponseJson','CreatedAt','ExpiresAt']
   }
 });
 
