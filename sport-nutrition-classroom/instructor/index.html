@@ -23,7 +23,7 @@
 <section id="assignment-panel" class="snc-panel" hidden>
 <div class="snc-toolbar"><div><h2 id="assignment-heading">Assignments</h2><p class="snc-muted">ผู้สอนกำหนดเวลาเปิด/ปิดอัตโนมัติได้ หรือควบคุมด้วยตนเอง โดย Deadline แยกจากวันปิดรับงาน</p></div><div class="snc-actions"><button id="new-assignment" class="snc-button">+ สร้าง Assignment</button><button id="close-assignment-panel" class="snc-button secondary">กลับ</button></div></div>
 <div id="assignment-table" class="snc-table-wrap"></div>
-<div id="submission-review-panel" class="snc-panel" hidden><h3>รายการส่งงาน</h3><div id="submission-review-list"></div></div>
+<div id="submission-review-panel" class="snc-panel" hidden><h3>รายการส่งงาน</h3><div id="submission-review-list"></div><hr><h3>คำร้องทบทวนคะแนน</h3><button id="load-grade-reviews" class="snc-button secondary" type="button">โหลดคำร้อง</button><div id="grade-review-list"></div></div>
 </section>
 </section>
 </main>
@@ -104,6 +104,16 @@ async function openAssignments(id){
  currentOfferingId=id;currentOfferingLabel=(item.course.CourseCode||'')+' '+(item.course.CourseName||'')+' · '+(item.semester.AcademicYear||'')+'/'+(item.semester.Term||'')+' · Section '+(item.offering.Section||'—');
  $('assignment-heading').textContent='Assignments · '+currentOfferingLabel;$('assignment-panel').hidden=false;await loadAssignments();
 }
+async function loadGradeReviews(){
+ const rows=await api('gradeReview.list');const box=$('grade-review-list');
+ if(!rows.length){box.innerHTML='<p class="snc-muted">ไม่มีคำร้องทบทวนคะแนน</p>';return;}
+ box.innerHTML=rows.map(r=>'<article class="snc-card"><p><strong>คำร้อง '+esc(r.ReviewRequestID)+'</strong> · '+esc(r.Status)+'</p><p>'+esc(r.RequestText)+'</p><form class="grade-review-form" data-review="'+esc(r.ReviewRequestID)+'"><label>สถานะ</label><select class="snc-input" name="status"><option '+(r.Status==='IN_REVIEW'?'selected':'')+'>IN_REVIEW</option><option '+(r.Status==='RESOLVED'?'selected':'')+'>RESOLVED</option><option '+(r.Status==='REJECTED'?'selected':'')+'>REJECTED</option></select><label>คำชี้แจงจากผู้สอน</label><textarea class="snc-input" name="instructorResponse" rows="3">'+esc(r.InstructorResponse||'')+'</textarea><button class="snc-button" type="submit">บันทึกผลการพิจารณา</button></form></article>').join('');
+ box.querySelectorAll('.grade-review-form').forEach(form=>form.addEventListener('submit',async e=>{
+  e.preventDefault();const f=e.currentTarget,b=f.querySelector('[type=submit]');b.disabled=true;
+  try{await api('gradeReview.update',{reviewRequestId:f.dataset.review,status:f.elements.status.value,instructorResponse:f.elements.instructorResponse.value});note('บันทึกผลคำร้องแล้ว','success');await loadGradeReviews();}
+  catch(err){note(err.message+' ['+(err.code||'ERROR')+']','error');}finally{b.disabled=false;}
+ }));
+}
 async function loadSubmissionReviews(assignmentId){
  $('submission-review-panel').hidden=false;$('submission-review-list').textContent='กำลังโหลดรายการส่งงาน…';
  const rows=await api('submission.list',{assignmentId});
@@ -180,6 +190,7 @@ document.addEventListener('click',async e=>{
  const b=e.target.closest('button');if(!b)return;
  try{
  if(b.dataset.manageOffering)await openAssignments(b.dataset.manageOffering);
+ if(b.id==='load-grade-reviews')await loadGradeReviews();
  if(b.dataset.viewSubmissions)await loadSubmissionReviews(b.dataset.viewSubmissions);
  if(b.dataset.editAssignment){const a=assignments.find(x=>x.AssignmentID===b.dataset.editAssignment);if(a)assignmentForm(a);}
  if(b.dataset.openAssignment){b.disabled=true;await api('assignment.open',{assignmentId:b.dataset.openAssignment});await loadAssignments();}
