@@ -34,7 +34,7 @@ function handleNotificationAction_(action,actor,p,requestId){
   if(action==='notification.send'){
     var uid=cmText_(p.userId,100,'userId',true),message=cmText_(p.message,5000,'message',true);
     var entityType=cmText_(p.relatedEntityType||'Manual',50,'relatedEntityType',false),entityId=cmText_(p.relatedEntityId||requestId,100,'relatedEntityId',false);
-    var offeringId=cmText_(p.offeringId,100,'offeringId',true),off=gmOffering_(offeringId);ntCanManage_(actor,off);
+    var offeringId=cmText_(p.offeringId,100,'offeringId',true),off=gmOffering_(offeringId);ntCanManage_(actor,off);if(!gmEnrolled_(offeringId,uid))throw apiError_('FORBIDDEN','Recipient must be actively enrolled in this offering.');
     var result=ntSend_(uid,message,'MANUAL',entityType,entityId);
     appendAudit_(actor.userId,'NOTIFICATION_SENT','Notification',entityId,{recipientUserId:uid,sent:result.sent},requestId);
     return result;
