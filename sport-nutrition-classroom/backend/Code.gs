@@ -104,6 +104,12 @@ function doPost(e) {
       return jsonResponse_(success_(requestId, handleFileManagementAction_(action, fileActor, payload, requestId)));
     }
 
+    if (/^audit\\./.test(action)) {
+      var auditIdentity = verifyLiffIdentity_(payload.idToken);
+      var auditActor = cmActor_(auditIdentity);
+      return jsonResponse_(success_(requestId, handleAuditAction_(action, auditActor, payload)));
+    }
+
     if (/^notification\\./.test(action)) {
       var notificationIdentity = verifyLiffIdentity_(payload.idToken);
       var notificationActor = cmActor_(notificationIdentity);
