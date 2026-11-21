@@ -10,7 +10,9 @@ Cloudflare Worker provides a same-origin-policy-compatible CORS boundary between
 - Target: TEST only
 - Allowed browser origin: `https://worrawutt-source.github.io`
 - Upstream: the existing TEST GAS Web App URL
-- Frontend API URL migration: **pending Worker deployment URL**
+- Previously deployed TEST Worker URL: `https://snc-test-api-proxy.worrawutt.workers.dev/` (deployment reported 20 Nov 2026; version `eb60ed3b`).
+- Student, Instructor and Admin frontend source now point to this Worker URL.
+- **Important:** the Worker source has since been expanded in `development`; the deployed Worker has not been redeployed in this work session. New Group, Submission, File, Grading, Grade Review, Notification, Student Portal and Audit actions will remain unavailable until the updated Worker source is deployed.
 - Production: not configured and must not be changed
 
 ## Cloudflare setup
@@ -28,8 +30,8 @@ Cloudflare Worker provides a same-origin-policy-compatible CORS boundary between
 
 - Exact Origin allowlist; all other origins are rejected.
 - Only POST and CORS preflight OPTIONS are accepted.
-- Only the currently implemented SNC API action names are forwarded.
-- Request size is limited to 64 KiB.
+- Only action names explicitly listed in `ALLOWED_ACTION` are forwarded. The development source allowlist includes Authentication, Course/Enrollment/Import, Assignment, Group, Submission, File, Grading, Grade Review, Notification, Student Portal and restricted Audit read actions.
+- Current repository source request size limit: 6 MiB (supports up to 4 MiB file payloads encoded as Base64). The currently deployed Worker may still enforce the previous 64 KiB limit until redeployed.
 - No cookies or credentialed CORS.
 - No request body, LINE ID Token, OTP, or student data is logged or persisted.
 - Upstream is restricted to HTTPS Google Apps Script Web App URL shape.
@@ -64,12 +66,13 @@ Repeat OPTIONS with a different Origin. Expected: HTTP 403 and no `Access-Contro
 ### End-to-end TEST
 
 Only after the proxy smoke tests pass:
-1. Update TEST frontend API URL constants in student, instructor, and admin portals to the deployed Worker URL.
-2. Deploy GitHub Pages from `development` as currently configured.
-3. Test LINE LIFF authentication and `auth.me`, then `offering.list`.
-4. Test read-only import preview before any import execute.
-5. Do not use Production data or credentials.
+1. Deploy the updated `worker.js` to the existing TEST Worker and verify its deployed version.
+2. Confirm `GAS_API_URL` still points to the TEST GAS Web App only.
+3. Deploy the completed `development` frontend through the approved TEST hosting path.
+4. Test LINE LIFF authentication and all actions for Student, Instructor and Admin.
+5. Test read-only import preview before any import execute.
+6. Do not use Production data or credentials.
 
 ## Limitations
 
-The repository cannot deploy the Worker into a Cloudflare account. Cloudflare account access is not connected to the development tools. The Worker source is prepared in this repository; its actual deployment and assigned `workers.dev` URL must be obtained from Cloudflare Dashboard before frontend URLs can be safely changed.
+Cloudflare account deployment access is not connected to the development tools. The TEST Worker URL was previously supplied in the project conversation, but redeployment of the updated source must be performed in Cloudflare Dashboard by an authorized operator. Do not consider the new API allowlist or 6 MiB request limit active until the deployed version is verified.
