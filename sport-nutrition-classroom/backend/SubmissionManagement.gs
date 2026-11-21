@@ -88,6 +88,10 @@ function smCreateRevision_(actor,a,target,p,previous,requestId){
   appendAudit_(actor.userId,previous?'SUBMISSION_REVISED':'SUBMISSION_CREATED','Submission',id,{
     assignmentId:a.AssignmentID,submissionType:target.type,revisionNumber:rev,status:status
   },requestId);
+  if(typeof notifySubmissionReceived_==='function'){
+    try{notifySubmissionReceived_(a,cmGet_('Submissions','SubmissionID',id));}
+    catch(notificationError){console.error('SUBMISSION_NOTIFICATION_FAILED');}
+  }
   return cmGet_('Submissions','SubmissionID',id);
 }
 function handleSubmissionManagementAction_(action,actor,p,requestId){
