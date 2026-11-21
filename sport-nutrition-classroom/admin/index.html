@@ -39,7 +39,7 @@
 (function(){
 'use strict';
 const LIFF_ID='2012654701-hrl5IzaQ';
-const API_URL='https://script.google.com/macros/s/AKfycbwIvdYeUa4IqFZVKAuwfc4ANtGUrLRBilXv51t2YPuSAOj3tFKi9HCBtGhWuN7HwTT0/exec';
+const API_URL='https://snc-test-api-proxy.worrawutt.workers.dev/';
 const $=id=>document.getElementById(id);
 let account=null, courses=[], semesters=[], offerings=[];
 function note(message,kind){$('notice').textContent=message;$('notice').dataset.kind=kind||'';$('notice').hidden=false;}
