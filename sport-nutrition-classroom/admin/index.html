@@ -20,7 +20,7 @@
   <section id="auth-actions" class="snc-panel" hidden><h2>เข้าสู่ระบบผู้ดูแล</h2><p class="snc-muted">ใช้บัญชี LINE ที่เชื่อมกับบัญชีผู้ใช้และได้รับสิทธิ์ผู้ดูแลระบบ</p><button id="login-btn" class="snc-button">เข้าสู่ระบบด้วย LINE</button></section>
   <section id="workspace" class="snc-layout" hidden>
     <aside class="snc-side"><strong>เมนูจัดการ</strong><nav class="snc-nav" aria-label="เมนูผู้ดูแล">
-      <button data-view="overview" aria-current="true">ภาพรวม</button><button data-view="courses">รายวิชา</button><button data-view="semesters">ภาคการศึกษา</button><button data-view="offerings">Course Offering</button>
+      <button data-view="overview" aria-current="true">ภาพรวม</button><button data-view="courses">รายวิชา</button><button data-view="semesters">ภาคการศึกษา</button><button data-view="offerings">Course Offering</button><button data-view="users" data-admin-only hidden>ผู้ใช้และสิทธิ์</button><button data-view="audit" data-admin-only hidden>Audit Log</button><button data-view="notifications">Notification Log</button>
     </nav><p class="snc-help">สิทธิ์: <span id="role-label">—</span></p></aside>
     <div>
       <section id="view-overview" class="snc-view">
@@ -30,6 +30,17 @@
       </section>
       <section id="view-courses" class="snc-view" hidden><div class="snc-toolbar"><div><h2>จัดการรายวิชา</h2><p class="snc-muted">สร้างและปรับปรุงข้อมูลรายวิชา</p></div><button id="add-course" class="snc-button">+ เพิ่มรายวิชา</button></div><div id="courses-table" class="snc-table-wrap"></div></section>
       <section id="view-semesters" class="snc-view" hidden><div class="snc-toolbar"><div><h2>จัดการภาคการศึกษา</h2><p class="snc-muted">กำหนดปีการศึกษา ภาคเรียน และช่วงวันที่</p></div><button id="add-semester" class="snc-button">+ เพิ่มภาคการศึกษา</button></div><div id="semesters-table" class="snc-table-wrap"></div></section>
+      <section id="view-users" class="snc-view" hidden data-admin-only hidden>
+        <div class="snc-toolbar"><div><h2>จัดการผู้ใช้และสิทธิ์</h2><p class="snc-muted">ค้นหาบัญชีผู้ใช้และกำหนดสิทธิ์ Course Coordinator ตามขอบเขต</p></div><button id="load-users" class="snc-button secondary">โหลดผู้ใช้</button></div>
+        <div class="snc-actions"><input id="user-search" class="snc-input" placeholder="ค้นหารหัสนักศึกษา ชื่อ หรืออีเมล"><button id="search-users" class="snc-button">ค้นหา</button><button id="load-roles" class="snc-button secondary">โหลดสิทธิ์</button></div>
+        <div id="users-table" class="snc-table-wrap"></div><div class="snc-panel"><h3>รายการสิทธิ์ที่กำหนด</h3><div id="roles-table" class="snc-table-wrap"></div></div>
+      </section>
+      <section id="view-audit" class="snc-view" hidden data-admin-only hidden>
+        <div class="snc-toolbar"><div><h2>Audit Log</h2><p class="snc-muted">บันทึกการดำเนินการล่าสุด (อ่านอย่างเดียว)</p></div><button id="load-audit" class="snc-button secondary">โหลด Audit Log</button></div><div id="audit-table" class="snc-table-wrap"></div>
+      </section>
+      <section id="view-notifications" class="snc-view" hidden>
+        <div class="snc-toolbar"><div><h2>Notification Log</h2><p class="snc-muted">ประวัติการส่ง LINE Notification ที่บัญชีนี้มีสิทธิ์เข้าถึง</p></div><button id="load-notifications" class="snc-button secondary">โหลด Notification Log</button></div><div id="notifications-table" class="snc-table-wrap"></div>
+      </section>
       <section id="view-offerings" class="snc-view" hidden><div class="snc-toolbar"><div><h2>Course Offering</h2><p class="snc-muted">เปิดรายวิชาในภาคการศึกษาและกำหนดผู้สอน</p></div><button id="add-offering" class="snc-button">+ เพิ่ม Offering</button></div><div id="offerings-table" class="snc-table-wrap"></div>
 <section class="snc-card" style="margin-top:20px"><h3>นำเข้ารายชื่อนักศึกษา</h3><p class="snc-muted">รองรับ Excel (.xlsx) และ CSV โดยต้องมี Student ID, First Name, Last Name และ Email</p>
 <form id="student-import-form"><label>Course Offering</label><select id="import-offering" class="snc-input" required></select><label>ไฟล์รายชื่อนักศึกษา</label><input id="import-file" class="snc-input" type="file" accept=".csv,.xlsx" required><button class="snc-button" type="submit">ตรวจสอบข้อมูลก่อนนำเข้า</button></form>
@@ -99,12 +110,55 @@ function offeringForm(o={}){
  ${o.OfferingID?'<div class="snc-field"><label>สถานะ</label><select name="status"><option '+(o.Status==='ACTIVE'?'selected':'')+'>ACTIVE</option><option '+(o.Status==='INACTIVE'?'selected':'')+'>INACTIVE</option></select></div>':''}
  </div><button class="snc-button" type="submit">บันทึก</button></form>`,async f=>{if(o.OfferingID)await api('offering.update',{offeringId:o.OfferingID,section:f.get('section'),status:f.get('status')});else await api('offering.create',{courseId:f.get('courseId'),semesterId:f.get('semesterId'),section:f.get('section')});});
 }
+
+let userRows=[],roleRows=[];
+function isSystemAdmin(){return (account?.roles||[]).some(r=>r.role==='SYSTEM_ADMIN'&&(r.scopeType==='SYSTEM'||r.scopeType==='ALL'));}
+function renderUsers(rows){
+ $('users-table').innerHTML=table(['รหัสนักศึกษา','ชื่อ-นามสกุล','อีเมล','สถานะ','สิทธิ์','จัดการ'],rows.map(u=>'<tr><td>'+escapeHtml(u.studentId)+'</td><td>'+escapeHtml(u.firstName+' '+u.lastName)+'</td><td>'+escapeHtml(u.email)+'</td><td>'+escapeHtml(u.status)+'</td><td>'+escapeHtml((u.roles||[]).map(r=>r.role+' ['+r.scopeType+']').join(', '))+'</td><td><button class="snc-button secondary" data-grant-role="'+escapeHtml(u.studentId)+'">กำหนด Coordinator</button></td></tr>'));
+}
+async function loadUsers(){
+ if(!isSystemAdmin())throw new Error('เฉพาะ System Admin เท่านั้นที่จัดการผู้ใช้ได้');
+ userRows=await api('user.list',{query:$('user-search').value.trim(),limit:200});renderUsers(userRows);
+}
+async function loadRoles(){
+ if(!isSystemAdmin())throw new Error('เฉพาะ System Admin เท่านั้นที่ดูสิทธิ์ได้');
+ roleRows=await api('role.list');$('roles-table').innerHTML=table(['รหัสนักศึกษา','ชื่อ','Role','Scope','Scope ID','สถานะ','จัดการ'],roleRows.map(r=>'<tr><td>'+escapeHtml(r.studentId)+'</td><td>'+escapeHtml(r.displayName)+'</td><td>'+escapeHtml(r.role)+'</td><td>'+escapeHtml(r.scopeType)+'</td><td>'+escapeHtml(r.scopeId)+'</td><td>'+escapeHtml(r.status)+'</td><td>'+(r.role==='COURSE_COORDINATOR'&&r.status==='ACTIVE'?'<button class="snc-button danger" data-revoke-role="'+escapeHtml(r.userRoleId)+'">ถอนสิทธิ์</button>':'—')+'</td></tr>'));}
+function grantRoleForm(studentId){
+ const courseOpts=courses.map(x=>'<option value="'+escapeHtml(x.CourseID)+'">'+escapeHtml(x.CourseCode+' — '+x.CourseName)+'</option>').join('');
+ const semOpts=semesters.map(x=>'<option value="'+escapeHtml(x.SemesterID)+'">'+escapeHtml(x.AcademicYear+'/'+x.Term)+'</option>').join('');
+ openModal('กำหนดสิทธิ์ Course Coordinator',`<form><input type="hidden" name="studentId" value="${escapeHtml(studentId)}"><div class="snc-field"><label>ขอบเขตสิทธิ์</label><select name="scopeType" id="role-scope-type"><option value="COURSE">รายวิชา</option><option value="SEMESTER">ภาคการศึกษา</option><option value="SYSTEM">ทั้งระบบ</option></select></div><div class="snc-field" id="role-scope-box"><label>เลือกรายการ</label><select name="scopeId"><optgroup label="รายวิชา">${courseOpts}</optgroup><optgroup label="ภาคการศึกษา">${semOpts}</optgroup></select></div><p class="snc-help">ไม่อนุญาตให้กำหนด SYSTEM_ADMIN ผ่านหน้าจอนี้ การกำหนดผู้ดูแลระบบหลักใช้ขั้นตอน Bootstrap แยกต่างหาก</p><button class="snc-button" type="submit">บันทึกสิทธิ์</button></form>`,async form=>{
+  const scopeType=form.get('scopeType');await api('role.grant',{studentId:form.get('studentId'),role:'COURSE_COORDINATOR',scopeType,scopeId:scopeType==='SYSTEM'?'*':form.get('scopeId')});
+  await loadUsers();await loadRoles();
+ });
+ const scope=$('role-scope-type'),box=$('role-scope-box');scope.addEventListener('change',()=>{box.hidden=scope.value==='SYSTEM';});
+ box.hidden=false;
+}
+async function loadAudit(){
+ if(!isSystemAdmin())throw new Error('เฉพาะ System Admin เท่านั้นที่ดู Audit Log ได้');
+ const rows=await api('audit.list',{limit:200});
+ $('audit-table').innerHTML=table(['เวลา','ผู้ดำเนินการ','Action','Entity','Entity ID','รายละเอียด','Request ID'],rows.map(r=>'<tr><td>'+dateText(r.createdAt)+'</td><td>'+escapeHtml(r.actorUserId)+'</td><td>'+escapeHtml(r.action)+'</td><td>'+escapeHtml(r.entityType)+'</td><td>'+escapeHtml(r.entityId)+'</td><td><code>'+escapeHtml(r.detailsJson)+'</code></td><td>'+escapeHtml(r.requestId)+'</td></tr>'));
+}
+async function loadNotifications(){
+ const rows=await api('notification.log');
+ $('notifications-table').innerHTML=table(['เวลา','ผู้รับ','เหตุการณ์','รายการอ้างอิง','สถานะ','ข้อความ','ข้อผิดพลาด'],rows.slice(-200).reverse().map(r=>'<tr><td>'+dateText(r.CreatedAt)+'</td><td>'+escapeHtml(r.UserID)+'</td><td>'+escapeHtml(r.EventType)+'</td><td>'+escapeHtml(r.RelatedEntityType+' / '+r.RelatedEntityID)+'</td><td>'+escapeHtml(r.Status)+'</td><td>'+escapeHtml(r.Message)+'</td><td>'+escapeHtml(r.ErrorCode)+'</td></tr>'));
+}
 function assignForm(offeringId){openModal('กำหนดผู้สอน',`<form><div class="snc-field"><label>รหัสนักศึกษาของผู้สอน</label><input name="studentId" required maxlength="20" autocomplete="off"></div><p class="snc-help">ระบบจะตรวจสอบบัญชีผู้ใช้ที่มีสถานะ ACTIVE และบันทึกการมอบหมายใน CourseInstructors</p><button class="snc-button" type="submit">กำหนดผู้สอน</button></form>`,async f=>{await api('instructor.assign',{offeringId,studentId:f.get('studentId').trim()});});}
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
 $('add-course').onclick=()=>courseForm();$('add-semester').onclick=()=>semesterForm();$('add-offering').onclick=()=>{if(!courses.length||!semesters.length){note('ต้องมีรายวิชาและภาคการศึกษาก่อนจึงจะสร้าง Offering ได้','error');return;}offeringForm();};
 $('refresh-all').onclick=()=>refresh().catch(e=>note(e.message,'error'));
 $('modal-close').onclick=()=>$('modal').hidden=true;$('modal').addEventListener('click',e=>{if(e.target===$('modal'))$('modal').hidden=true;});
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.editCourse)courseForm(courses.find(x=>x.CourseID===b.dataset.editCourse));if(b.dataset.editSemester)semesterForm(semesters.find(x=>x.SemesterID===b.dataset.editSemester));if(b.dataset.editOffering){const x=offerings.find(x=>x.offering.OfferingID===b.dataset.editOffering);if(x)offeringForm(x.offering);}if(b.dataset.assign)assignForm(b.dataset.assign);});
+
+$('load-users').onclick=()=>loadUsers().catch(e=>note(e.message,'error'));
+$('search-users').onclick=()=>loadUsers().catch(e=>note(e.message,'error'));
+$('load-roles').onclick=()=>loadRoles().catch(e=>note(e.message,'error'));
+$('load-audit').onclick=()=>loadAudit().catch(e=>note(e.message,'error'));
+$('load-notifications').onclick=()=>loadNotifications().catch(e=>note(e.message,'error'));
+document.addEventListener('click',async e=>{
+ const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.grantRole)grantRoleForm(b.dataset.grantRole);
+ if(b.dataset.revokeRole&&confirm('ยืนยันถอนสิทธิ์ Course Coordinator?')){try{await api('role.revoke',{userRoleId:b.dataset.revokeRole});await loadRoles();await loadUsers();note('ถอนสิทธิ์แล้ว','success');}catch(err){note(err.message,'error');}}
+});
 $('login-btn').onclick=()=>liff.login({redirectUri:location.href});
 $('logout-btn').onclick=()=>{liff.logout();location.reload();};
 let preparedImport=null;
@@ -158,6 +212,7 @@ async function boot(){
  if(data.accountStatus!=='LINKED')throw new Error('บัญชี LINE ยังไม่ได้เชื่อมกับบัญชีผู้ใช้');
  if(!hasAdminRole(data))throw new Error('บัญชีนี้ไม่มีสิทธิ์ System Admin หรือ System Course Coordinator');
  $('role-label').textContent=(data.roles||[]).filter(r=>r.role==='SYSTEM_ADMIN'||r.role==='COURSE_COORDINATOR').map(r=>r.role).join(', ');
+ document.querySelectorAll('[data-admin-only]').forEach(el=>{el.hidden=!isSystemAdmin();});
  $('auth-actions').hidden=true;$('workspace').hidden=false;await refresh();
  }catch(e){note(e.message,'error');$('workspace').hidden=true;if(e.message.includes('ไม่มีสิทธิ์'))$('auth-actions').hidden=true;else $('auth-actions').hidden=false;}
 }
