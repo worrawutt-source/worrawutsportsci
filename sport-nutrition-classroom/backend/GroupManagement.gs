@@ -113,6 +113,35 @@ function handleGroupManagementAction_(action,actor,p,requestId){
       appendAudit_(actor.userId,'GROUP_REPRESENTATIVE_SELECTED','Group',gid4,{representativeUserId:rep},requestId);
       return gmPublicGroup_(gmGet_('Groups','GroupID',gid4),actor);
     }
+    if(action==='group.addMember'||action==='group.removeMember'){
+      var staffGroupId=cmText_(p.groupId,100,'groupId',true),staffGroup=gmGet_('Groups','GroupID',staffGroupId);
+      if(!staffGroup)throw apiError_('NOT_FOUND','Group not found.');
+      var staffOffering=gmOffering_(staffGroup.OfferingID);
+      if(!gmCanManage_(actor,staffOffering))throw apiError_('FORBIDDEN','Course staff permission is required.');
+      if(gmIsLocked_(staffGroup))throw apiError_('GROUP_MEMBERSHIP_LOCKED','Group membership is locked after its first submission.');
+      var targetUserId=cmText_(p.userId,100,'userId',true);
+      if(!cmRows_('Users').some(function(u){return String(u.UserID)===targetUserId&&String(u.Status).toUpperCase()==='ACTIVE';}))
+        throw apiError_('NOT_FOUND','Active user not found.');
+      if(action==='group.addMember'){
+        if(!gmEnrolled_(staffGroup.OfferingID,targetUserId))throw apiError_('ENROLLMENT_REQUIRED','Target user is not enrolled in this offering.');
+        if(gmRows_('GroupMembers').some(function(m){if(String(m.UserID)!==targetUserId||String(m.Status).toUpperCase()!=='ACTIVE')return false;var x=gmGet_('Groups','GroupID',m.GroupID);return x&&String(x.OfferingID)===String(staffGroup.OfferingID)&&String(x.Status).toUpperCase()==='ACTIVE';}))
+          throw apiError_('CONFLICT','Target user already belongs to a group in this offering.');
+        gmSheet_('GroupMembers').appendRow([Utilities.getUuid(),staffGroupId,targetUserId,'MEMBER',new Date(),'','ACTIVE']);
+        appendAudit_(actor.userId,'GROUP_MEMBER_ADDED_BY_STAFF','Group',staffGroupId,{targetUserId:targetUserId},requestId);
+      }else{
+        var targetMember=gmMembers_(staffGroupId).filter(function(m){return String(m.UserID)===targetUserId;})[0];
+        if(!targetMember)throw apiError_('NOT_FOUND','Active group member not found.');
+        var memberRows=gmMembers_(staffGroupId),memberSheet=gmSheet_('GroupMembers'),memberHeaders=memberSheet.getRange(1,1,1,memberSheet.getLastColumn()).getDisplayValues()[0];
+        memberSheet.getRange(targetMember._row,memberHeaders.indexOf('Status')+1).setValue('LEFT');
+        memberSheet.getRange(targetMember._row,memberHeaders.indexOf('LeftAt')+1).setValue(new Date());
+        if(String(targetMember.MemberRole)==='LEADER'&&memberRows.length>1){
+          var promoted=memberRows.filter(function(m){return String(m.UserID)!==targetUserId;})[0];
+          memberSheet.getRange(promoted._row,memberHeaders.indexOf('MemberRole')+1).setValue('LEADER');
+        }
+        appendAudit_(actor.userId,'GROUP_MEMBER_REMOVED_BY_STAFF','Group',staffGroupId,{targetUserId:targetUserId},requestId);
+      }
+      return gmPublicGroup_(gmGet_('Groups','GroupID',staffGroupId),actor);
+    }
     throw apiError_('NOT_IMPLEMENTED','Group management action is not implemented.');
   }finally{lock.releaseLock();}
 }
