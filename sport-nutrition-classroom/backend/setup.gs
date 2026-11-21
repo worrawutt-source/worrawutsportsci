@@ -84,6 +84,34 @@ const SNC_SETUP = Object.freeze({
  * Creates the minimum database tables for Student Account Linking.
  * Safe to run again: existing matching sheets are retained unchanged.
  */
+/**
+ * Validates existing sheets before setup performs its first write.
+ * Only documented additive legacy migrations are accepted.
+ */
+function validateSNCSchemaBeforeMigration_(ss){
+  var issues=[];
+  Object.keys(SNC_SETUP.TABLES).forEach(function(name){
+    var sheet=ss.getSheetByName(name);if(!sheet)return;
+    var expected=SNC_SETUP.TABLES[name],lastRow=sheet.getLastRow(),lastCol=sheet.getLastColumn();
+    if(lastRow===0&&lastCol===0)return;
+    var actual=lastCol?sheet.getRange(1,1,1,lastCol).getDisplayValues()[0].map(function(x){return String(x).trim();}):[];
+    if(!actual.length){issues.push(name+': missing header row');return;}
+    var legacy=false;
+    if(name==='EmailOTPChallenges'&&actual.length===12)legacy=expected.slice(0,12).every(function(h,i){return actual[i]===h;});
+    if(name==='Assignments'&&actual.length===16)legacy=expected.slice(0,16).every(function(h,i){return actual[i]===h;});
+    var exact=actual.length===expected.length&&expected.every(function(h,i){return actual[i]===h;});
+    if(!exact&&!legacy)issues.push(name+': HEADER_MISMATCH expected ['+expected.join('|')+'] found ['+actual.join('|')+']');
+  });
+  var imp=ss.getSheetByName(SNC_SETUP.IMPORT_SHEET);
+  if(imp&&imp.getLastRow()>0){
+    var h=imp.getRange(1,1,1,Math.max(1,imp.getLastColumn())).getDisplayValues()[0];
+    if(!SNC_SETUP.IMPORT_HEADERS.every(function(v,i){return String(h[i]||'').trim()===v;}))
+      issues.push(SNC_SETUP.IMPORT_SHEET+': HEADER_MISMATCH expected ['+SNC_SETUP.IMPORT_HEADERS.join('|')+'] found ['+h.join('|')+']');
+  }
+  if(issues.length)throw new Error('SCHEMA_PREFLIGHT_FAILED. No migration writes were made. '+issues.join(' || '));
+  return {success:true,mode:'PREFLIGHT',legacyAdditiveMigrations:['EmailOTPChallenges +3 columns','Assignments +6 columns']};
+}
+
 function setupAccountLinkingSheets() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) {
@@ -94,6 +122,7 @@ function setupAccountLinkingSheets() {
   lock.waitLock(30000);
 
   try {
+    validateSNCSchemaBeforeMigration_(ss);
     var report = [];
     var usersSheet = ss.getSheetByName('Users');
 
