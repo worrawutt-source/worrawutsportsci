@@ -6,7 +6,7 @@
  */
 const ALLOWED_ORIGIN = "https://worrawutt-source.github.io";
 const MAX_BODY_BYTES = 6 * 1024 * 1024;
-const ALLOWED_ACTION = /^(auth\.(verify|me|requestLinkOtp|linkStudent|requestEmailChange|confirmEmailChange)|course\.(list|create|update)|semester\.(list|create|update)|offering\.(list|create|update)|instructor\.(assign|unassign)|import\.(preview|execute|result)|enrollment\.(list|update)|assignment\.(list|get|create|update|open|close)|group\.(list|create|join|leave|members|selectRepresentative|addMember|removeMember)|submission\\.(create|list|get|revise)|grade\\.(create|update|get|history)|gradeReview\\.(create|list|update)|notification\\.(send|log|retry)|file\\.(upload|access))$/;
+const ALLOWED_ACTION = /^(auth\.(verify|me|requestLinkOtp|linkStudent|requestEmailChange|confirmEmailChange)|course\.(list|create|update)|semester\.(list|create|update)|offering\.(list|create|update)|instructor\.(assign|unassign)|import\.(preview|execute|result)|enrollment\.(list|update)|assignment\.(list|get|create|update|open|close)|group\.(list|create|join|leave|members|selectRepresentative|addMember|removeMember)|submission\\.(create|list|get|revise)|grade\\.(create|update|get|history)|gradeReview\\.(create|list|update)|notification\\.(send|log|retry)|file\\.(upload|access)|student\\.(offering\\.list|assignment\\.list|group\\.list))$/;
 
 function corsHeaders(origin) {
   const headers = new Headers({
