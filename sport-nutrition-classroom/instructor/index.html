@@ -21,7 +21,7 @@
 <div class="snc-grid" id="offering-cards"></div>
 <section class="snc-panel"><h3>รายละเอียดรายการสอน</h3><div id="offering-table" class="snc-table-wrap"></div></section>
 <section id="assignment-panel" class="snc-panel" hidden>
-<div class="snc-toolbar"><div><h2 id="assignment-heading">Assignments</h2><p class="snc-muted">ผู้สอนกำหนดเวลาเปิด/ปิดอัตโนมัติได้ หรือควบคุมด้วยตนเอง โดย Deadline แยกจากวันปิดรับงาน</p></div><div class="snc-actions"><button id="new-assignment" class="snc-button">+ สร้าง Assignment</button><button id="close-assignment-panel" class="snc-button secondary">กลับ</button></div></div>
+<div class="snc-toolbar"><div><h2 id="assignment-heading">Assignments</h2><p class="snc-muted">ผู้สอนเป็นผู้ควบคุมการเปิด/ปิดรับงานด้วยตนเอง ส่วน Deadline ใช้คำนวณสถานะตรงเวลา/ล่าช้าและการแจ้งเตือน</p></div><div class="snc-actions"><button id="new-assignment" class="snc-button">+ สร้าง Assignment</button><button id="close-assignment-panel" class="snc-button secondary">กลับ</button></div></div>
 <div id="assignment-table" class="snc-table-wrap"></div>
 <div style="margin-top:12px"><button id="load-groups" class="snc-button secondary" type="button">ดูรายชื่อกลุ่ม</button></div><div id="instructor-groups" class="snc-panel" hidden><h3>กลุ่มในรายวิชา</h3><div id="instructor-groups-list"></div></div>
 <div id="submission-review-panel" class="snc-panel" hidden><h3>รายการส่งงาน</h3><div id="submission-review-list"></div><hr><h3>คำร้องทบทวนคะแนน</h3><button id="load-grade-reviews" class="snc-button secondary" type="button">โหลดคำร้อง</button><div id="grade-review-list"></div></div>
@@ -95,7 +95,7 @@ function render(items){
 }
 function renderAssignments(){
  const rows=assignments.map(a=>{
-  const schedules=(a.AutoOpenEnabled?'เปิดอัตโนมัติ '+thaiDateTime(a.ScheduledOpenAt):'เปิดด้วยตนเอง')+' · '+(a.AutoCloseEnabled?'ปิดอัตโนมัติ '+thaiDateTime(a.ScheduledCloseAt):'ปิดด้วยตนเอง');
+  const schedules='เปิด/ปิดด้วยตนเองโดยผู้สอน';
   return '<tr><td><strong>'+esc(a.Title)+'</strong><small>'+esc(a.SubmissionType)+' · คะแนนเต็ม '+esc(a.MaxScore)+'</small><small>'+esc(schedules)+'</small></td><td>'+esc(a.Status)+'</td><td>'+thaiDateTime(a.Deadline)+'</td><td><div class="snc-actions"><button class="snc-button small secondary" data-edit-assignment="'+esc(a.AssignmentID)+'">แก้ไข</button>'+(a.Status==='OPEN'?'<button class="snc-button small secondary" data-close-assignment="'+esc(a.AssignmentID)+'">ปิดรับงาน</button>':'<button class="snc-button small" data-open-assignment="'+esc(a.AssignmentID)+'">เปิดรับงาน</button>')+'<button class="snc-button small" data-view-submissions="'+esc(a.AssignmentID)+'">ดูงานที่ส่ง</button></div></td></tr>';
  }).join('');
  $('assignment-table').innerHTML=rows?'<table class="snc-table"><thead><tr><th>Assignment</th><th>สถานะ</th><th>กำหนดส่ง</th><th>จัดการ</th></tr></thead><tbody>'+rows+'</tbody></table>':'<p class="snc-muted">ยังไม่มี Assignment ในรายวิชานี้</p>';
@@ -141,16 +141,14 @@ async function loadSubmissionReviews(assignmentId){
 }
 async function loadAssignments(){note('กำลังโหลด Assignment…');assignments=await api('assignment.list',{offeringId:currentOfferingId})||[];renderAssignments();note('โหลด Assignment สำเร็จ','success');}
 function assignmentForm(a){
- const edit=Boolean(a),due=dateTimeFields(a&&a.Deadline),open=dateTimeFields(a&&a.ScheduledOpenAt),close=dateTimeFields(a&&a.ScheduledCloseAt);
+ const edit=Boolean(a),due=dateTimeFields(a&&a.Deadline);
  $('modal-title').textContent=edit?'แก้ไข Assignment':'สร้าง Assignment';
  let html='<form id="assignment-form"><div class="snc-form-grid"><div class="snc-field full"><label>ชื่อ Assignment</label><input name="title" required maxlength="200" value="'+esc(a?a.Title:'')+'"></div>';
  html+='<div class="snc-field"><label>คะแนนเต็ม</label><input name="maxScore" type="number" min="0.01" step="0.01" required value="'+esc(a?a.MaxScore:100)+'"></div>';
  html+='<div class="snc-field"><label>ประเภทงาน</label><select name="submissionType" '+(edit?'disabled':'')+'><option value="INDIVIDUAL" '+(a&&a.SubmissionType==='INDIVIDUAL'?'selected':'')+'>Individual · งานเดี่ยว</option><option value="GROUP" '+(a&&a.SubmissionType==='GROUP'?'selected':'')+'>Group · งานกลุ่ม</option></select></div>';
  html+='<div class="snc-field" id="group-limit-field"><label>จำนวนสมาชิกสูงสุด (เว้นว่าง = ไม่จำกัด)</label><input name="maxGroupMembers" type="number" min="2" step="1" value="'+(a&&a.MaxGroupMembers!==''?esc(a.MaxGroupMembers):'')+'"></div>';
- html+=dateTimeControl('open','วันและเวลาเปิดรับงานอัตโนมัติ',Boolean(a&&a.AutoOpenEnabled),open,false);
  html+=dateTimeControl('due','วันครบกำหนดส่ง (Due Date)',true,due,true);
- html+=dateTimeControl('close','วันและเวลาปิดรับงานอัตโนมัติ',Boolean(a&&a.AutoCloseEnabled),close,false);
- html+='<div class="snc-field full"><label>รายละเอียด</label><textarea name="description" rows="2">'+esc(a?a.Description:'')+'</textarea></div><div class="snc-field full"><label>คำชี้แจง/วิธีส่งงาน</label><textarea name="instructions" rows="3">'+esc(a?a.Instructions:'')+'</textarea></div></div><p class="snc-muted">กำหนดวันเปิดและวันปิดแยกจาก Due Date ได้ หากไม่เปิดสวิตช์ ผู้สอนควบคุมด้วยตนเอง · วันที่ใช้ พ.ศ. และเวลา 24 ชั่วโมง</p><div class="snc-actions"><button class="snc-button" type="submit">บันทึก</button><button class="snc-button secondary" type="button" id="cancel-assignment">ยกเลิก</button></div></form>';
+ html+='<div class="snc-field full"><label>รายละเอียด</label><textarea name="description" rows="2">'+esc(a?a.Description:'')+'</textarea></div><div class="snc-field full"><label>คำชี้แจง/วิธีส่งงาน</label><textarea name="instructions" rows="3">'+esc(a?a.Instructions:'')+'</textarea></div></div><p class="snc-muted">ผู้สอนต้องกดเปิดรับงานและปิดรับงานด้วยตนเอง · Deadline ใช้คำนวณสถานะและแจ้งเตือน · วันที่ใช้ พ.ศ. และเวลา 24 ชั่วโมง</p><div class="snc-actions"><button class="snc-button" type="submit">บันทึก</button><button class="snc-button secondary" type="button" id="cancel-assignment">ยกเลิก</button></div></form>';
  $('modal-body').innerHTML=html;$('modal').hidden=false;
  const form=$('assignment-form'),type=form.elements.submissionType,limit=$('group-limit-field');
  function toggleLimit(){limit.hidden=type.value!=='GROUP';}
@@ -184,8 +182,7 @@ function assignmentForm(a){
  form.addEventListener('submit',async e=>{
   e.preventDefault();const btn=form.querySelector('[type=submit]');btn.disabled=true;
   try{
-   const p={title:form.elements.title.value.trim(),description:form.elements.description.value.trim(),instructions:form.elements.instructions.value.trim(),maxScore:Number(form.elements.maxScore.value),deadline:parseThaiDateTime(form.elements.dueDate.value,form.elements.dueTime.value,'Due Date'),autoOpenEnabled:form.elements.openEnabled.checked,scheduledOpenAt:form.elements.openEnabled.checked?parseThaiDateTime(form.elements.openDate.value,form.elements.openTime.value,'วันเปิดรับงาน'):'',autoCloseEnabled:form.elements.closeEnabled.checked,scheduledCloseAt:form.elements.closeEnabled.checked?parseThaiDateTime(form.elements.closeDate.value,form.elements.closeTime.value,'วันปิดรับงาน'):''};
-   if(p.autoOpenEnabled&&p.autoCloseEnabled&&p.scheduledCloseAt<=p.scheduledOpenAt)throw new Error('วันปิดรับงานต้องอยู่หลังวันเปิดรับงาน');
+   const p={title:form.elements.title.value.trim(),description:form.elements.description.value.trim(),instructions:form.elements.instructions.value.trim(),maxScore:Number(form.elements.maxScore.value),deadline:parseThaiDateTime(form.elements.dueDate.value,form.elements.dueTime.value,'Due Date')};
    if(edit){p.assignmentId=a.AssignmentID;if(a.SubmissionType==='GROUP')p.maxGroupMembers=form.elements.maxGroupMembers.value||null;await api('assignment.update',p);}
    else{p.offeringId=currentOfferingId;p.submissionType=type.value;p.maxGroupMembers=type.value==='GROUP'?(form.elements.maxGroupMembers.value||null):null;await api('assignment.create',p);}
    $('modal').hidden=true;await loadAssignments();
