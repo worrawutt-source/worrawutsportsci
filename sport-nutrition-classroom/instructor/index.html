@@ -23,6 +23,7 @@
 <section id="assignment-panel" class="snc-panel" hidden>
 <div class="snc-toolbar"><div><h2 id="assignment-heading">Assignments</h2><p class="snc-muted">ผู้สอนกำหนดเวลาเปิด/ปิดอัตโนมัติได้ หรือควบคุมด้วยตนเอง โดย Deadline แยกจากวันปิดรับงาน</p></div><div class="snc-actions"><button id="new-assignment" class="snc-button">+ สร้าง Assignment</button><button id="close-assignment-panel" class="snc-button secondary">กลับ</button></div></div>
 <div id="assignment-table" class="snc-table-wrap"></div>
+<div style="margin-top:12px"><button id="load-groups" class="snc-button secondary" type="button">ดูรายชื่อกลุ่ม</button></div><div id="instructor-groups" class="snc-panel" hidden><h3>กลุ่มในรายวิชา</h3><div id="instructor-groups-list"></div></div>
 <div id="submission-review-panel" class="snc-panel" hidden><h3>รายการส่งงาน</h3><div id="submission-review-list"></div><hr><h3>คำร้องทบทวนคะแนน</h3><button id="load-grade-reviews" class="snc-button secondary" type="button">โหลดคำร้อง</button><div id="grade-review-list"></div></div>
 </section>
 </section>
@@ -103,6 +104,11 @@ async function openAssignments(id){
  const item=offeringCache.find(x=>String(x.offering.OfferingID)===String(id));if(!item)return;
  currentOfferingId=id;currentOfferingLabel=(item.course.CourseCode||'')+' '+(item.course.CourseName||'')+' · '+(item.semester.AcademicYear||'')+'/'+(item.semester.Term||'')+' · Section '+(item.offering.Section||'—');
  $('assignment-heading').textContent='Assignments · '+currentOfferingLabel;$('assignment-panel').hidden=false;await loadAssignments();
+}
+async function loadInstructorGroups(){
+ const rows=await api('group.list',{offeringId:currentOfferingId});
+ $('instructor-groups').hidden=false;
+ $('instructor-groups-list').innerHTML=rows.length?rows.map(g=>'<article class="snc-card"><strong>'+esc(g.groupName)+'</strong><p>สมาชิก '+g.memberCount+' คน · '+(g.membershipLocked?'ล็อกสมาชิกแล้ว':'ยังแก้ไขได้')+'</p><ul>'+g.members.map(m=>'<li>'+esc(m.firstName+' '+m.lastName)+' · '+esc(m.memberRole)+' · '+esc(m.userId)+'</li>').join('')+'</ul></article>').join(''):'<p class="snc-muted">ยังไม่มีกลุ่มในรายวิชานี้</p>';
 }
 async function loadGradeReviews(){
  const rows=await api('gradeReview.list');const box=$('grade-review-list');
@@ -191,6 +197,7 @@ document.addEventListener('click',async e=>{
  try{
  if(b.dataset.manageOffering)await openAssignments(b.dataset.manageOffering);
  if(b.id==='load-grade-reviews')await loadGradeReviews();
+ if(b.id==='load-groups')await loadInstructorGroups();
  if(b.dataset.viewSubmissions)await loadSubmissionReviews(b.dataset.viewSubmissions);
  if(b.dataset.editAssignment){const a=assignments.find(x=>x.AssignmentID===b.dataset.editAssignment);if(a)assignmentForm(a);}
  if(b.dataset.openAssignment){b.disabled=true;await api('assignment.open',{assignmentId:b.dataset.openAssignment});await loadAssignments();}
