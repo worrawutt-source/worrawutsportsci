@@ -73,20 +73,34 @@
       <div id="auth-diagnostic" class="snc-diagnostic" hidden aria-live="polite"></div>
     </section>
 
-    <h2 style="margin:32px 0 16px">เมนูหลัก</h2>
-    <section class="snc-grid">
-      <article class="snc-card"><div class="snc-eyebrow">MODULE 01</div><h3>รายวิชาของฉัน</h3><p class="snc-muted">ดูรายวิชาที่ลงทะเบียนในภาคการศึกษาปัจจุบัน</p><p><span class="snc-status">รอพัฒนา</span></p></article>
-      <article class="snc-card"><div class="snc-eyebrow">MODULE 02</div><h3>งานที่ได้รับมอบหมาย</h3><p class="snc-muted">ดูงานเดี่ยวและงานกลุ่ม กำหนดส่ง และสถานะการเปิดรับ</p><p><span class="snc-status">รอพัฒนา</span></p></article>
-      <article class="snc-card"><div class="snc-eyebrow">MODULE 03</div><h3>ประวัติการส่ง</h3><p class="snc-muted">ติดตามสถานะและประวัติการส่งงาน/ฉบับแก้ไข</p><p><span class="snc-status">รอพัฒนา</span></p></article>
-      <article class="snc-card"><div class="snc-eyebrow">MODULE 04</div><h3>คะแนนและข้อเสนอแนะ</h3><p class="snc-muted">ดูผลประเมินและข้อเสนอแนะจากผู้สอน</p><p><span class="snc-status">รอพัฒนา</span></p></article>
-      <article class="snc-card"><div class="snc-eyebrow">MODULE 05</div><h3>ข้อมูลกลุ่ม</h3><p class="snc-muted">ดูสมาชิกกลุ่ม ผู้แทนส่งงาน และสถานะการล็อกสมาชิก</p><p><span class="snc-status">รอพัฒนา</span></p></article>
+    <section id="student-workspace" class="snc-auth-panel" hidden>
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+        <div><h2>พื้นที่การเรียนของฉัน</h2><p class="snc-muted">รายวิชา งานที่ได้รับมอบหมาย การจัดกลุ่ม และผลการประเมิน</p></div>
+        <button id="student-refresh" class="snc-button" type="button">รีเฟรชข้อมูล</button>
+      </div>
+      <div id="student-message" class="snc-result" aria-live="polite"></div>
+      <h3>รายวิชาที่ลงทะเบียน</h3><div id="student-offerings" class="snc-grid"></div>
+      <section id="student-course-view" hidden>
+        <h3 id="student-course-title">รายวิชา</h3>
+        <div class="snc-grid">
+          <article class="snc-card"><h3>กลุ่มของฉัน</h3><div id="student-groups"></div>
+            <form id="student-create-group"><label>ชื่อกลุ่ม</label><input class="snc-input" name="groupName" maxlength="100" required><button class="snc-button" type="submit">สร้างกลุ่ม</button></form>
+            <form id="student-join-group"><label>รหัสกลุ่ม</label><input class="snc-input" name="groupId" required><button class="snc-button" type="submit">เข้าร่วมกลุ่ม</button></form>
+          </article>
+          <article class="snc-card"><h3>งานที่ได้รับมอบหมาย</h3><div id="student-assignments"></div></article>
+        </div>
+      </section>
     </section>
+    <div id="student-modal" class="snc-modal" hidden><div class="snc-modal-card">
+      <div style="display:flex;justify-content:space-between;align-items:center"><h2 id="student-modal-title">ส่งงาน</h2><button id="student-modal-close" class="snc-button" type="button">ปิด</button></div>
+      <div id="student-modal-body"></div>
+    </div></div>
   </main>
   <script>
     (function () {
       "use strict";
       const LIFF_ID = "2012654701-hrl5IzaQ";
-      const API_URL = "https://script.google.com/macros/s/AKfycbwIvdYeUa4IqFZVKAuwfc4ANtGUrLRBilXv51t2YPuSAOj3tFKi9HCBtGhWuN7HwTT0/exec";
+      const API_URL = "https://snc-test-api-proxy.worrawutt.workers.dev/";
       const statusEl = document.getElementById("auth-status");
       const resultEl = document.getElementById("auth-result");
       const diagnosticEl = document.getElementById("auth-diagnostic");
@@ -231,6 +245,77 @@
         resultEl.textContent = message;
         resultEl.style.color = isError ? "#b42318" : "";
       }
+      
+      let selectedOfferingId = null;
+      let currentAssignments = [];
+      let currentGroups = [];
+      function escHtml(v){return String(v==null?'':v).replace(/[&<>"']/g,function(x){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x];});}
+      function studentNote(msg,error){const el=document.getElementById("student-message");el.textContent=msg||"";el.style.color=error?"#b42318":"";}
+      async function studentApi(action,payload){return callApi(action,payload||{});}
+      async function loadStudentDashboard(){
+        const box=document.getElementById("student-workspace");box.hidden=false;
+        document.getElementById("email-panel").hidden=false;
+        studentNote("กำลังโหลดรายวิชา…");
+        const offerings=await studentApi("student.offering.list");
+        document.getElementById("student-offerings").innerHTML=offerings.length?offerings.map(x=>{
+          const o=x.offering,c=x.course,s=x.semester;
+          return '<button type="button" class="snc-card" data-student-offering="'+escHtml(o.OfferingID)+'"><strong>'+escHtml(c.CourseCode)+' · '+escHtml(c.CourseName)+'</strong><p class="snc-muted">ภาคเรียน '+escHtml(s.AcademicYear)+'/'+escHtml(s.Term)+' · Section '+escHtml(o.Section||'-')+'</p></button>';
+        }).join(""):'<p class="snc-muted">ยังไม่มีรายวิชาที่ลงทะเบียน</p>';
+        studentNote("โหลดข้อมูลรายวิชาแล้ว");
+      }
+      async function openStudentOffering(id){
+        selectedOfferingId=id;
+        const item=await studentApi("student.offering.list");
+        const current=item.find(x=>String(x.offering.OfferingID)===String(id));
+        if(!current)throw new Error("ไม่พบรายวิชานี้ในรายการลงทะเบียน");
+        document.getElementById("student-course-title").textContent=current.course.CourseCode+" · "+current.course.CourseName;
+        document.getElementById("student-course-view").hidden=false;
+        const [groups,assignments]=await Promise.all([studentApi("student.group.list",{offeringId:id}),studentApi("student.assignment.list",{offeringId:id})]);
+        currentGroups=groups||[];currentAssignments=assignments||[];
+        document.getElementById("student-groups").innerHTML=currentGroups.length?currentGroups.map(g=>'<div class="snc-diagnostic"><strong>'+escHtml(g.groupName)+'</strong><p>สมาชิก '+g.memberCount+' คน · '+(g.membershipLocked?'ล็อกสมาชิกแล้ว':'ยังแก้ไขสมาชิกได้')+'</p><p>'+g.members.map(m=>escHtml(m.firstName+' '+m.lastName)+(m.memberRole==='LEADER'?' (หัวหน้ากลุ่ม)':'')).join(', ')+'</p>'+(g.isMember&&!g.membershipLocked?'<button type="button" class="snc-button" data-leave-group="'+escHtml(g.groupId)+'">ออกจากกลุ่ม</button>':'')+'</div>').join(""):'<p class="snc-muted">ยังไม่มีกลุ่มในรายวิชานี้</p>';
+        document.getElementById("student-assignments").innerHTML=currentAssignments.length?currentAssignments.map(x=>{
+          const a=x.assignment,s=x.submission,g=x.grade;
+          return '<div class="snc-diagnostic"><strong>'+escHtml(a.Title)+'</strong><p>'+escHtml(a.SubmissionType)+' · สถานะ '+escHtml(a.Status)+' · กำหนดส่ง '+escHtml(a.Deadline)+'</p><p>การส่งงาน: '+(s?escHtml(s.SubmissionStatus)+' · ฉบับที่ '+s.RevisionNumber:'ยังไม่มีการส่ง')+'</p>'+(g?'<p>คะแนน '+escHtml(g.score)+' / '+escHtml(a.MaxScore)+'<br>'+escHtml(g.feedback)+'</p><button class="snc-button secondary" data-review-grade="'+escHtml(g.gradeId)+'">ขอทบทวนคะแนน</button>':'')+(a.Status==='OPEN'?'<button class="snc-button" data-submit-assignment="'+escHtml(a.AssignmentID)+'" data-has-submission="'+(s?'1':'0')+'">'+(s?'ส่งฉบับแก้ไข':'ส่งงาน')+'</button>':'')+'</div>';
+        }).join(""):'<p class="snc-muted">ยังไม่มีงานที่ได้รับมอบหมาย</p>';
+      }
+      function openSubmissionForm(assignmentId,hasSubmission){
+        const a=currentAssignments.find(x=>String(x.assignment.AssignmentID)===String(assignmentId)).assignment;
+        const modal=document.getElementById("student-modal");
+        document.getElementById("student-modal-title").textContent=hasSubmission?"ส่งงานฉบับแก้ไข":"ส่งงาน";
+        document.getElementById("student-modal-body").innerHTML='<form id="student-submit-form"><p>'+escHtml(a.Title)+'</p>'+(a.SubmissionType==='GROUP'?'<label>เลือกกลุ่ม</label><select class="snc-input" name="groupId" required>'+currentGroups.filter(g=>g.isMember).map(g=>'<option value="'+escHtml(g.groupId)+'">'+escHtml(g.groupName)+'</option>').join("")+'</select>':'')+'<label>ไฟล์งาน (ไม่เกิน 4 MB ต่อไฟล์)</label><input class="snc-input" type="file" name="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png"><label>หรือ URL Google Drive</label><input class="snc-input" name="driveUrl" type="url" placeholder="https://drive.google.com/..."><button class="snc-button" type="submit">ยืนยันส่งงาน</button></form>';
+        modal.hidden=false;
+        document.getElementById("student-submit-form").addEventListener("submit",async e=>{
+          e.preventDefault();const form=e.currentTarget,btn=form.querySelector('[type=submit]');btn.disabled=true;
+          try{
+            const file=form.elements.file.files[0],fileIds=[];
+            if(file){
+              if(file.size>4*1024*1024)throw new Error("ไฟล์มีขนาดเกิน 4 MB");
+              const base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]);reader.onerror=reject;reader.readAsDataURL(file);});
+              const uploaded=await studentApi("file.upload",{assignmentId,groupId:form.elements.groupId?form.elements.groupId.value:undefined,fileName:file.name,mimeType:file.type||"application/octet-stream",base64});
+              fileIds.push(uploaded.fileId);
+            }
+            const driveUrl=form.elements.driveUrl.value.trim(),payload={assignmentId,fileIds,driveUrls:driveUrl?[driveUrl]:[]};
+            if(form.elements.groupId)payload.groupId=form.elements.groupId.value;
+            if(!fileIds.length&&!payload.driveUrls.length)throw new Error("กรุณาเลือกไฟล์หรือระบุ URL Google Drive");
+            await studentApi(hasSubmission?"submission.revise":"submission.create",payload);
+            modal.hidden=true;await openStudentOffering(selectedOfferingId);studentNote("ส่งงานเรียบร้อย");
+          }catch(err){studentNote(err.message,true);}finally{btn.disabled=false;}
+        });
+      }
+      document.getElementById("student-modal-close").addEventListener("click",()=>document.getElementById("student-modal").hidden=true);
+      document.getElementById("student-refresh").addEventListener("click",()=>loadStudentDashboard().catch(e=>studentNote(e.message,true)));
+      document.getElementById("student-create-group").addEventListener("submit",async e=>{e.preventDefault();try{await studentApi("group.create",{offeringId:selectedOfferingId,groupName:e.currentTarget.elements.groupName.value});e.currentTarget.reset();await openStudentOffering(selectedOfferingId);}catch(err){studentNote(err.message,true);}});
+      document.getElementById("student-join-group").addEventListener("submit",async e=>{e.preventDefault();try{await studentApi("group.join",{groupId:e.currentTarget.elements.groupId.value.trim()});e.currentTarget.reset();await openStudentOffering(selectedOfferingId);}catch(err){studentNote(err.message,true);}});
+      document.addEventListener("click",async e=>{
+        const b=e.target.closest("button");if(!b)return;
+        try{
+          if(b.dataset.studentOffering)await openStudentOffering(b.dataset.studentOffering);
+          if(b.dataset.leaveGroup){await studentApi("group.leave",{groupId:b.dataset.leaveGroup});await openStudentOffering(selectedOfferingId);}
+          if(b.dataset.submitAssignment)openSubmissionForm(b.dataset.submitAssignment,b.dataset.hasSubmission==="1");
+          if(b.dataset.reviewGrade){const requestText=window.prompt("โปรดระบุเหตุผลในการขอทบทวนคะแนน");if(requestText&&requestText.trim()){await studentApi("gradeReview.create",{gradeId:b.dataset.reviewGrade,requestText:requestText.trim()});studentNote("ส่งคำร้องทบทวนคะแนนแล้ว");}}
+        }catch(err){studentNote(err.message,true);}
+      });
+
       function renderAccountState(data) {
         const linked = data.accountStatus === "LINKED";
         document.getElementById("link-panel").hidden = linked;
@@ -238,6 +323,7 @@
         if (linked && data.user) {
           showMessage("เชื่อมบัญชีแล้ว: " + data.user.firstName + " " + data.user.lastName +
             " (รหัสนักศึกษา " + data.user.studentId + ") · " + data.user.email, false);
+          loadStudentDashboard().catch(function(e){studentNote(e.message,true);});
         } else {
           showMessage("ยืนยัน LINE สำเร็จ กรุณาเชื่อมบัญชีนักศึกษาด้วยรหัสนักศึกษาและอีเมลที่ลงทะเบียน", false);
         }
