@@ -45,20 +45,41 @@ function smLatest_(assignmentId,target){
   }).sort(function(a,b){return Number(b.RevisionNumber)-Number(a.RevisionNumber);})[0]||null;
 }
 function smCreateRevision_(actor,a,target,p,previous,requestId){
+  var fileIds=Array.isArray(p.fileIds)?p.fileIds:[];
+  var driveUrls=Array.isArray(p.driveUrls)?p.driveUrls:[];
+  if(fileIds.length+driveUrls.length>10)throw apiError_('VALIDATION_ERROR','A submission may reference at most ten files or URLs.');
+  var stagedFiles=fileIds.map(function(fileId){
+    var staged=cmGet_('SubmissionFiles','SubmissionFileID',fileId);
+    if(!staged||String(staged.SubmissionID)!=='STAGED:'+String(actor.userId))
+      throw apiError_('FILE_INVALID','Uploaded file is invalid or does not belong to this user.');
+    return staged;
+  });
+  driveUrls.forEach(function(url){
+    if(typeof url!=='string'||url.length>2048||!/^https:\/\/(drive|docs)\\.google\\.com\//i.test(url))
+      throw apiError_('FILE_INVALID','Only Google Drive or Google Docs HTTPS URLs are accepted.');
+  });
   var now=new Date(),deadline=new Date(a.Deadline),status=now.getTime()>deadline.getTime()?'LATE':'SUBMITTED';
   var id=Utilities.getUuid(),rev=previous?Number(previous.RevisionNumber)+1:1;
   cmSheet_('Submissions').appendRow([
     id,a.AssignmentID,target.type,target.studentUserId,target.groupId,actor.userId,now,status,rev,
     previous?previous.SubmissionID:'',now
   ]);
-  var fileIds=Array.isArray(p.fileIds)?p.fileIds:[];
-  if(fileIds.length>10)throw apiError_('VALIDATION_ERROR','A submission may reference at most ten uploaded files.');
-  fileIds.forEach(function(fileId){
-    var staged=cmGet_('SubmissionFiles','SubmissionFileID',fileId);
-    if(!staged||String(staged.SubmissionID)!=='STAGED:'+String(actor.userId))
-      throw apiError_('FILE_INVALID','Uploaded file is invalid or does not belong to this user.');
-    var sh=cmSheet_('SubmissionFiles'),h=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0];
-    sh.getRange(staged._row,h.indexOf('SubmissionID')+1).setValue(id);
+  var fileSheet=cmSheet_('SubmissionFiles'),fileHeaders=fileSheet.getRange(1,1,1,fileSheet.getLastColumn()).getDisplayValues()[0];
+  stagedFiles.forEach(function(staged){
+    fileSheet.getRange(staged._row,fileHeaders.indexOf('SubmissionID')+1).setValue(id);
+  });
+  driveUrls.forEach(function(url){
+    var row=new Array(fileHeaders.length);
+    row[fileHeaders.indexOf('SubmissionFileID')]=Utilities.getUuid();
+    row[fileHeaders.indexOf('SubmissionID')]=id;
+    row[fileHeaders.indexOf('FileName')]='Google Drive URL';
+    row[fileHeaders.indexOf('MimeType')]='text/uri-list';
+    row[fileHeaders.indexOf('FileSize')]=0;
+    row[fileHeaders.indexOf('DriveFileID')]='';
+    row[fileHeaders.indexOf('DriveUrl')]=url;
+    row[fileHeaders.indexOf('UploadedByUserID')]=actor.userId;
+    row[fileHeaders.indexOf('CreatedAt')]=now;
+    fileSheet.appendRow(row);
   });
   if(target.type==='GROUP'&&!target.group.MembershipLockedAt){
     var gs=gmSheet_('Groups'),gh=gs.getRange(1,1,1,gs.getLastColumn()).getDisplayValues()[0];
