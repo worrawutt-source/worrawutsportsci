@@ -148,6 +148,10 @@ function handleAssignmentManagementAction_(action,actor,p,requestId){
       sheet.getRange(target._row,head.indexOf(action==='assignment.open'?'OpenedAt':'ClosedAt')+1).setValue(now2);
       if(action==='assignment.open')sheet.getRange(target._row,head.indexOf('ClosedAt')+1).setValue('');
       appendAudit_(actor.userId,action==='assignment.open'?'ASSIGNMENT_OPENED':'ASSIGNMENT_CLOSED','Assignment',targetId,{status:next},requestId);
+      if(action==='assignment.open'&&typeof notifyAssignmentOpened_==='function'){
+        try{notifyAssignmentOpened_(cmGet_('Assignments','AssignmentID',targetId));}
+        catch(notificationError){console.error('ASSIGNMENT_OPEN_NOTIFICATION_FAILED');}
+      }
       return amPublic_(cmGet_('Assignments','AssignmentID',targetId));
     }
     throw apiError_('NOT_IMPLEMENTED','Assignment action is not implemented.');
