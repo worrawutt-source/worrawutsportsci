@@ -41,9 +41,20 @@ function handleUserRoleAction_(action,actor,p,requestId){
         }
       }
       var userSheet=cmSheet_('Users'),userHeaders=userSheet.getRange(1,1,1,userSheet.getLastColumn()).getDisplayValues()[0];
-      userSheet.getRange(target._row,userHeaders.indexOf('Status')+1).setValue(status);
-      userSheet.getRange(target._row,userHeaders.indexOf('UpdatedAt')+1).setValue(new Date());
-      appendAudit_(actor.userId,status==='ACTIVE'?'USER_ACTIVATED':'USER_DEACTIVATED','User',userId,{studentId:String(target.StudentID),status:status},requestId);
+      var statusCol=userHeaders.indexOf('Status')+1,updatedCol=userHeaders.indexOf('UpdatedAt')+1;
+      if(!statusCol||!updatedCol)throw apiError_('SCHEMA_MISMATCH','Users table is missing Status or UpdatedAt.');
+      var oldStatus=target.Status,oldUpdatedAt=target.UpdatedAt,changedAt=new Date();
+      try{
+        userSheet.getRange(target._row,statusCol).setValue(status);
+        userSheet.getRange(target._row,updatedCol).setValue(changedAt);
+        appendAudit_(actor.userId,status==='ACTIVE'?'USER_ACTIVATED':'USER_DEACTIVATED','User',userId,{studentId:String(target.StudentID),status:status},requestId);
+      }catch(writeError){
+        try{
+          userSheet.getRange(target._row,statusCol).setValue(oldStatus);
+          userSheet.getRange(target._row,updatedCol).setValue(oldUpdatedAt);
+        }catch(rollbackError){console.error('USER_STATUS_ROLLBACK_FAILED');}
+        throw apiError_('USER_STATUS_UPDATE_FAILED','Account status update failed; automatic rollback was attempted.');
+      }
       return urPublicUser_(cmGet_('Users','UserID',userId));
     }
     if(action==='role.list'){
