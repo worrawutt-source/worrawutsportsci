@@ -50,7 +50,7 @@ function smCreateRevision_(actor,a,target,p,previous,requestId){
   if(fileIds.length+driveUrls.length>10)throw apiError_('VALIDATION_ERROR','A submission may reference at most ten files or URLs.');
   var stagedFiles=fileIds.map(function(fileId){
     var staged=cmGet_('SubmissionFiles','SubmissionFileID',fileId);
-    if(!staged||String(staged.SubmissionID)!=='STAGED:'+String(actor.userId))
+    if(!staged||String(staged.SubmissionID)!=='STAGED:'+String(actor.userId)+':'+String(a.AssignmentID))
       throw apiError_('FILE_INVALID','Uploaded file is invalid or does not belong to this user.');
     return staged;
   });
