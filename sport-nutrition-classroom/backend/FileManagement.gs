@@ -34,7 +34,8 @@ function handleFileManagementAction_(action,actor,p,requestId){
     if(!folderId)throw apiError_('CONFIGURATION_ERROR','Submission folder is not configured.');
     var folder;try{folder=DriveApp.getFolderById(folderId);}catch(e){throw apiError_('CONFIGURATION_ERROR','Submission folder is unavailable.');}
     var blob=Utilities.newBlob(bytes,mime,name),file=folder.createFile(blob);
-    try{fmShareWithSubmissionActors_(file,actor,a,target);}catch(e){try{file.setTrashed(true);}catch(_){}throw apiError_('FILE_PERMISSION_FAILED','Unable to set file access permissions.');}
+    try{var owner=cmRows_('Users').filter(function(u){return String(u.UserID)===String(actor.userId);})[0];if(owner&&String(owner.Email||'').indexOf('@')>0)file.addViewer(String(owner.Email));}
+    catch(e){try{file.setTrashed(true);}catch(_){}throw apiError_('FILE_PERMISSION_FAILED','Unable to set uploader access permissions.');}
     var sh=cmSheet_('SubmissionFiles'),headers=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0],row=new Array(headers.length),fid=Utilities.getUuid(),now=new Date();
     row[headers.indexOf('SubmissionFileID')]=fid;row[headers.indexOf('SubmissionID')]='STAGED:'+actor.userId;
     row[headers.indexOf('FileName')]=name;row[headers.indexOf('MimeType')]=mime;row[headers.indexOf('FileSize')]=bytes.length;
