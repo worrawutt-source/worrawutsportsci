@@ -15,11 +15,23 @@ function fmShareWithSubmissionActors_(file,actor,a,target){
   var ids=[actor.userId];
   if(target.type==='GROUP')gmMembers_(target.groupId).forEach(function(m){ids.push(String(m.UserID));});
   ntStaffForOffering_(a.OfferingID).forEach(function(id){ids.push(String(id));});
-  var users=cmRows_('Users');
+  var users=cmRows_('Users'),emails=[];
   ids.filter(function(id,i,all){return all.indexOf(id)===i;}).forEach(function(id){
     var u=users.filter(function(x){return String(x.UserID)===id;})[0];
-    if(u&&String(u.Email||'').indexOf('@')>0){try{file.addViewer(String(u.Email));}catch(e){console.error('FILE_VIEWER_SHARE_FAILED');}}
+    if(!u||!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(u.Email||'')))
+      throw apiError_('FILE_PERMISSION_FAILED','An authorized participant has no valid account email.');
+    emails.push(String(u.Email).trim().toLowerCase());
   });
+  var existing=file.getViewers().map(function(v){return String(v.getEmail()).toLowerCase();});
+  var added=[];
+  try{
+    emails.filter(function(email,i,all){return all.indexOf(email)===i&&!existing.includes(email);}).forEach(function(email){
+      file.addViewer(email);added.push(email);
+    });
+  }catch(e){
+    added.forEach(function(email){try{file.removeViewer(email);}catch(_){}});
+    throw apiError_('FILE_PERMISSION_FAILED','Unable to grant file access to every authorized participant.');
+  }
 }
 function handleFileManagementAction_(action,actor,p,requestId){
   if(action==='file.upload'){
@@ -33,6 +45,7 @@ function handleFileManagementAction_(action,actor,p,requestId){
     var folderId=PropertiesService.getScriptProperties().getProperty('SNC_SUBMISSION_FOLDER_ID');
     if(!folderId)throw apiError_('CONFIGURATION_ERROR','Submission folder is not configured.');
     var folder;try{folder=DriveApp.getFolderById(folderId);}catch(e){throw apiError_('CONFIGURATION_ERROR','Submission folder is unavailable.');}
+    try{if(folder.getSharingAccess()!==DriveApp.Access.PRIVATE)throw new Error('FOLDER_NOT_PRIVATE');}catch(e){throw apiError_('CONFIGURATION_ERROR','Submission folder must be private; inherited folder sharing is not allowed.');}
     var blob=Utilities.newBlob(bytes,mime,name),file=folder.createFile(blob);
     try{var owner=cmRows_('Users').filter(function(u){return String(u.UserID)===String(actor.userId);})[0];if(owner&&String(owner.Email||'').indexOf('@')>0)file.addViewer(String(owner.Email));}
     catch(e){try{file.setTrashed(true);}catch(_){}throw apiError_('FILE_PERMISSION_FAILED','Unable to set uploader access permissions.');}
