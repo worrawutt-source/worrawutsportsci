@@ -24,6 +24,28 @@ function handleUserRoleAction_(action,actor,p,requestId){
         return Object.assign(urPublicUser_(u),{roles:roles});
       });
     }
+    if(action==='user.status'){
+      var userId=cmText_(p.userId,100,'userId',true),target=cmGet_('Users','UserID',userId);
+      if(!target)throw apiError_('NOT_FOUND','User not found.');
+      var status=cmText_(p.status,20,'status',true).toUpperCase();
+      if(['ACTIVE','INACTIVE'].indexOf(status)<0)throw apiError_('VALIDATION_ERROR','status must be ACTIVE or INACTIVE.');
+      if(status==='INACTIVE'&&String(actor.userId)===userId)throw apiError_('CONFLICT','You cannot deactivate your own account.');
+      if(status==='INACTIVE'){
+        var isSystemAdmin=cmRows_('UserRoles').some(function(r){return String(r.UserID)===userId&&String(r.Role)==='SYSTEM_ADMIN'&&String(r.ScopeType)==='SYSTEM'&&String(r.Status).toUpperCase()==='ACTIVE';});
+        if(isSystemAdmin){
+          var otherAdmins=cmRows_('UserRoles').filter(function(r){
+            if(String(r.Role)!=='SYSTEM_ADMIN'||String(r.ScopeType)!=='SYSTEM'||String(r.Status).toUpperCase()!=='ACTIVE'||String(r.UserID)===userId)return false;
+            var u=cmGet_('Users','UserID',r.UserID);return Boolean(u&&String(u.Status).toUpperCase()==='ACTIVE');
+          });
+          if(!otherAdmins.length)throw apiError_('CONFLICT','The last active System Admin cannot be deactivated.');
+        }
+      }
+      var userSheet=cmSheet_('Users'),userHeaders=userSheet.getRange(1,1,1,userSheet.getLastColumn()).getDisplayValues()[0];
+      userSheet.getRange(target._row,userHeaders.indexOf('Status')+1).setValue(status);
+      userSheet.getRange(target._row,userHeaders.indexOf('UpdatedAt')+1).setValue(new Date());
+      appendAudit_(actor.userId,status==='ACTIVE'?'USER_ACTIVATED':'USER_DEACTIVATED','User',userId,{studentId:String(target.StudentID),status:status},requestId);
+      return urPublicUser_(cmGet_('Users','UserID',userId));
+    }
     if(action==='role.list'){
       return cmRows_('UserRoles').map(function(r){
         var u=cmGet_('Users','UserID',r.UserID)||{};
