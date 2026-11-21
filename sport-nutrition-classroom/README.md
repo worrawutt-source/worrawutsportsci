@@ -73,6 +73,23 @@ sport-nutrition-classroom/
 6. Notification logs and audit views.
 7. Integration, security, accessibility, and regression tests.
 
-## Current status
+## Current development status (21 November 2026)
 
-The initial Classroom landing page and homepage Teaching links are present on the `development` branch. The module cards are navigation placeholders only; no backend workflow is represented as operational until its API is implemented and tested.
+The `development` branch now contains backend modules for:
+- Authentication and LINE account linking
+- Course, Semester, Course Offering and Instructor assignment
+- Student import and enrollment
+- Assignment lifecycle and scheduler
+- Group management scoped to CourseOffering
+- Individual and Group Submission, revisions and Drive URL attachment
+- Private Google Drive file upload/access
+- Grading, Grade History and Grade Review
+- LINE notification delivery, logs and 24-hour deadline reminder worker
+- Student Portal read models
+- Restricted System Admin audit log reads
+
+The Student Portal source now includes course selection, group creation/join/leave, assignment display, file/Drive URL submission, revision submission and grade review request controls. The Instructor Portal source now includes submission review, file links, grading and grade review handling. The Admin Portal source includes Excel/CSV import preview and execution controls. All three portal source files point to the TEST Cloudflare Worker URL.
+
+**These are source-level development changes, not a completed or deployed MVP.** The Worker source has been expanded but has not been redeployed in this work session; the deployed Worker may still have the older action allowlist and 64 KiB body limit. New database sheets are defined in `setup.gs` but no schema migration has been run. No new browser/LIFF E2E or live integration tests have been performed. Do not use the new modules with live student data until the backend GAS deployment, Worker deployment, database migration and internal verification are completed.
+
+The uploaded GAS files from 21 November have different Git blob hashes from the corresponding files currently in this repository. This establishes source divergence, but does not by itself identify semantic differences. Reconcile the uploaded GAS source and repository before any GAS deployment or manual replacement.
