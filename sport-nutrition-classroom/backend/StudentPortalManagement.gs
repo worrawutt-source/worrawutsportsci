@@ -31,7 +31,12 @@ function handleStudentPortalAction_(action,actor,p){
     var oid=cmText_(p.offeringId,100,'offeringId',true);
     if(!gmEnrolled_(oid,actor.userId))throw apiError_('ENROLLMENT_REQUIRED','Active enrollment is required.');
     return gmRows_('Groups').filter(function(g){return String(g.OfferingID)===oid&&String(g.Status).toUpperCase()==='ACTIVE';})
-      .map(function(g){return gmPublicGroup_(g,actor);});
+      .map(function(g){
+        var info=gmPublicGroup_(g,actor);
+        // Students may discover groups by name and member count, but may only see member identities in their own group.
+        if(!info.isMember)info.members=[];
+        return info;
+      });
   }
   throw apiError_('NOT_IMPLEMENTED','Student portal action is not implemented.');
 }
