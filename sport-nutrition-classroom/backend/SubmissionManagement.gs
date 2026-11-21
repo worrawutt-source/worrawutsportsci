@@ -55,7 +55,7 @@ function smCreateRevision_(actor,a,target,p,previous,requestId){
     return staged;
   });
   driveUrls.forEach(function(url){
-    if(typeof url!=='string'||url.length>2048||!/^https:\/\/(drive|docs)\.google\\.com\//i.test(url))
+    if(typeof url!=='string'||url.length>2048||!/^https:\/\/(drive|docs)\.google\.com\//i.test(url))
       throw apiError_('FILE_INVALID','Only Google Drive or Google Docs HTTPS URLs are accepted.');
   });
   stagedFiles.forEach(function(staged){
