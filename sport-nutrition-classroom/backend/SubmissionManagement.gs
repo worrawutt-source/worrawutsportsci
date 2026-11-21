@@ -100,16 +100,35 @@ function smCreateRevision_(actor,a,target,p,previous,requestId){
   }
   return cmGet_('Submissions','SubmissionID',id);
 }
+function smIdempotencyHash_(payload){
+  var bytes=Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,JSON.stringify(payload||{}),Utilities.Charset.UTF_8);
+  return bytes.map(function(b){return ('0'+((b+256)%256).toString(16)).slice(-2);}).join('');
+}
+function smFindIdempotency_(actor,action,requestId,payload){
+  var key=String(actor.userId)+':'+String(action)+':'+String(requestId);
+  var existing=cmRows_('IdempotencyKeys').filter(function(x){return String(x.IdempotencyKey)===key;})[0];
+  if(!existing)return null;
+  if(String(existing.RequestHash)!==smIdempotencyHash_(payload))throw apiError_('CONFLICT','Request ID was reused with a different payload.');
+  try{return JSON.parse(existing.ResponseJson);}catch(e){throw apiError_('CONFLICT','Previous request result is unavailable.');}
+}
+function smSaveIdempotency_(actor,action,requestId,payload,result){
+  var key=String(actor.userId)+':'+String(action)+':'+String(requestId),now=new Date();
+  cmSheet_('IdempotencyKeys').appendRow([key,actor.userId,action,smIdempotencyHash_(payload),JSON.stringify(result),now,new Date(now.getTime()+7*24*60*60*1000)]);
+}
 function handleSubmissionManagementAction_(action,actor,p,requestId){
   var lock=LockService.getScriptLock();lock.waitLock(30000);
   try{
     if(action==='submission.create'||action==='submission.revise'){
+      var previousResult=smFindIdempotency_(actor,action,requestId,p);
+      if(previousResult)return previousResult;
       var aid=cmText_(p.assignmentId,100,'assignmentId',true),a=smAssignment_(aid),target=smValidateTarget_(actor,a,p);
       var key=smTargetKey_(a,target),latest=smLatest_(aid,key);
       if(action==='submission.create'&&latest)throw apiError_('DUPLICATE','A submission already exists. Use submission.revise.');
       if(action==='submission.revise'&&!latest)throw apiError_('NOT_FOUND','There is no previous submission to revise.');
       var result=smCreateRevision_(actor,a,target,p,latest,requestId);
-      return {submission:result,revisionNumber:Number(result.RevisionNumber)};
+      var response={submission:result,revisionNumber:Number(result.RevisionNumber)};
+      smSaveIdempotency_(actor,action,requestId,p,response);
+      return response;
     }
     if(action==='submission.list'){
       var aid2=cmText_(p.assignmentId,100,'assignmentId',true),a2=smAssignment_(aid2),o2=cmGet_('CourseOfferings','OfferingID',a2.OfferingID);
