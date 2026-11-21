@@ -18,7 +18,7 @@ function fmShareWithSubmissionActors_(file,actor,a,target){
   var users=cmRows_('Users'),emails=[];
   ids.filter(function(id,i,all){return all.indexOf(id)===i;}).forEach(function(id){
     var u=users.filter(function(x){return String(x.UserID)===id;})[0];
-    if(!u||!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(u.Email||'')))
+    if(!u||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(u.Email||'')))
       throw apiError_('FILE_PERMISSION_FAILED','An authorized participant has no valid account email.');
     emails.push(String(u.Email).trim().toLowerCase());
   });
