@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 
 const root = process.cwd();
@@ -9,8 +10,10 @@ let checked = 0;
 
 function checkSource(label, source, isModule = false) {
   checked += 1;
-  const args = isModule ? ['--check', '--input-type=module'] : ['--check'];
-  const result = spawnSync(process.execPath, args, { input: source, encoding: 'utf8' });
+  const tempPath = path.join(os.tmpdir(), 'snc-static-' + process.pid + '-' + checked + (isModule ? '.mjs' : '.js'));
+  fs.writeFileSync(tempPath, source, 'utf8');
+  const result = spawnSync(process.execPath, ['--check', tempPath], { encoding: 'utf8' });
+  fs.unlinkSync(tempPath);
   if (result.status !== 0) failures.push({ file: label, error: (result.stderr || result.stdout || 'Syntax check failed').trim() });
 }
 function walk(dir) {
