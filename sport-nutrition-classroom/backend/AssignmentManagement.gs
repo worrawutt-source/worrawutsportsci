@@ -194,9 +194,24 @@ function runAssignmentScheduler(){
   if(configured!==TEST_ID)throw new Error('SAFETY_STOP: TEST scheduler has not been explicitly configured.');
   return amProcessDueSchedules_(new Date(),ss);
 }
-function amEnsureScheduleAudit_(requestId,action,assignmentId,details){
-  var exists=cmRows_('AuditLogs').some(function(r){return String(r.RequestID)===String(requestId);});
-  if(!exists)appendAudit_('SYSTEM',action,'Assignment',assignmentId,details,requestId);
+function amEnsureScheduleAudit_(ss,requestId,action,assignmentId,details){
+  // Time-driven triggers must use the spreadsheet explicitly opened by the scheduler.
+  // Do not rely on getActiveSpreadsheet() in a trigger execution context.
+  var auditSheet=ss&&ss.getSheetByName('AuditLogs');
+  if(!auditSheet)throw apiError_('DATABASE_NOT_READY','Required AuditLogs table is unavailable.');
+  var headers=auditSheet.getLastColumn()>0
+    ?auditSheet.getRange(1,1,1,auditSheet.getLastColumn()).getDisplayValues()[0]:[];
+  var required=['AuditID','ActorUserID','Action','EntityType','EntityID','DetailsJson','CreatedAt','RequestID'];
+  if(headers.length!==required.length||!required.every(function(h,i){return headers[i]===h;})){
+    throw apiError_('DATABASE_NOT_READY','AuditLogs schema does not match the expected scheduler audit schema.');
+  }
+  var exists=rowsAsObjects_(auditSheet).some(function(r){return String(r.RequestID)===String(requestId);});
+  if(!exists){
+    auditSheet.appendRow([
+      Utilities.getUuid(),'SYSTEM',action,'Assignment',assignmentId,
+      JSON.stringify(details||{}),new Date(),requestId||''
+    ]);
+  }
 }
 function amProcessDueSchedules_(now,ss){
   var lock=LockService.getScriptLock();lock.waitLock(30000);
@@ -214,7 +229,7 @@ function amProcessDueSchedules_(now,ss){
         var t=new Date(now);
         if(status!=='OPEN'){
           var openRequestId='SCHED-OPEN-'+id;
-          amEnsureScheduleAudit_(openRequestId,'ASSIGNMENT_AUTO_OPENED',id,{status:'OPEN',scheduledAt:new Date(a.ScheduledOpenAt).toISOString()});
+          amEnsureScheduleAudit_(ss,openRequestId,'ASSIGNMENT_AUTO_OPENED',id,{status:'OPEN',scheduledAt:new Date(a.ScheduledOpenAt).toISOString()});
           sh.getRange(a._row,ix.Status).setValue('OPEN');sh.getRange(a._row,ix.OpenedAt).setValue(t);
           sh.getRange(a._row,ix.ClosedAt).setValue('');sh.getRange(a._row,ix.UpdatedAt).setValue(t);out.opened++;
         }else out.skipped++;
@@ -224,7 +239,7 @@ function amProcessDueSchedules_(now,ss){
         var tc=new Date(now);
         if(status!=='CLOSED'){
           var closeRequestId='SCHED-CLOSE-'+id;
-          amEnsureScheduleAudit_(closeRequestId,'ASSIGNMENT_AUTO_CLOSED',id,{status:'CLOSED',scheduledAt:new Date(a.ScheduledCloseAt).toISOString()});
+          amEnsureScheduleAudit_(ss,closeRequestId,'ASSIGNMENT_AUTO_CLOSED',id,{status:'CLOSED',scheduledAt:new Date(a.ScheduledCloseAt).toISOString()});
           sh.getRange(a._row,ix.Status).setValue('CLOSED');sh.getRange(a._row,ix.ClosedAt).setValue(tc);sh.getRange(a._row,ix.UpdatedAt).setValue(tc);out.closed++;
         }else out.skipped++;
         sh.getRange(a._row,ix.AutoCloseProcessedAt).setValue(tc);out.processed++;
