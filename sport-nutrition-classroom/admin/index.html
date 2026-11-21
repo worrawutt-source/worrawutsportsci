@@ -117,7 +117,7 @@ function normalizeImportRows(matrix){
  if(!matrix.length)throw new Error('ไฟล์ไม่มีข้อมูล');
  const norm=x=>String(x||'').toLowerCase().replace(/[^a-z0-9]/g,'');
  const headers=matrix[0].map(norm),pick=names=>{const ix=headers.findIndex(h=>names.includes(h));if(ix<0)throw new Error('ไม่พบคอลัมน์ '+names[0]);return ix;};
- const ix={studentId:pick(['studentid','studentnumber','รหัสนักศึกษา']),firstName:pick(['firstname','ชื่อ']),lastName:pick(['lastname','surname','นามสกุล']),email:pick(['email','อีเมล'])};
+ const ix={studentId:pick(['studentid','studentnumber']),firstName:pick(['firstname']),lastName:pick(['lastname','surname']),email:pick(['email'])};
  return matrix.slice(1).filter(r=>r.some(v=>String(v||'').trim())).map(r=>({studentId:String(r[ix.studentId]||'').trim(),firstName:String(r[ix.firstName]||'').trim(),lastName:String(r[ix.lastName]||'').trim(),email:String(r[ix.email]||'').trim()}));
 }
 async function readImportFile(file){
