@@ -523,3 +523,78 @@ Current status:
 - Runtime tests through Runner: not available until implementation and authenticated tool integration are approved and completed.
 
 Implementation may begin only after Project Owner reviews and explicitly approves the implementation work package, including exact files, security controls, test plan and deployment gates.
+
+
+---
+
+## Review Amendment v1.0.1 — 21 November 2026
+
+This amendment is normative and supersedes conflicting statements in the original v1.0 text. It is based on `GAS_TEST_RUNNER_SOURCE_SECURITY_REVIEW_2026-11-21.md`. It changes design documentation only; it does not authorize implementation.
+
+### A. Authentication and route isolation
+
+1. Origin/CORS is not authentication. A non-browser HTTP client can set an Origin header; the Runner must never infer identity from Origin.
+2. The existing Worker Classroom proxy route and `ALLOWED_ACTION` regex must remain unchanged. Do not add `test.run` to the existing public Classroom action allowlist.
+3. Route Runner requests using an exact dedicated pathname (proposed `/runner/v1`) and authenticate before forwarding.
+4. Client-to-Worker authentication must be server-to-server through an approved Test Client/MCP integration. No client credential may be placed in GitHub Pages, browser JavaScript, prompt text or a user-visible response.
+5. Worker-to-GAS authentication uses a separate secret from Client-to-Worker authentication.
+6. GAS independently verifies the Worker signature before Test Registry lookup or execution. The current GAS `doPost(e)` has no Runner action or Runner authentication.
+7. GAS must independently enforce Runner request byte-size and strict schema limits; Worker-side limits alone can be bypassed by direct calls to the GAS Web App.
+8. Caller input must never select GAS URL, deployment, spreadsheet, environment or function name.
+
+### B. HMAC request contract
+
+Before implementation, finalize a deterministic canonical string with a fixed ordered field list. At minimum sign:
+- protocolVersion
+- action
+- requestId
+- timestamp
+- nonce
+- suiteId
+- suiteVersion
+- environment
+- approvalId
+- digest of the exact validated parameters
+
+The signature field itself is excluded from the signed content. Reject unknown fields and invalid types before signature verification. Specify UTF-8 encoding, digest encoding, keyId/key version, and constant-time comparison behavior. Add known-answer signature test vectors. Never sign arbitrary JSON serialization without a stable canonicalization contract.
+
+### C. Replay and execution lease
+
+1. Replay protection must use an atomic nonce/request claim and a defined retention policy.
+2. Duplicate request IDs must not start another execution; return the existing execution state/result or a deterministic duplicate response.
+3. Use Script Lock only for short atomic state transitions. Release it before invoking a Test Function.
+4. Do not hold Script Lock across test execution: existing Assignment/Course/Enrollment handlers may acquire the same Script Lock and otherwise time out.
+5. Use an execution lease with expiry and stale-lease recovery. Define state transitions and cleanup after exceptions/timeouts.
+6. Select a replay/audit store only after verifying availability and consistency guarantees. Eventual-consistency storage alone is not sufficient for replay defense. No Cloudflare Durable Object/D1/KV binding is assumed to exist.
+
+### D. Test Registry and risk reclassification
+
+Test Registry entries must map Test IDs to static function references. No eval, dynamic function-name invocation or caller-provided code is permitted. Each entry must record reviewed source commit, risk, side effects, preconditions, result adapter and enabled status.
+
+The following are candidate L1/L2 tests only after adapters and global TEST guard are in place:
+- L1: `testAssignmentSubmissionConfigUnit()`, `testAssignmentSchedulerLogicUnit()`, `testCourseManagementAuthorizationLogic()`, `testSyntheticIdentityAndRoleRevocationFixtures()`, `testOfferingDuplicatePredicateUnit()`, `testEnrollmentImportLogicUnit()`, `testEnrollmentAuthorizationPredicatesUnit()`, `testApiMissingTokenGuard()`.
+- L2: `testAssignmentManagementSchemaPreflight()`, `testCourseManagementPreflight()`, `testCourseManagementLiveAuthorizationData()`, conditional `testCourseManagementReadEndpointsWithLinkedAdmin()`, `testDataIntegrityAuditLogReadOnly()`, `testEnrollmentSchemaPreflight()`, conditional `testAccountLinkingPreflight()`.
+
+The following call mutation-capable handlers and must not be automatically classified as L2 read-only:
+- `testSimulatedInstructorNegativeAuthorization()`
+- `testInstructorDataScopeIsolation()`
+- `testCourseCoordinatorScopeIsolation()`
+- `testSystemAdminAuthorizationAndPermissionBoundary()`
+- `testSecurityRevocationSpoofingAndAudit()`
+- `testDuplicateRequestAuditConsistencyReadOnly()`
+
+Treat these as L3 approval-gated negative-mutation tests or refactor them into in-memory/non-mutating tests before registration. `testAssignmentSchedulerIntegration()`, `createAssignmentSchedulerTriggerFixtures()`, `installAssignmentSchedulerTrigger()`, `setupAccountLinkingSheets()` and `importStudentsFromStaging()` are excluded from Runner v1.0.
+
+### E. Environment, secrets and result handling
+
+1. Runner-level TEST guard is mandatory before every database-backed test. It must use trusted server-side configuration and verify the actual spreadsheet ID; never trust a caller-supplied ID.
+2. Add defensive TEST checks to database-backed tests where practical. Current Course and Enrollment preflight tests do not independently check the TEST spreadsheet ID.
+3. Script Properties do not protect secrets from untrusted Apps Script project editors who can execute code. Project Owner remains the only GAS Editor unless additional trusted editors are explicitly approved.
+4. Result adapters must validate each test's actual return shape. Assignment/Course tests use PASS/FAIL strings; Enrollment tests include boolean `pass`; preflights may throw. Missing/malformed results must never count as PASS.
+5. Worker must validate and sanitize the Runner response envelope and cap output size. Do not forward arbitrary stack traces, credentials or personal data.
+6. Audit/replay storage must be Runner-only and separate from Classroom schema unless a separate schema Change Request is approved.
+
+### F. Release blocker
+
+ChatGPT connectivity is not established merely because a Worker endpoint exists. Runner v1.0 cannot claim ChatGPT automation until an approved authenticated MCP/API tool integration is configured and demonstrated. If unavailable, use an authenticated operator Test Client for the pilot and mark ChatGPT automation BLOCKED.
+
