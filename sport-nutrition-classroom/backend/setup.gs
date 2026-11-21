@@ -306,3 +306,35 @@ function importStudentsFromStaging() {
     lock.releaseLock();
   }
 }
+
+/**
+ * Read-only schema inspection. Does not create, rename, format, or modify sheets.
+ * Run before setupAccountLinkingSheets() when validating an existing TEST database.
+ */
+function inspectSNCDatabaseSchema(){
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  if(!ss)throw new Error('No active spreadsheet is available.');
+  var report={success:true,mode:'READ_ONLY_SCHEMA_INSPECTION',schemaVersion:SNC_SETUP.VERSION,spreadsheetId:ss.getId(),spreadsheetName:ss.getName(),tables:[],missingTables:[],headerMismatches:[],extraColumns:[]};
+  Object.keys(SNC_SETUP.TABLES).forEach(function(name){
+    var expected=SNC_SETUP.TABLES[name],sheet=ss.getSheetByName(name);
+    if(!sheet){
+      report.missingTables.push(name);
+      report.tables.push({name:name,status:'MISSING',expectedColumns:expected.length,actualColumns:0,rowCount:0});
+      return;
+    }
+    var lastColumn=sheet.getLastColumn(),lastRow=sheet.getLastRow();
+    var actual=lastColumn>0?sheet.getRange(1,1,1,lastColumn).getDisplayValues()[0].map(function(x){return String(x).trim();}):[];
+    var missing=expected.filter(function(h){return actual.indexOf(h)<0;});
+    var unexpected=actual.filter(function(h){return h&&expected.indexOf(h)<0;});
+    var orderMatches=actual.length>=expected.length&&expected.every(function(h,i){return actual[i]===h;});
+    var status=actual.length===0?'EMPTY':(orderMatches&&unexpected.length===0?'MATCH':'MISMATCH');
+    var item={name:name,status:status,expectedColumns:expected.length,actualColumns:actual.length,rowCount:Math.max(0,lastRow-1),missingHeaders:missing,unexpectedHeaders:unexpected,actualHeaders:actual};
+    report.tables.push(item);
+    if(status==='MISMATCH'||status==='EMPTY')report.headerMismatches.push(item);
+    if(unexpected.length)report.extraColumns.push({name:name,headers:unexpected});
+  });
+  report.success=report.missingTables.length===0&&report.headerMismatches.length===0;
+  report.summary={expectedTables:Object.keys(SNC_SETUP.TABLES).length,matched:report.tables.filter(function(x){return x.status==='MATCH';}).length,missing:report.missingTables.length,mismatched:report.headerMismatches.length};
+  console.log(JSON.stringify(report,null,2));
+  return report;
+}
