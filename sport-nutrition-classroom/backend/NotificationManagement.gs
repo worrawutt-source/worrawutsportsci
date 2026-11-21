@@ -69,6 +69,8 @@ function notifySubmissionReceived_(assignment,submission){
   ntStaffForOffering_(assignment.OfferingID).forEach(function(uid){ntSend_(uid,message,'SUBMISSION_RECEIVED','Assignment',assignment.AssignmentID);});
 }
 function runDeadlineReminderNotifications(){
+  var lock=LockService.getScriptLock();if(!lock.tryLock(1000))return {success:true,skipped:true,reason:'ANOTHER_RUN_ACTIVE'};
+  try{
   var now=new Date(),limit=new Date(now.getTime()+24*60*60*1000),assignments=cmRows_('Assignments').filter(function(a){
     var d=new Date(a.Deadline);return String(a.Status)==='OPEN'&&d>now&&d<=limit;
   });
@@ -100,6 +102,7 @@ function runDeadlineReminderNotifications(){
     }
   });
   return {success:true,assignmentsChecked:assignments.length,sent:sent,skipped:skipped};
+  }finally{lock.releaseLock();}
 }
 function installDeadlineReminderTrigger(){
   var triggers=ScriptApp.getProjectTriggers();
