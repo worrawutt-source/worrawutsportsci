@@ -116,7 +116,7 @@ function doPost(e) {
       return jsonResponse_(success_(requestId, handleNotificationAction_(action, notificationActor, payload, requestId)));
     }
 
-    if (/^(grade|gradeReview)\\./.test(action)) {
+    if (/^(grade|gradeReview)\./.test(action)) {
       var gradingIdentity = verifyLiffIdentity_(payload.idToken);
       var gradingActor = cmActor_(gradingIdentity);
       return jsonResponse_(success_(requestId, handleGradingAction_(action, gradingActor, payload, requestId)));
