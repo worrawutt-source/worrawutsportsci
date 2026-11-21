@@ -22,22 +22,42 @@ function handleGradingAction_(action,actor,p,requestId){
       var feedback=cmText_(p.feedback||'',5000,'feedback',false),old=cmRows_('Grades').filter(function(x){return String(x.SubmissionID)===sid;})[0],now=new Date();
       if(action==='grade.create'&&old)throw apiError_('DUPLICATE','A grade already exists. Use grade.update.');
       if(action==='grade.update'&&!old)throw apiError_('NOT_FOUND','Grade not found. Use grade.create first.');
-      var gradeId;
-      if(!old){
-        gradeId=Utilities.getUuid();
-        cmSheet_('Grades').appendRow([gradeId,sid,score,feedback,actor.userId,now,now]);
-      }else{
-        gradeId=String(old.GradeID);
-        if(p.reason===undefined||!String(p.reason).trim())throw apiError_('VALIDATION_ERROR','A reason is required when changing a grade.');
-        cmSheet_('GradeHistory').appendRow([Utilities.getUuid(),gradeId,Number(old.Score),score,String(old.Feedback||''),feedback,actor.userId,cmText_(p.reason,1000,'reason',true),now]);
-        var sh=cmSheet_('Grades'),h=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0];
-        sh.getRange(old._row,h.indexOf('Score')+1).setValue(score);
-        sh.getRange(old._row,h.indexOf('Feedback')+1).setValue(feedback);
-        sh.getRange(old._row,h.indexOf('GradedByUserID')+1).setValue(actor.userId);
-        sh.getRange(old._row,h.indexOf('GradedAt')+1).setValue(now);
-        sh.getRange(old._row,h.indexOf('UpdatedAt')+1).setValue(now);
+      var gradeId,gradeSheet=cmSheet_('Grades'),gradeHeaders=gradeSheet.getRange(1,1,1,gradeSheet.getLastColumn()).getDisplayValues()[0];
+      var historySheet=cmSheet_('GradeHistory'),historyRow=0,gradeRow=0;
+      var oldValues=old?{Score:old.Score,Feedback:old.Feedback,GradedByUserID:old.GradedByUserID,GradedAt:old.GradedAt,UpdatedAt:old.UpdatedAt}:null;
+      function gradeCol(name){var i=gradeHeaders.indexOf(name);if(i<0)throw apiError_('SCHEMA_MISMATCH','Grades table is missing '+name+'.');return i+1;}
+      try{
+        if(!old){
+          gradeId=Utilities.getUuid();gradeRow=gradeSheet.getLastRow()+1;
+          gradeSheet.appendRow([gradeId,sid,score,feedback,actor.userId,now,now]);
+        }else{
+          gradeId=String(old.GradeID);
+          if(p.reason===undefined||!String(p.reason).trim())throw apiError_('VALIDATION_ERROR','A reason is required when changing a grade.');
+          var reason=cmText_(p.reason,1000,'reason',true);
+          historyRow=historySheet.getLastRow()+1;
+          historySheet.appendRow([Utilities.getUuid(),gradeId,Number(old.Score),score,String(old.Feedback||''),feedback,actor.userId,reason,now]);
+          gradeSheet.getRange(old._row,gradeCol('Score')).setValue(score);
+          gradeSheet.getRange(old._row,gradeCol('Feedback')).setValue(feedback);
+          gradeSheet.getRange(old._row,gradeCol('GradedByUserID')).setValue(actor.userId);
+          gradeSheet.getRange(old._row,gradeCol('GradedAt')).setValue(now);
+          gradeSheet.getRange(old._row,gradeCol('UpdatedAt')).setValue(now);
+        }
+        appendAudit_(actor.userId,old?'GRADE_UPDATED':'GRADE_CREATED','Grade',gradeId,{submissionId:sid,score:score},requestId);
+      }catch(writeError){
+        try{
+          if(old&&oldValues){
+            gradeSheet.getRange(old._row,gradeCol('Score')).setValue(oldValues.Score);
+            gradeSheet.getRange(old._row,gradeCol('Feedback')).setValue(oldValues.Feedback);
+            gradeSheet.getRange(old._row,gradeCol('GradedByUserID')).setValue(oldValues.GradedByUserID);
+            gradeSheet.getRange(old._row,gradeCol('GradedAt')).setValue(oldValues.GradedAt);
+            gradeSheet.getRange(old._row,gradeCol('UpdatedAt')).setValue(oldValues.UpdatedAt);
+          }else if(gradeRow&&gradeSheet.getLastRow()>=gradeRow){
+            gradeSheet.deleteRow(gradeRow);
+          }
+          if(historyRow&&historySheet.getLastRow()>=historyRow)historySheet.deleteRow(historyRow);
+        }catch(rollbackError){console.error('GRADE_ROLLBACK_FAILED');}
+        throw apiError_('GRADE_WRITE_FAILED','Grade update failed; automatic rollback was attempted. Verify Grades and GradeHistory before retrying.');
       }
-      appendAudit_(actor.userId,old?'GRADE_UPDATED':'GRADE_CREATED','Grade',gradeId,{submissionId:sid,score:score},requestId);
       return grPublic_(cmGet_('Grades','GradeID',gradeId));
     }
     if(action==='grade.get'||action==='grade.history'){
