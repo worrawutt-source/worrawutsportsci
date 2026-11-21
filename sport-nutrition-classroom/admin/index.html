@@ -126,11 +126,13 @@ async function loadRoles(){
 function grantRoleForm(studentId){
  const courseOpts=courses.map(x=>'<option value="'+escapeHtml(x.CourseID)+'">'+escapeHtml(x.CourseCode+' — '+x.CourseName)+'</option>').join('');
  const semOpts=semesters.map(x=>'<option value="'+escapeHtml(x.SemesterID)+'">'+escapeHtml(x.AcademicYear+'/'+x.Term)+'</option>').join('');
- openModal('กำหนดสิทธิ์ Course Coordinator',`<form><input type="hidden" name="studentId" value="${escapeHtml(studentId)}"><div class="snc-field"><label>ขอบเขตสิทธิ์</label><select name="scopeType" id="role-scope-type"><option value="COURSE">รายวิชา</option><option value="SEMESTER">ภาคการศึกษา</option><option value="SYSTEM">ทั้งระบบ</option></select></div><div class="snc-field" id="role-scope-box"><label>เลือกรายการ</label><select name="scopeId"><optgroup label="รายวิชา">${courseOpts}</optgroup><optgroup label="ภาคการศึกษา">${semOpts}</optgroup></select></div><p class="snc-help">ไม่อนุญาตให้กำหนด SYSTEM_ADMIN ผ่านหน้าจอนี้ การกำหนดผู้ดูแลระบบหลักใช้ขั้นตอน Bootstrap แยกต่างหาก</p><button class="snc-button" type="submit">บันทึกสิทธิ์</button></form>`,async form=>{
+ openModal('กำหนดสิทธิ์ Course Coordinator',`<form><input type="hidden" name="studentId" value="${escapeHtml(studentId)}"><div class="snc-field"><label>ขอบเขตสิทธิ์</label><select name="scopeType" id="role-scope-type"><option value="COURSE">รายวิชา</option><option value="SEMESTER">ภาคการศึกษา</option><option value="SYSTEM">ทั้งระบบ</option></select></div><div class="snc-field" id="role-scope-box"><label>เลือกรายการ</label><select name="scopeId" id="role-scope-id"><optgroup label="รายวิชา" data-scope-options="COURSE">${courseOpts}</optgroup><optgroup label="ภาคการศึกษา" data-scope-options="SEMESTER">${semOpts}</optgroup></select></div><p class="snc-help">ไม่อนุญาตให้กำหนด SYSTEM_ADMIN ผ่านหน้าจอนี้ การกำหนดผู้ดูแลระบบหลักใช้ขั้นตอน Bootstrap แยกต่างหาก</p><button class="snc-button" type="submit">บันทึกสิทธิ์</button></form>`,async form=>{
   const scopeType=form.get('scopeType');await api('role.grant',{studentId:form.get('studentId'),role:'COURSE_COORDINATOR',scopeType,scopeId:scopeType==='SYSTEM'?'*':form.get('scopeId')});
   await loadUsers();await loadRoles();
  });
- const scope=$('role-scope-type'),box=$('role-scope-box');scope.addEventListener('change',()=>{box.hidden=scope.value==='SYSTEM';});
+ const scope=$('role-scope-type'),box=$('role-scope-box'),scopeSelect=$('role-scope-id');
+ const syncScopeOptions=()=>{box.hidden=scope.value==='SYSTEM';scopeSelect.querySelectorAll('optgroup[data-scope-options]').forEach(group=>{group.hidden=group.dataset.scopeOptions!==scope.value;});};
+ scope.addEventListener('change',syncScopeOptions);syncScopeOptions();
  box.hidden=false;
 }
 async function loadAudit(){
@@ -140,7 +142,7 @@ async function loadAudit(){
 }
 async function loadNotifications(){
  const rows=await api('notification.log');
- $('notifications-table').innerHTML=table(['เวลา','ผู้รับ','เหตุการณ์','รายการอ้างอิง','สถานะ','ข้อความ','ข้อผิดพลาด'],rows.slice(-200).reverse().map(r=>'<tr><td>'+dateText(r.CreatedAt)+'</td><td>'+escapeHtml(r.UserID)+'</td><td>'+escapeHtml(r.EventType)+'</td><td>'+escapeHtml(r.RelatedEntityType+' / '+r.RelatedEntityID)+'</td><td>'+escapeHtml(r.Status)+'</td><td>'+escapeHtml(r.Message)+'</td><td>'+escapeHtml(r.ErrorCode)+'</td></tr>'));
+ $('notifications-table').innerHTML=table(['เวลา','ผู้รับ','เหตุการณ์','รายการอ้างอิง','สถานะ','ข้อความ','ข้อผิดพลาด'],rows.slice(0,200).map(r=>'<tr><td>'+dateText(r.CreatedAt)+'</td><td>'+escapeHtml(r.UserID)+'</td><td>'+escapeHtml(r.EventType)+'</td><td>'+escapeHtml(r.RelatedEntityType+' / '+r.RelatedEntityID)+'</td><td>'+escapeHtml(r.Status)+'</td><td>'+escapeHtml(r.Message)+'</td><td>'+escapeHtml(r.ErrorCode)+'</td></tr>'));
 }
 function assignForm(offeringId){openModal('กำหนดผู้สอน',`<form><div class="snc-field"><label>รหัสนักศึกษาของผู้สอน</label><input name="studentId" required maxlength="20" autocomplete="off"></div><p class="snc-help">ระบบจะตรวจสอบบัญชีผู้ใช้ที่มีสถานะ ACTIVE และบันทึกการมอบหมายใน CourseInstructors</p><button class="snc-button" type="submit">กำหนดผู้สอน</button></form>`,async f=>{await api('instructor.assign',{offeringId,studentId:f.get('studentId').trim()});});}
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
