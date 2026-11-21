@@ -30,7 +30,11 @@
       </section>
       <section id="view-courses" class="snc-view" hidden><div class="snc-toolbar"><div><h2>จัดการรายวิชา</h2><p class="snc-muted">สร้างและปรับปรุงข้อมูลรายวิชา</p></div><button id="add-course" class="snc-button">+ เพิ่มรายวิชา</button></div><div id="courses-table" class="snc-table-wrap"></div></section>
       <section id="view-semesters" class="snc-view" hidden><div class="snc-toolbar"><div><h2>จัดการภาคการศึกษา</h2><p class="snc-muted">กำหนดปีการศึกษา ภาคเรียน และช่วงวันที่</p></div><button id="add-semester" class="snc-button">+ เพิ่มภาคการศึกษา</button></div><div id="semesters-table" class="snc-table-wrap"></div></section>
-      <section id="view-offerings" class="snc-view" hidden><div class="snc-toolbar"><div><h2>Course Offering</h2><p class="snc-muted">เปิดรายวิชาในภาคการศึกษาและกำหนดผู้สอน</p></div><button id="add-offering" class="snc-button">+ เพิ่ม Offering</button></div><div id="offerings-table" class="snc-table-wrap"></div></section>
+      <section id="view-offerings" class="snc-view" hidden><div class="snc-toolbar"><div><h2>Course Offering</h2><p class="snc-muted">เปิดรายวิชาในภาคการศึกษาและกำหนดผู้สอน</p></div><button id="add-offering" class="snc-button">+ เพิ่ม Offering</button></div><div id="offerings-table" class="snc-table-wrap"></div>
+<section class="snc-card" style="margin-top:20px"><h3>นำเข้ารายชื่อนักศึกษา</h3><p class="snc-muted">รองรับ Excel (.xlsx) และ CSV โดยต้องมี Student ID, First Name, Last Name และ Email</p>
+<form id="student-import-form"><label>Course Offering</label><select id="import-offering" class="snc-input" required></select><label>ไฟล์รายชื่อนักศึกษา</label><input id="import-file" class="snc-input" type="file" accept=".csv,.xlsx" required><button class="snc-button" type="submit">ตรวจสอบข้อมูลก่อนนำเข้า</button></form>
+<div id="import-preview" aria-live="polite"></div><button id="import-execute" class="snc-button" type="button" hidden>ยืนยันนำเข้ารายชื่อ</button>
+</section></section>
     </div>
   </section>
 </main>
@@ -58,6 +62,7 @@ function courseRows(){return courses.map(c=>'<tr><td><strong>'+escapeHtml(c.Cour
 function semesterRows(){return semesters.map(s=>'<tr><td><strong>'+escapeHtml(s.AcademicYear)+' / '+escapeHtml(s.Term)+'</strong><small>'+escapeHtml(s.SemesterID)+'</small></td><td>'+dateText(s.StartDate)+' – '+dateText(s.EndDate)+'</td><td>'+escapeHtml(s.Status)+'</td><td><button class="snc-button secondary" data-edit-semester="'+escapeHtml(s.SemesterID)+'">แก้ไข</button></td></tr>');}
 function offeringRows(){return offerings.map(x=>{const o=x.offering||{},c=x.course||{},s=x.semester||{};return '<tr><td><strong>'+escapeHtml(c.CourseCode||o.CourseID)+'</strong><small>'+escapeHtml(c.CourseName||'')+'</small></td><td>'+escapeHtml(s.AcademicYear||'')+'/'+escapeHtml(s.Term||'')+'</td><td>'+escapeHtml(o.Section||'—')+'</td><td>'+escapeHtml(o.Status)+'</td><td><div class="snc-actions"><button class="snc-button secondary" data-edit-offering="'+escapeHtml(o.OfferingID)+'">แก้ไข</button><button class="snc-button secondary" data-assign="'+escapeHtml(o.OfferingID)+'">กำหนดผู้สอน</button></div></td></tr>';});}
 function render(){
+ refreshImportOfferings();
  $('kpi-courses').textContent=courses.length;$('kpi-semesters').textContent=semesters.length;$('kpi-offerings').textContent=offerings.length;
  $('courses-table').innerHTML=table(['รหัสรายวิชา','ชื่อรายวิชา','สถานะ','จัดการ'],courseRows());
  $('semesters-table').innerHTML=table(['ปีการศึกษา / ภาคเรียน','ช่วงวันที่','สถานะ','จัดการ'],semesterRows());
@@ -102,6 +107,51 @@ $('modal-close').onclick=()=>$('modal').hidden=true;$('modal').addEventListener(
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.editCourse)courseForm(courses.find(x=>x.CourseID===b.dataset.editCourse));if(b.dataset.editSemester)semesterForm(semesters.find(x=>x.SemesterID===b.dataset.editSemester));if(b.dataset.editOffering){const x=offerings.find(x=>x.offering.OfferingID===b.dataset.editOffering);if(x)offeringForm(x.offering);}if(b.dataset.assign)assignForm(b.dataset.assign);});
 $('login-btn').onclick=()=>liff.login({redirectUri:location.href});
 $('logout-btn').onclick=()=>{liff.logout();location.reload();};
+let preparedImport=null;
+function csvRows(text){
+ const rows=[];let row=[],cell='',quoted=false;
+ for(let i=0;i<text.length;i++){const ch=text[i],next=text[i+1];if(ch==='"'&&quoted&&next==='"'){cell+='"';i++;}else if(ch==='"'){quoted=!quoted;}else if(ch===','&&!quoted){row.push(cell);cell='';}else if((ch==='\\n'||ch==='\\r')&&!quoted){if(ch==='\\r'&&next==='\\n')i++;row.push(cell);if(row.some(v=>String(v).trim()))rows.push(row);row=[];cell='';}else cell+=ch;}
+ row.push(cell);if(row.some(v=>String(v).trim()))rows.push(row);return rows;
+}
+function normalizeImportRows(matrix){
+ if(!matrix.length)throw new Error('ไฟล์ไม่มีข้อมูล');
+ const norm=x=>String(x||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+ const headers=matrix[0].map(norm),pick=names=>{const ix=headers.findIndex(h=>names.includes(h));if(ix<0)throw new Error('ไม่พบคอลัมน์ '+names[0]);return ix;};
+ const ix={studentId:pick(['studentid','studentnumber','รหัสนักศึกษา']),firstName:pick(['firstname','ชื่อ']),lastName:pick(['lastname','surname','นามสกุล']),email:pick(['email','อีเมล'])};
+ return matrix.slice(1).filter(r=>r.some(v=>String(v||'').trim())).map(r=>({studentId:String(r[ix.studentId]||'').trim(),firstName:String(r[ix.firstName]||'').trim(),lastName:String(r[ix.lastName]||'').trim(),email:String(r[ix.email]||'').trim()}));
+}
+async function readImportFile(file){
+ const ext=file.name.toLowerCase().split('.').pop();
+ if(ext==='csv')return normalizeImportRows(csvRows(await file.text()));
+ if(ext==='xlsx'){
+  if(!window.XLSX)throw new Error('ไม่สามารถโหลดตัวอ่านไฟล์ Excel ได้');
+  const data=await file.arrayBuffer(),book=XLSX.read(data,{type:'array'}),sheet=book.Sheets[book.SheetNames[0]];
+  return normalizeImportRows(XLSX.utils.sheet_to_json(sheet,{header:1,raw:false,defval:''}));
+ }
+ throw new Error('รองรับเฉพาะไฟล์ .xlsx และ .csv');
+}
+function refreshImportOfferings(){
+ const sel=$('import-offering');sel.innerHTML=offerings.filter(x=>x.offering.Status==='ACTIVE').map(x=>'<option value="'+escapeHtml(x.offering.OfferingID)+'">'+escapeHtml(x.course.CourseCode+' · '+x.course.CourseName+' · '+x.semester.AcademicYear+'/'+x.semester.Term+' · '+(x.offering.Section||''))+'</option>').join('');
+}
+$('student-import-form').addEventListener('submit',async e=>{
+ e.preventDefault();const btn=e.currentTarget.querySelector('[type=submit]');btn.disabled=true;preparedImport=null;$('import-execute').hidden=true;
+ try{
+  const file=$('import-file').files[0];if(!file)throw new Error('กรุณาเลือกไฟล์');
+  const rows=await readImportFile(file);if(!rows.length||rows.length>500)throw new Error('จำนวนรายการต้องอยู่ระหว่าง 1–500 คน');
+  const preview=await api('import.preview',{offeringId:$('import-offering').value,fileName:file.name,rows});
+  preparedImport={offeringId:$('import-offering').value,fileName:file.name,rows:rows};
+  $('import-preview').innerHTML='<p>ทั้งหมด '+preview.totalRows+' รายการ · ถูกต้อง '+preview.validCount+' · ผิดพลาด '+preview.errorCount+'</p>'+
+   (preview.errors.length?'<table class="snc-table"><thead><tr><th>แถว</th><th>รหัสนักศึกษา</th><th>ข้อผิดพลาด</th></tr></thead><tbody>'+preview.errors.map(x=>'<tr><td>'+x.rowNumber+'</td><td>'+escapeHtml(x.studentId)+'</td><td>'+escapeHtml(x.errorCode)+'</td></tr>').join('')+'</tbody></table>':'<p>ตรวจสอบข้อมูลผ่าน สามารถยืนยันนำเข้าได้</p>');
+  if(preview.errorCount===0)$('import-execute').hidden=false;
+ }catch(err){$('import-preview').textContent=err.message;}
+ finally{btn.disabled=false;}
+});
+$('import-execute').addEventListener('click',async()=>{
+ if(!preparedImport)return;const btn=$('import-execute');btn.disabled=true;
+ try{const result=await api('import.execute',preparedImport);$('import-preview').textContent='นำเข้าสำเร็จ '+result.successCount+' รายการ · Import Job: '+result.importJobId;preparedImport=null;btn.hidden=true;await refresh();}
+ catch(err){$('import-preview').textContent=err.message;}
+ finally{btn.disabled=false;}
+});
 async function boot(){
  try{await liff.init({liffId:LIFF_ID});if(!liff.isLoggedIn()){$('auth-actions').hidden=false;$('workspace').hidden=true;note('กรุณาเข้าสู่ระบบ LINE','');return;}
  const data=await api('auth.me');account=data;$('account-label').textContent=data.user?(data.user.firstName+' '+data.user.lastName):'LINE Account';$('logout-btn').hidden=false;
@@ -114,5 +164,6 @@ async function boot(){
 boot();
 })();
 </script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="../assets/js/app.js"></script>
 </body></html>
