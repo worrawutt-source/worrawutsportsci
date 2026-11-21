@@ -275,7 +275,7 @@
         document.getElementById("student-groups").innerHTML=currentGroups.length?currentGroups.map(g=>'<div class="snc-diagnostic"><strong>'+escHtml(g.groupName)+'</strong><p>สมาชิก '+g.memberCount+' คน · '+(g.membershipLocked?'ล็อกสมาชิกแล้ว':'ยังแก้ไขสมาชิกได้')+'</p><p>'+g.members.map(m=>escHtml(m.firstName+' '+m.lastName)+(m.memberRole==='LEADER'?' (หัวหน้ากลุ่ม)':'')).join(', ')+'</p>'+(g.isMember&&!g.membershipLocked?'<button type="button" class="snc-button" data-leave-group="'+escHtml(g.groupId)+'">ออกจากกลุ่ม</button>':(!g.isMember&&!g.membershipLocked?'<button type="button" class="snc-button" data-join-group="'+escHtml(g.groupId)+'">เข้าร่วมกลุ่มนี้</button>':''))+'</div>').join(""):'<p class="snc-muted">ยังไม่มีกลุ่มในรายวิชานี้</p>';
         document.getElementById("student-assignments").innerHTML=currentAssignments.length?currentAssignments.map(x=>{
           const a=x.assignment,s=x.submission,g=x.grade;
-          return '<div class="snc-diagnostic"><strong>'+escHtml(a.Title)+'</strong><p>'+escHtml(a.SubmissionType)+' · สถานะ '+escHtml(a.Status)+' · กำหนดส่ง '+escHtml(a.Deadline)+'</p><p>การส่งงาน: '+(s?escHtml(s.SubmissionStatus)+' · ฉบับที่ '+s.RevisionNumber:'ยังไม่มีการส่ง')+'</p>'+(g?'<p>คะแนน '+escHtml(g.score)+' / '+escHtml(a.MaxScore)+'<br>'+escHtml(g.feedback)+'</p><button class="snc-button secondary" data-review-grade="'+escHtml(g.gradeId)+'">ขอทบทวนคะแนน</button>':'')+(a.Status==='OPEN'?'<button class="snc-button" data-submit-assignment="'+escHtml(a.AssignmentID)+'" data-has-submission="'+(s?'1':'0')+'">'+(s?'ส่งฉบับแก้ไข':'ส่งงาน')+'</button>':'')+'</div>';
+          return '<div class="snc-diagnostic"><strong>'+escHtml(a.Title)+'</strong><p>'+escHtml(a.SubmissionType)+' · สถานะ '+escHtml(a.Status)+' · กำหนดส่ง '+escHtml(a.Deadline)+'</p><p>การส่งงาน: '+(s?escHtml(s.SubmissionStatus)+' · ฉบับที่ '+s.RevisionNumber:'ยังไม่มีการส่ง')+'</p>'+(s?'<button type="button" class="snc-button secondary" data-submission-history="'+escHtml(a.AssignmentID)+'">ประวัติการส่ง</button>':'')+(g?'<p>คะแนน '+escHtml(g.score)+' / '+escHtml(a.MaxScore)+'<br>'+escHtml(g.feedback)+'</p><button class="snc-button secondary" data-review-grade="'+escHtml(g.gradeId)+'">ขอทบทวนคะแนน</button>':'')+(a.Status==='OPEN'?'<button class="snc-button" data-submit-assignment="'+escHtml(a.AssignmentID)+'" data-has-submission="'+(s?'1':'0')+'">'+(s?'ส่งฉบับแก้ไข':'ส่งงาน')+'</button>':'')+'</div>';
         }).join(""):'<p class="snc-muted">ยังไม่มีงานที่ได้รับมอบหมาย</p>';
       }
       function openSubmissionForm(assignmentId,hasSubmission){
@@ -313,6 +313,12 @@
           if(b.dataset.leaveGroup){await studentApi("group.leave",{groupId:b.dataset.leaveGroup});await openStudentOffering(selectedOfferingId);}
           if(b.dataset.joinGroup){await studentApi("group.join",{groupId:b.dataset.joinGroup});await openStudentOffering(selectedOfferingId);}
           if(b.dataset.submitAssignment)openSubmissionForm(b.dataset.submitAssignment,b.dataset.hasSubmission==="1");
+          if(b.dataset.submissionHistory){
+            const history=await studentApi("submission.list",{assignmentId:b.dataset.submissionHistory});
+            document.getElementById("student-modal-title").textContent="ประวัติการส่งงาน";
+            document.getElementById("student-modal-body").innerHTML=history.map(x=>'<div class="snc-diagnostic"><strong>Revision '+escHtml(x.RevisionNumber)+'</strong><p>'+escHtml(x.SubmissionStatus)+' · '+escHtml(x.SubmittedAt)+'</p><p>ผู้ส่ง: '+escHtml(x.SubmittedByUserID)+'</p></div>').join("")||'<p>ไม่มีประวัติการส่ง</p>';
+            document.getElementById("student-modal").hidden=false;
+          }
           if(b.dataset.reviewGrade){const requestText=window.prompt("โปรดระบุเหตุผลในการขอทบทวนคะแนน");if(requestText&&requestText.trim()){await studentApi("gradeReview.create",{gradeId:b.dataset.reviewGrade,requestText:requestText.trim()});studentNote("ส่งคำร้องทบทวนคะแนนแล้ว");}}
         }catch(err){studentNote(err.message,true);}
       });
