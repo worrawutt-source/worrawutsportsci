@@ -14,7 +14,7 @@ function smCanView_(actor,submission){
   if(String(submission.SubmissionType)==='INDIVIDUAL')return String(submission.StudentUserID)===String(actor.userId);
   return gmMembers_(submission.GroupID).some(function(m){return String(m.UserID)===String(actor.userId);});
 }
-function smValidateTarget_(actor,a,p){
+function smValidateTarget_(actor,a,p,requireRepresentative){
   if(String(a.Status).toUpperCase()!=='OPEN')throw apiError_('ASSIGNMENT_CLOSED','Assignment is not open.');
   var type=String(a.SubmissionType).toUpperCase();
   if(type==='INDIVIDUAL'){
@@ -25,9 +25,11 @@ function smValidateTarget_(actor,a,p){
   var groupId=cmText_(p.groupId,100,'groupId',true),g=gmGet_('Groups','GroupID',groupId);
   if(!g||String(g.OfferingID)!==String(a.OfferingID)||String(g.Status).toUpperCase()!=='ACTIVE')
     throw apiError_('NOT_FOUND','Active group in this offering not found.');
-  if(!gmMembers_(groupId).some(function(m){return String(m.UserID)===String(actor.userId);}))
-    throw apiError_('GROUP_MEMBERSHIP_REQUIRED','Submitter must be an active member of the group.');
-  var count=gmMembers_(groupId).length,min=Number(a.MinGroupMembers||2),max=String(a.MaxGroupMembers||'').trim()===''?null:Number(a.MaxGroupMembers);
+  var activeMembers=gmMembers_(groupId),actorMember=activeMembers.filter(function(m){return String(m.UserID)===String(actor.userId);})[0];
+  if(!actorMember)throw apiError_('GROUP_MEMBERSHIP_REQUIRED','Submitter must be an active member of the group.');
+  if(requireRepresentative&&String(actorMember.MemberRole).toUpperCase()!=='LEADER')
+    throw apiError_('FORBIDDEN','Only the designated group representative may submit group work.');
+  var count=activeMembers.length,min=Number(a.MinGroupMembers||2),max=String(a.MaxGroupMembers||'').trim()===''?null:Number(a.MaxGroupMembers);
   if(count<min)throw apiError_('GROUP_MIN_MEMBERS_NOT_MET','Group must contain at least two active members.');
   if(max!==null&&count>max)throw apiError_('GROUP_MAX_MEMBERS_EXCEEDED','Group exceeds the maximum member count for this assignment.');
   return {type:type,studentUserId:'',groupId:groupId,group:g};
@@ -121,7 +123,7 @@ function handleSubmissionManagementAction_(action,actor,p,requestId){
     if(action==='submission.create'||action==='submission.revise'){
       var previousResult=smFindIdempotency_(actor,action,requestId,p);
       if(previousResult)return previousResult;
-      var aid=cmText_(p.assignmentId,100,'assignmentId',true),a=smAssignment_(aid),target=smValidateTarget_(actor,a,p);
+      var aid=cmText_(p.assignmentId,100,'assignmentId',true),a=smAssignment_(aid),target=smValidateTarget_(actor,a,p,true);
       var key=smTargetKey_(a,target),latest=smLatest_(aid,key);
       if(action==='submission.create'&&latest)throw apiError_('DUPLICATE','A submission already exists. Use submission.revise.');
       if(action==='submission.revise'&&!latest)throw apiError_('NOT_FOUND','There is no previous submission to revise.');
