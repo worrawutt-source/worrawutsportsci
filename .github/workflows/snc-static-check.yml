@@ -1,0 +1,23 @@
+name: SPORT NUTRITION CLASSROOM Static Checks
+
+on:
+  push:
+    branches: [development]
+    paths:
+      - 'sport-nutrition-classroom/**'
+      - '.github/workflows/snc-static-check.yml'
+  pull_request:
+    paths:
+      - 'sport-nutrition-classroom/**'
+      - '.github/workflows/snc-static-check.yml'
+
+jobs:
+  static-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Parse backend and frontend JavaScript
+        run: node scripts/snc-static-check.mjs
