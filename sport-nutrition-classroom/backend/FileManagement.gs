@@ -8,6 +8,36 @@ const FM_ALLOWED_MIME_=['application/pdf','application/msword','application/vnd.
 'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 'text/plain','image/jpeg','image/png'];
 const FM_MAX_BYTES_=4*1024*1024;
+function fmValidateFileSignature_(bytes,mime,name){
+  function b(i){return (Number(bytes[i])||0)+256&255;}
+  function starts(values){return values.every(function(v,i){return b(i)===v;});}
+  var ok=false,lower=String(name||'').toLowerCase();
+  if(mime==='application/pdf')ok=starts([37,80,68,70,45]);
+  else if(mime==='application/msword')ok=starts([208,207,17,224,161,177,26,225]);
+  else if(mime==='image/jpeg')ok=starts([255,216,255]);
+  else if(mime==='image/png')ok=starts([137,80,78,71,13,10,26,10]);
+  else if(mime==='text/plain'){
+    ok=!bytes.some(function(v){return ((Number(v)||0)+256&255)===0;});
+  }else if([
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  ].indexOf(mime)>=0){
+    var ext=mime.indexOf('wordprocessing')>=0?'.docx':mime.indexOf('presentation')>=0?'.pptx':'.xlsx';
+    if(!lower.endsWith(ext)||!starts([80,75,3,4]))throw apiError_('FILE_INVALID','File extension or ZIP signature does not match the declared Office format.');
+    try{
+      var entries=Utilities.unzip(Utilities.newBlob(bytes,'application/zip','upload.zip'));
+      var paths=entries.map(function(x){return String(x.getName());});
+      var required=mime.indexOf('wordprocessing')>=0?'word/document.xml':mime.indexOf('presentation')>=0?'ppt/presentation.xml':'xl/workbook.xml';
+      var total=entries.reduce(function(sum,x){return sum+x.getBytes().length;},0);
+      ok=paths.indexOf('[Content_Types].xml')>=0&&paths.indexOf(required)>=0&&total<=20*1024*1024;
+    }catch(e){ok=false;}
+  }else if(['application/vnd.ms-powerpoint','application/vnd.ms-excel'].indexOf(mime)>=0){
+    ok=starts([208,207,17,224,161,177,26,225])&&
+      (mime==='application/vnd.ms-powerpoint'?lower.endsWith('.ppt'):lower.endsWith('.xls'));
+  }
+  if(!ok)throw apiError_('FILE_INVALID','File content signature does not match the declared file type.');
+}
 function fmCanAccessSubmission_(actor,s){
   return smCanView_(actor,s);
 }
@@ -42,6 +72,7 @@ function handleFileManagementAction_(action,actor,p,requestId){
     var bytes;
     try{bytes=Utilities.base64Decode(p.base64);}catch(e){throw apiError_('FILE_INVALID','File encoding is invalid.');}
     if(!bytes.length||bytes.length>FM_MAX_BYTES_)throw apiError_('FILE_INVALID','File size must be between 1 byte and 4 MB.');
+    fmValidateFileSignature_(bytes,mime,name);
     var folderId=PropertiesService.getScriptProperties().getProperty('SNC_SUBMISSION_FOLDER_ID');
     if(!folderId)throw apiError_('CONFIGURATION_ERROR','Submission folder is not configured.');
     var folder;try{folder=DriveApp.getFolderById(folderId);}catch(e){throw apiError_('CONFIGURATION_ERROR','Submission folder is unavailable.');}
