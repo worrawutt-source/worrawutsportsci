@@ -49,11 +49,17 @@ function handleFileManagementAction_(action,actor,p,requestId){
     var blob=Utilities.newBlob(bytes,mime,name),file=folder.createFile(blob);
     try{var owner=cmRows_('Users').filter(function(u){return String(u.UserID)===String(actor.userId);})[0];if(owner&&String(owner.Email||'').indexOf('@')>0)file.addViewer(String(owner.Email));}
     catch(e){try{file.setTrashed(true);}catch(_){}throw apiError_('FILE_PERMISSION_FAILED','Unable to set uploader access permissions.');}
-    var sh=cmSheet_('SubmissionFiles'),headers=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0],row=new Array(headers.length),fid=Utilities.getUuid(),now=new Date();
-    row[headers.indexOf('SubmissionFileID')]=fid;row[headers.indexOf('SubmissionID')]='STAGED:'+actor.userId+':'+aid;
-    row[headers.indexOf('FileName')]=name;row[headers.indexOf('MimeType')]=mime;row[headers.indexOf('FileSize')]=bytes.length;
-    row[headers.indexOf('DriveFileID')]=file.getId();row[headers.indexOf('DriveUrl')]=file.getUrl();
-    row[headers.indexOf('UploadedByUserID')]=actor.userId;row[headers.indexOf('CreatedAt')]=now;sh.appendRow(row);
+    var fid=Utilities.getUuid(),now=new Date();
+    try{
+      var sh=cmSheet_('SubmissionFiles'),headers=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0],row=new Array(headers.length);
+      row[headers.indexOf('SubmissionFileID')]=fid;row[headers.indexOf('SubmissionID')]='STAGED:'+actor.userId+':'+aid;
+      row[headers.indexOf('FileName')]=name;row[headers.indexOf('MimeType')]=mime;row[headers.indexOf('FileSize')]=bytes.length;
+      row[headers.indexOf('DriveFileID')]=file.getId();row[headers.indexOf('DriveUrl')]=file.getUrl();
+      row[headers.indexOf('UploadedByUserID')]=actor.userId;row[headers.indexOf('CreatedAt')]=now;sh.appendRow(row);
+    }catch(sheetError){
+      try{file.setTrashed(true);}catch(cleanupError){console.error('ORPHAN_FILE_CLEANUP_FAILED');}
+      throw apiError_('FILE_STORAGE_FAILED','Unable to register uploaded file; the temporary Drive file was removed when possible.');
+    }
     appendAudit_(actor.userId,'SUBMISSION_FILE_UPLOADED','SubmissionFile',fid,{assignmentId:aid,fileSize:bytes.length,mimeType:mime},requestId);
     return {fileId:fid,fileName:name,mimeType:mime,fileSize:bytes.length};
   }
