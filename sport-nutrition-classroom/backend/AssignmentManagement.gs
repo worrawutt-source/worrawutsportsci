@@ -351,5 +351,7 @@ function verifyAssignmentSchedulerTriggerFixtures(){
     cases.push({test:open?'Trigger auto-open fixture':'Trigger auto-close fixture',result:(a.Status===(open?'OPEN':'CLOSED')&&Boolean(open?a.AutoOpenProcessedAt:a.AutoCloseProcessedAt)&&matches.length===1)?'PASS':'FAIL',status:a.Status,auditCount:matches.length});
   });
   var passed=cases.filter(function(x){return x.result==='PASS';}).length;
-  return {success:rows.length===2&&passed===2,mode:'REAL_TIME_TRIGGER_TEST_READ_ONLY',database:'TEST',fixturesFound:rows.length,passed:passed,failed:cases.length-passed,total:cases.length,cases:cases,writesExpected:0};
+  var result={success:rows.length===2&&passed===2,mode:'REAL_TIME_TRIGGER_TEST_READ_ONLY',database:'TEST',fixturesFound:rows.length,passed:passed,failed:cases.length-passed,total:cases.length,cases:cases,writesExpected:0};
+  console.log(JSON.stringify(result,null,2));
+  return result;
 }
