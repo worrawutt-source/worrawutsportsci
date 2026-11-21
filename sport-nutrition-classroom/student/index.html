@@ -291,7 +291,7 @@
             if(file){
               if(file.size>4*1024*1024)throw new Error("ไฟล์มีขนาดเกิน 4 MB");
               const base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]);reader.onerror=reject;reader.readAsDataURL(file);});
-              const uploaded=await studentApi("file.upload",{assignmentId,groupId:form.elements.groupId?form.elements.groupId.value:undefined,fileName:file.name,mimeType:file.type||"application/octet-stream",base64});
+              const uploaded=await studentApi("file.upload",{assignmentId,groupId:form.elements.groupId?form.elements.groupId.value:undefined,fileName:file.name,mimeType:(file.type||({pdf:"application/pdf",doc:"application/msword",docx:"application/vnd.openxmlformats-officedocument.wordprocessingml.document",ppt:"application/vnd.ms-powerpoint",pptx:"application/vnd.openxmlformats-officedocument.presentationml.presentation",xls:"application/vnd.ms-excel",xlsx:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",txt:"text/plain",jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png"}[file.name.split(".").pop().toLowerCase()]||"application/octet-stream")),base64});
               fileIds.push(uploaded.fileId);
             }
             const driveUrl=form.elements.driveUrl.value.trim(),payload={assignmentId,fileIds,driveUrls:driveUrl?[driveUrl]:[]};
@@ -325,6 +325,7 @@
             " (รหัสนักศึกษา " + data.user.studentId + ") · " + data.user.email, false);
           loadStudentDashboard().catch(function(e){studentNote(e.message,true);});
         } else {
+          document.getElementById("student-workspace").hidden=true;
           showMessage("ยืนยัน LINE สำเร็จ กรุณาเชื่อมบัญชีนักศึกษาด้วยรหัสนักศึกษาและอีเมลที่ลงทะเบียน", false);
         }
       }
@@ -351,6 +352,7 @@
           document.getElementById("link-panel").hidden=true;
           document.getElementById("email-panel").hidden=false;
           showMessage("เชื่อมบัญชีนักศึกษาสำเร็จ: " + result.user.studentId, false);
+          await verifyIdentity();
         } catch(e) { showMessage(e.message, true); }
         finally { button.disabled=false; }
       });
