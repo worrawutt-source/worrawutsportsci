@@ -533,3 +533,26 @@ The owner supplied two screenshots of the current GAS TEST editor file navigator
 - G-02 remains **BLOCKED / EVIDENCE PENDING** until the project save is confirmed and the read-only `SNC_SystemPreflight_TEST()` is run successfully in the TEST-bound GAS project. Do not run setup, migration, fixtures, triggers, notifications, or the Integration Test Runner.
 
 No GitHub source files were changed by this editor cleanup evidence. No application data, Drive files, Script Properties, triggers, deployment settings, or LINE messages were changed by this checkpoint update.
+
+
+## G-02 GAS TEST Preflight execution evidence — 22 November 2026
+
+The owner supplied the complete execution-log excerpt for `SNC_SystemPreflight_TEST` v1.0.1, run against the TEST-bound `SportNutritionApp` spreadsheet. The log shows `Execution started` and `Execution completed` with no runtime exception. The emitted `SNC_PREFLIGHT_SUMMARY` reports:
+
+- `environment`: TEST; spreadsheet name `SportNutritionApp`; spreadsheet ID suffix `dYeWFk`.
+- `mode`: `READ_ONLY_SCHEMA_STATIC_AND_PURE_UNIT`; `writesExpected=0`; `externalCallsExpected=0`.
+- ENV-01: PASS — TEST environment and active spreadsheet identity verified.
+- DB-01: PASS — read-only inspection of all declared `SNC_SETUP.TABLES`; the emitted table details show `MATCH` with no missing or unexpected headers for the displayed tables.
+- Unit test suites: 9 PASS, 0 FAIL. The suite results include assignment configuration (10/10), manual open/close controls (4/4), course/offering authorization (19/19), duplicate predicate (7/7), import validation (9/9), import authorization (6/6), group representative authorization (4/4), staged-file authorization (5/5), and grade-review state machine (10/10).
+- Overall Preflight: `BLOCKED`; summary counts `PASS=11`, `FAIL=0`, `BLOCKED=1`, `NOT RUN=8`.
+- Integration suites INT-01 through INT-07A: NOT RUN. Their API route/handler presence is reported as `PRESENT — NOT RUN`, not as integration-test PASS.
+- INT-08 Browser/LIFF end-to-end/failure recovery: BLOCKED pending verified deployed TEST endpoint, browser/LIFF execution, and cross-module recovery evidence.
+
+### Gate decision
+
+- G-02 GAS project save/load/syntax execution: **PASS** — the owner-provided execution log confirms the current project successfully executed `SNC_SystemPreflight_TEST` after the two legacy files were removed, with no reported syntax/runtime load error. The repository-wide top-level declaration scan also found no duplicate names in the 16 tracked backend `.gs` files; the two archived legacy files were separately reviewed and had no duplicate `SNC_SETUP` declaration or top-level function-name collision with tracked backend source.
+- Preflight overall: **BLOCKED**, independently of G-02, because INT-08 is BLOCKED and eight integration suites are NOT RUN.
+- G-01: **PASS** (owner-confirmed five controlled files match approved development source).
+- G-08: **BLOCKED / PARTIAL** — spreadsheet backup copy is owner-confirmed, but restore rehearsal and Drive-file recovery procedure are not evidenced.
+
+The Preflight run was read-only by its declared mode and reported zero expected writes/external calls. No fixture creation, Integration Test Runner execution, migration, trigger, notification, Drive upload, or cleanup was performed.
