@@ -432,3 +432,30 @@ The owner inspected the current GAS TEST project and confirmed that all five con
 Please provide the GAS editor save/compile result or a fresh execution log from a safe read-only project preflight that confirms the current project loads without duplicate declarations or syntax/compile errors. Do not run setup, migration, fixtures, scheduler, trigger installation, notification, or Integration Test Runner functions. Keep the project and application data unchanged.
 
 **Decision: G-01 is closed; G-02 remains BLOCKED pending Apps Script project-level evidence. G-08 recovery evidence also remains outstanding. Fixture creation remains on HOLD.**
+
+
+## Global declaration audit — GitHub development — 22 November 2026
+
+The owner supplied GAS Editor screenshots showing `SNC_SETUP` references in `SNC_DataBaseline_TEST.gs`, `SNC_SystemPreflight_TEST.gs`, and `SchemaMigration_TEST.gs`, plus the actual declaration in `setup.gs`. The find box count in an individual file indicates search matches, not duplicate global declarations.
+
+A repository-wide read-only audit was performed against all 16 `.gs` files under `sport-nutrition-classroom/backend/` on branch `development`.
+
+- Files inspected: **16** (12 application modules including `setup.gs`, plus 3 TEST helpers/runners and the additional backend module as listed in the repository tree).
+- Top-level declaration scan: **175** declarations found.
+- Duplicate names detected by the top-level declaration scan: **0**.
+- `SNC_SETUP`: exactly **one** top-level declaration, `const SNC_SETUP = Object.freeze({...})` in `sport-nutrition-classroom/backend/setup.gs`, line 15.
+- References to `SNC_SETUP` in other files are expected consumers of the shared configuration object; they are not duplicate declarations.
+- No source code was changed or removed as part of this audit.
+
+### GAS-only files visible in the supplied screenshots
+
+The screenshots also show `SchemaMigration_TEST.gs` and `TestFixtures_TEST.gs` in the live GAS Editor. Neither filename exists in the current GitHub `development` backend tree, and repository code search returned no matching file. Their complete source was not supplied in the screenshots, so their global declarations, dependencies, execution references, and whether they are obsolete cannot be established.
+
+**Do not delete these files based on the current evidence.** They are not GitHub files to remove, and their removal from GAS would require a separate source/dependency review. In particular, do not run the migration or fixture functions. If the owner wants them assessed for removal, obtain a fresh GAS export containing these exact files and inspect their complete contents and references first.
+
+### G-02 impact
+
+- GitHub backend top-level declaration audit: **PASS — no duplicate top-level names detected in the 16 repository `.gs` files**.
+- `SNC_SETUP` declaration: **PASS — single declaration in setup.gs**.
+- Complete live GAS project duplicate/global and compile status: **REVIEW REQUIRED / NOT CLOSED** until the two GAS-only files (`SchemaMigration_TEST.gs`, `TestFixtures_TEST.gs`) and any other editor-only files are inspected, and the Apps Script project save/compile evidence is available.
+- No GAS-only file was removed or modified; no setup, migration, fixture, trigger, notification, or integration function was executed.
