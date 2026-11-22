@@ -248,3 +248,28 @@ The compact summary is complete. Earlier verbose Logger output from called schem
 Next work is limited to closing the outstanding entry evidence: (1) verify the exact TEST Web App deployment identity/version and endpoint without redeploying; (2) confirm source synchronization and compile status in the TEST GAS project; (3) complete G-04/G-05/G-06/G-08 isolation, baseline and recovery evidence; and (4) obtain explicit owner approval of the exact fixture manifest and write/cleanup scope (G-07). Do not create fixtures or run the Integration Test Runner until all applicable gates are evidenced and approval is recorded. The ten backend modules listed under HOLD remain unchanged pending targeted semantic reconciliation.
 
 No source synchronization, spreadsheet write, Drive operation, migration, fixture creation/cleanup, LINE message or deployment was performed by this checkpoint.
+
+
+## G-06 read-only baseline — completed and verified — 22 November 2026
+
+The owner copied `SNC_DataBaseline_TEST.gs` v1.0.1 into the existing GAS project and ran `sncCaptureDataBaseline_TEST()` once. The complete compact log `SNC_DATA_BASELINE_SUMMARY=` was supplied and reviewed.
+
+- Status: **G-06 PASS**.
+- `success=true`; `mode=READ_ONLY`; `tableCount=22`; `errorCount=0`; `errors=[]`.
+- All 22 table records are present. Every table has `blankPrimaryKeyRows=0` and `duplicatePrimaryKeyCount=0`.
+- For every table, `nonBlankPrimaryKeys` equals `dataRows`. SHA-256 digests are present for all 22 primary-key sets, including the standard empty-set digest for tables with zero rows.
+- Spreadsheet identity in the report: `SportNutritionApp`, ID suffix `dYeWFk`, schema version `1.5.0`.
+- The baseline collector reports read-only operation; no fixture, migration, application-data write, Drive operation, trigger, LINE call, or deployment was performed.
+
+The per-table primary-key digests and row counts now provide a comparison baseline for post-test verification. Do not publish raw primary-key values or the full manifest to GitHub/chat. Preserve any returned full manifest privately if it was captured by the owner.
+
+### Updated gate status
+
+- G-03: **PASS** — active pre-release Web App identity/endpoint evidence recorded above.
+- G-04: **PASS with configuration caveat** — current missing LINE token suppresses outbound push; reassess if the property is added.
+- G-05: **PASS by owner confirmation** — dedicated Restricted submission folder and `SNC_SUBMISSION_FOLDER_ID` configuration confirmed above.
+- G-06: **PASS** — complete 22-table read-only baseline verified in this update.
+- G-07: **NOT APPROVED / OPEN** — explicit owner approval of the exact synthetic fixture manifest and write/cleanup scope is still required.
+- G-08: **REVIEW REQUIRED** — recovery readiness evidence is still outstanding.
+
+**Decision:** G-06 is closed. This does not authorize fixture creation or integration execution. Keep Step 4 fixture activity and the Integration Test Runner on HOLD until G-07 and G-08 are closed and all other applicable entry gates are confirmed. No fixture or cleanup operation has been performed.
