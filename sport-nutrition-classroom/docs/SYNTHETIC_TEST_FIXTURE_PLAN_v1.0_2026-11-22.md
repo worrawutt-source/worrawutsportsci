@@ -199,9 +199,9 @@ The fixture batch is complete only when:
 - G-05 Drive isolation: **PASS by owner confirmation**
 - G-06 data baseline: **PASS — complete 22-table read-only baseline**
 - G-07 fixture authorization: **PASS — exact v1.0 scope approved**
-- G-08 recovery: **BLOCKED / PARTIAL** — separate TEST spreadsheet copy owner-confirmed complete; restore rehearsal and Drive-file recovery procedure not verified
+- G-08 recovery: **BLOCKED / PARTIAL** — backup copy owner-confirmed complete; non-destructive restore rehearsal runbook prepared but spreadsheet and Drive recovery rehearsals NOT RUN pending owner authorization for disposable resources
 - Fixture creation: **NOT RUN**
 - Functional Integration Tests: **NOT RUN**
 - Cleanup: **NOT RUN**
 
-**Decision: HOLD — do not create fixtures or run the Integration Test Runner until G-08 recovery requirements are met.** The Preflight's integration NOT RUN/BLOCKED results remain open test work and must not be reported as PASS.
+**Decision: HOLD — do not create fixtures or run the Integration Test Runner until G-08 recovery rehearsals pass.** See `G08_RESTORE_REHEARSAL_RUNBOOK_v1.0_2026-11-22.md` for the exact procedure and evidence criteria.
