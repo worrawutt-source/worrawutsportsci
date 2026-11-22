@@ -575,3 +575,29 @@ The runbook also defines a Drive sentinel-file trash/restore test in the Restric
 - Fixture creation and Integration Test Runner: **HOLD**.
 
 The runbook was committed on `development` as `62d2850509e54961da3a19393e827fd23746acfe`. No application source, TEST spreadsheet data, Drive files, Script Properties, triggers, deployment settings, or LINE messages were changed.
+
+
+## G-08 owner authorization and execution readiness — 22 November 2026
+
+The owner explicitly approved execution of both rehearsals in `SNC-G08-RUNBOOK-001 v1.0`:
+
+1. G08-01 — create one disposable spreadsheet copy from the exact owner-confirmed backup source, verify all 22 sheets/headers/row counts/schema version/private primary-key digests against the G-06 baseline, then trash only that exact disposable copy.
+2. G08-02 — create one harmless sentinel text file in the Restricted TEST submission folder, record its exact ID and digest, move only that file to Trash, restore it, verify identity/content/parent/access, then move only that exact sentinel to Trash for final controlled cleanup.
+
+Authorization is limited to those two rehearsals and the exact temporary resources they create. It does not authorize changes to the live TEST spreadsheet, backup source, pre-existing Drive files, sharing/ACLs, permanent deletion, Production, triggers, LINE, or application data.
+
+### Execution capability and current result
+
+The current session has no connected Google Drive or Google Sheets action capable of creating/copying spreadsheets, creating Drive files, moving items to/from Trash, or reading Drive ACL/metadata. Therefore the assistant cannot execute either rehearsal directly or verify the resulting cloud resources in this session.
+
+- Owner authorization: **PASS — explicit approval recorded**.
+- G08-01 spreadsheet copy/restore rehearsal: **NOT RUN — live Drive/Sheets operation unavailable in this session**.
+- G08-02 Drive sentinel Trash/restore rehearsal: **NOT RUN — live Drive operation unavailable in this session**.
+- G-08: **BLOCKED — authorization satisfied; execution evidence pending**.
+- Fixture creation and Integration Test Runner remain **HOLD**.
+
+No spreadsheet or Drive resource was created, copied, trashed, restored, or deleted by the assistant. No application data, Script Properties, triggers, deployment settings, or LINE messages were changed.
+
+### Owner-side execution handoff
+
+The owner may execute the exact steps in `G08_RESTORE_REHEARSAL_RUNBOOK_v1.0_2026-11-22.md` in Google Drive. Record the disposable spreadsheet ID and sentinel file ID privately; do not put full IDs, raw primary-key manifests, personal data, or secrets in GitHub/chat. Provide sanitized screenshots and verification outputs for both rehearsals. The assistant will review the evidence and update G-08 only after both acceptance criteria are met.
