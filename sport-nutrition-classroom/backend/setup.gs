@@ -255,7 +255,8 @@ function formatSetupHeader_(sheet, columnCount) {
 
 /**
  * Imports rows from StudentImport into Users.
- * Expected staging columns: EMAIL | DISPLAY_NAME | STUDENT_ID
+ * Canonical staging columns: STUDENT_ID | FIRST_NAME | LAST_NAME | EMAIL
+ * Legacy EMAIL | DISPLAY_NAME | STUDENT_ID remains readable for existing staging sheets.
  * Existing users are never overwritten. Exact duplicates are skipped;
  * conflicting duplicate StudentID or Email values stop the import.
  */
