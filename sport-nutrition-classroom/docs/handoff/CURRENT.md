@@ -341,3 +341,12 @@ The owner confirmed that a separate copy of the latest TEST spreadsheet has been
 - G-08: PASS — separate TEST Spreadsheet backup and completeness confirmed by owner; restore rehearsal NOT RUN.
 
 **Decision: HOLD remains in effect.** G-08 is closed for the minimum backup requirement, but no fixture creation, Integration Test Runner execution, Drive upload, or cleanup is authorized until G-07 receives explicit approval. No application data, Drive files, triggers, or LINE messages were changed as part of this gate update.
+
+
+## G-07 owner approval — Synthetic Test Fixture Plan v1.0 — 22 November 2026
+
+The owner explicitly approved **Synthetic Test Fixture Plan v1.0** (document SNC-TEST-FIXTURE-PLAN-001) in full, including the complete synthetic actor and academic-data manifest, all fixture writes described in the plan, the exact-ID cleanup sequence, retention of AuditLogs by default, preservation of the 18 existing Users and all baseline records, private TEST Drive file isolation, and the exclusions (no real LINE binding or push, no Production resources, no setup/migration/trigger installation, and no broad deletion).
+
+- G-07: **PASS — explicit owner approval recorded**.
+- Approval does not waive any other entry gate and does not authorize fixture creation while G-01, G-02, or any other applicable gate remains BLOCKED or NOT RUN.
+- Fixture creation, Integration Test Runner execution, Drive upload, and cleanup remain **NOT RUN** pending completion and verification of all remaining gates.
