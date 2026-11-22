@@ -301,8 +301,13 @@ function importStudentsFromStaging() {
         lastName=String(r[2]||'').trim();email=String(r[3]||'').trim().toLowerCase();
       }else{
         email=String(r[0]||'').trim().toLowerCase();studentId=String(r[2]||'').trim();
-        var display=String(r[1]||'').trim(),m=display.match(/^(นาย|นางสาว|นาง|น\\.ส\\.)\\s*(.+)$/);
-        if(m){var parts=m[2].trim().split(/\\s+/);if(parts.length>=2){firstName=parts[0];lastName=parts.slice(1).join(' ');}}
+        var display=String(r[1]||'').trim();
+        ['นางสาว','นาย','นาง','น.ส.'].some(function(prefix){
+          if(display.indexOf(prefix)===0){display=display.slice(prefix.length).trim();return true;}
+          return false;
+        });
+        var parts=display.split(/\\s+/);
+        if(parts.length>=2){firstName=parts[0];lastName=parts.slice(1).join(' ');}
       }
       if(!email||!firstName||!lastName||!studentId){errors.push('Row '+rowNo+': missing STUDENT_ID, FIRST_NAME, LAST_NAME, or EMAIL (legacy rows must contain a parseable full name).');return;}
       if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)){errors.push('Row '+rowNo+': invalid email format');return;}
