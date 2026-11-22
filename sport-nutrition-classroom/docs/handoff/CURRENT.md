@@ -119,6 +119,19 @@ Read-only review performed against GAS Backup (3) and the matching GitHub `devel
 
 **Decision:** G-04 and G-05 remain BLOCKED. G-03 is closed based on owner-confirmed active deployment Version 14, matching URL/ID, and successful API health response. Fixture creation and integration execution remain on HOLD.
 
+## G-05 folder preparation update — 22 November 2026
+
+The owner supplied a screenshot showing a newly created, currently empty Google Drive folder named `SPORT_NUTRITION_SUBMISSIONS` under `ProjectLine`. This establishes that the folder has been created and appears empty in the screenshot. The screenshot does not show its URL/Folder ID or sharing configuration.
+
+- Folder existence/name: **OWNER EVIDENCE — PASS**
+- Empty contents at screenshot time: **OWNER EVIDENCE — PASS**
+- Folder ID matched to intended resource: **NOT VERIFIED**
+- Sharing set to Restricted / Private: **NOT VERIFIED**
+- `SNC_SUBMISSION_FOLDER_ID` Script Property configured: **NOT DONE**
+- G-05 overall: **BLOCKED pending Folder ID and sharing verification**.
+
+Next read-only check: open the folder's Share dialog and confirm General access is Restricted; copy the folder ID from the Drive URL (the text after `/folders/`). Do not change sharing or add the Script Property until the ID and sharing state are confirmed. No Drive or Script Properties change was performed by this review.
+
 ## G-05 owner confirmation — submission folder property absent — 22 November 2026
 
 The owner inspected Apps Script Project Settings → Script Properties and confirmed that `SNC_SUBMISSION_FOLDER_ID` is **not present**.
