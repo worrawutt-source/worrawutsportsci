@@ -305,7 +305,7 @@ function testConfiguration() {
 
 /**
  * Calls the deployed Web App without an ID token.
- * Expected result: success=false and error.code=UNAUTHENTICATED.
+ * Expected result: success=false and error.code=TOKEN_MISSING.
  */
 function testPostMissingToken() {
   var url = ScriptApp.getService().getUrl();
