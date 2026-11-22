@@ -492,3 +492,31 @@ The prior audit statement that `SchemaMigration_TEST.gs` and `TestFixtures_TEST.
 - `TestFixtures_TEST`: **LEGACY / DO NOT RUN for current fixture plan; uses existing hard-coded accounts/offering and conflicts with the approved synthetic fixture approach**.
 - GAS live-project compile and complete usage status: **REVIEW REQUIRED**; archive inspection is not proof of current editor contents, successful compilation, or execution history.
 - No GAS source, spreadsheet rows, Script Properties, triggers, Drive files, or LINE messages were modified by this audit.
+
+
+## Full archive cross-file declaration and legacy utility review — 22 November 2026
+
+The complete owner-provided archive `SNC_GAS_BACKUP_2026-11-22(3).zip` was reopened. The audit normalized the archive's duplicate representations (the Integration Test Runner appears as both `.gs` and `.txt`) so each logical source file was counted once.
+
+- Canonical source files reviewed: **18**.
+- Top-level declarations scanned: **190**.
+- Duplicate top-level declaration names across the 18 canonical source files: **0**.
+- `SNC_SETUP` is declared once in `setup.txt` (the GAS `setup.gs` source) and is referenced by the migration and preflight/baseline code as a shared configuration object. These references are not redeclarations.
+- The two legacy utilities declare no top-level names that collide with the other canonical source files.
+- No top-level function declared in either legacy utility is referenced by another canonical source file. This establishes no static cross-file call dependency; it does not prove the user has never run the functions manually or that they are not selected manually from the Apps Script function menu.
+
+### Disposition recommendation for the two GAS-only files
+
+1. `SchemaMigration_TEST.gs` — one-off migration utility. Its only top-level function is `migrateMissingSNCTables_TEST_20261122()`. The function is not called by the application modules or current test runners. The latest G-06 baseline reports all 22 tables present, so there is no current evidence of a missing-table task. Recommendation: **remove this file from the active GAS TEST project after preserving its exact source in the backup/archive**. Do not run it again. The archive copy remains the historical migration record.
+2. `TestFixtures_TEST.gs` — legacy fixture utility. It defines its own `SNC_FIXTURE_*` globals and callable inspect/create/cleanup functions, with no static cross-file references. It uses pre-existing hard-coded UserIDs and OfferingID and conflicts with the approved synthetic actor/academic fixture manifest. Recommendation: **remove this file from the active GAS TEST project after preserving its exact source in the backup/archive**. Do not run any function in it. Use only the approved current fixture plan and its controlled runner when all entry gates pass.
+
+These recommendations concern the two extra files visible in the GAS editor but absent from the tracked GitHub runtime source. There is no GitHub runtime copy to edit or delete. Their original source remains preserved in the owner-provided ZIP. Do not delete or modify any of the 16 tracked backend source files.
+
+### G-02 status
+
+- Archive-wide static top-level declaration audit: **PASS — 0 duplicate names across 18 canonical source files**.
+- Legacy utility dependency scan: **PASS — no static cross-file references to their declared functions**.
+- GAS live-project compile: **NOT VERIFIED**. Static source analysis does not replace a save/compile check in Apps Script, and the current editor's exact source state has not been independently fetched.
+- Recommended owner action: after confirming the ZIP backup remains safely retained, remove only `SchemaMigration_TEST.gs` and `TestFixtures_TEST.gs` from the active GAS TEST project, save the project, and provide a screenshot of the final file list and any save/compile status. Do not run either file's functions, and do not delete any other file.
+
+No GitHub application source, GAS project, spreadsheet, Script Properties, triggers, Drive files, or LINE messages were modified by this audit. This update records findings and a proposed owner-side cleanup only.
