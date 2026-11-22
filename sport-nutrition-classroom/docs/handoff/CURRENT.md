@@ -520,3 +520,16 @@ These recommendations concern the two extra files visible in the GAS editor but 
 - Recommended owner action: after confirming the ZIP backup remains safely retained, remove only `SchemaMigration_TEST.gs` and `TestFixtures_TEST.gs` from the active GAS TEST project, save the project, and provide a screenshot of the final file list and any save/compile status. Do not run either file's functions, and do not delete any other file.
 
 No GitHub application source, GAS project, spreadsheet, Script Properties, triggers, Drive files, or LINE messages were modified by this audit. This update records findings and a proposed owner-side cleanup only.
+
+
+## Owner evidence — legacy GAS TEST files removed from editor — 22 November 2026
+
+The owner supplied two screenshots of the current GAS TEST editor file navigator after the requested cleanup. The visible file list includes `appsscript.json`, the active backend modules, `setup.gs`, `SNC_IntegrationTestRunner_TEST.gs`, `SNC_SystemPreflight_TEST.gs`, and `SNC_DataBaseline_TEST.gs`. The two legacy files `SchemaMigration_TEST.gs` and `TestFixtures_TEST.gs` are absent from the displayed file list.
+
+- Removal from the visible GAS TEST project file list: **OWNER-CONFIRMED BY SCREENSHOTS**.
+- No other file removal is apparent in the supplied screenshots; the visible active backend and TEST helper files remain present.
+- Screenshot evidence does not by itself establish the save completed, project compilation, absence of duplicate declarations across any non-visible files, or runtime preflight results.
+- G-01 remains **PASS** based on the earlier owner confirmation that the five controlled files matched the approved development source. The two legacy files were not part of the approved active source set.
+- G-02 remains **BLOCKED / EVIDENCE PENDING** until the project save is confirmed and the read-only `SNC_SystemPreflight_TEST()` is run successfully in the TEST-bound GAS project. Do not run setup, migration, fixtures, triggers, notifications, or the Integration Test Runner.
+
+No GitHub source files were changed by this editor cleanup evidence. No application data, Drive files, Script Properties, triggers, deployment settings, or LINE messages were changed by this checkpoint update.
