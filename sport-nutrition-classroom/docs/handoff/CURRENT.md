@@ -77,6 +77,18 @@ The owner clarified that the current GAS Web App is the sole pre-release develop
 - The prior read-only Preflight already verified the active spreadsheet identity and TEST environment property at execution time. This project uses one pre-release environment, not parallel TEST/Production deployments.
 - Keep access configuration and backend authorization under security review; no deployment setting was changed.
 
+## Owner-confirmed Web App endpoint response — 22 November 2026
+
+The owner opened the active Web App URL in a browser and confirmed the endpoint returned this successful JSON response:
+
+- `success: true`
+- `data.service: SPORT NUTRITION CLASSROOM API`
+- `data.status: READY`
+- `data.version: 1.5.0`
+- `error: null`
+
+This confirms the active URL responds to the browser request and identifies itself as the SPORT NUTRITION CLASSROOM API version 1.5.0. Combined with the owner-confirmed active Deployment Version 14, this closes the endpoint reachability/identity evidence for G-03. It does **not** establish authenticated action routes, database-backed integration, browser/LIFF workflows, or failure recovery; those remain separate test levels.
+
 ## Latest owner-run Preflight evidence — 22 November 2026
 
 The owner copied `SNC_SystemPreflight_TEST.gs` v1.0.1 into GAS TEST and ran `SNC_SystemPreflight_TEST()`. The compact summary record was captured in the supplied execution log.
