@@ -120,3 +120,76 @@ Paste the following prompt into a new chat:
 
 ---
 This checkpoint is a continuity aid, not a substitute for the approved requirements, source code, test evidence, or explicit project-owner approvals.
+
+
+## 9. Integration Test Runner execution record — 22-Nov-2026
+
+### 9.1 Execution evidence supplied by project owner
+
+Runner: `SNC_IntegrationTestRunner_TEST`  
+Version: `1.0.0`  
+Execution: 22-Nov-2026, approximately 10:35 Asia/Bangkok (03:35 UTC)  
+Environment reported by runner: `TEST`  
+Mode: `READ_ONLY_INTEGRATION_HANDLER_TEST`  
+Duration: 8,422 ms  
+Spreadsheet reported: `SportNutritionApp` (ID suffix intentionally not repeated here)
+
+Suite summary: PASS 0 / FAIL 0 / BLOCKED 8 / NOT RUN 0.
+
+INT-01 — Users / Roles / Enrollment:
+- Suite status: BLOCKED.
+- 10 subchecks PASS, 0 FAIL, 2 BLOCKED.
+- ADMIN active; required SYSTEM_ADMIN and INSTRUCTOR roles resolved.
+- STUDENT_A and STUDENT_B active; STUDENT role resolved for each.
+- Both students' enrollment-list handler calls returned 0 rows; no active enrollment fixture was found for either student.
+- System Admin offering-list handler returned 3 rows.
+- Fixture creation/deletion: 0/0. Runner reported no cleanup action was required or attempted.
+
+INT-02 — Group Management: BLOCKED by runner because the deployed/inspected GAS route was not detected.
+INT-03 — Group Authorization: BLOCKED by runner because group authorization route/fixtures were not detected.
+INT-04 — Submission / Revision / Idempotency: BLOCKED by runner because submission route was not detected.
+INT-05 — File Upload / Attach / Access / Rollback: BLOCKED by runner because file route and verified TEST Drive upload condition were not detected.
+INT-06 — Grading / Grade History / Grade Review: BLOCKED by runner because grading routes were not detected.
+INT-07 — Notifications / Audit: BLOCKED by runner because notification route was not detected; LINE Push was excluded.
+INT-08 — End-to-End / Failure Recovery: BLOCKED because deployed browser/LIFF E2E and cross-module recovery evidence was not available.
+
+Interpretation:
+- The execution proves that this runner revision executed in Apps Script against a spreadsheet it identified as TEST and that its implemented read-only checks returned the results above. It does not prove complete integration coverage or application readiness.
+- The 10 PASS values are INT-01 subchecks only; no suite passed in full. Do not report the overall result as PASS.
+- No FAIL was reported. BLOCKED indicates missing fixtures, routes, or test conditions, not a demonstrated application defect.
+- The runner source itself is not committed in the repository as of this checkpoint. The project owner supplied its execution log in the conversation.
+- The output does not independently prove the identity/version of the deployed GAS source. The exact deployment version and source snapshot remain to be established.
+
+### 9.2 Important repository-versus-deployment discrepancy found after the run
+
+The live `development` branch HEAD was rechecked and remains:
+`07d2e5b1a5338e78584e44c8b5cbbed997ba1c72`.
+
+The current repository tree contains separate modules and the current `Code.gs` has `doPost` route branches for group, submission, file, grade/gradeReview, and notification actions. Current source blob SHAs:
+- `backend/Code.gs`: `6c7ae93d00bc76c6e5ca43c93b05c46c5ee1774d`
+- `backend/GroupManagement.gs`: `9dc280d88bcee8e346d028082cae725fe2d88ee8`
+- `backend/SubmissionManagement.gs`: `ef4b86678e8c1feeea425ba578501846129a229c`
+- `backend/FileManagement.gs`: `86cd29160dd00207c9a575ce801da09e643911cb`
+- `backend/GradingManagement.gs`: `12bd34c5dd857250c7d6ccd76e28b5da7f4507f8`
+- `backend/NotificationManagement.gs`: `875b60d90f4599ee0f9bdf0f60dcea31e215de7b`
+
+Therefore, the runner's statements that these routes/modules were absent in the inspected GAS backup must not be generalized to the current GitHub source. They indicate that the source inspected by the runner and the current repository source are not yet proven to be the same revision. This is a source/deployment reconciliation issue, not evidence that the repository modules are absent.
+
+### 9.3 Updated next actions
+
+P0 — Reconcile the TEST deployment:
+1. Obtain/export the exact GAS source currently deployed in TEST (including all .gs files) and identify its deployment/version metadata without exposing secrets.
+2. Compare that source with the current `development` backend files by content/function and record file hashes. Do not overwrite TEST or repository source during comparison.
+3. Confirm whether the current `development` modules are actually included in the deployed TEST project and whether the `doPost` routes dispatch to them.
+4. Re-run only safe read-only route/preflight checks after the source identity is established.
+
+P1 — Resolve INT-01 fixture gap:
+5. Identify valid synthetic TEST enrollment fixtures and an offering that can be used without modifying existing records. Do not use real student accounts or insert records merely to force PASS without a separately reviewed fixture plan.
+6. If no suitable fixtures exist, keep the two enrollment checks BLOCKED and document the fixture prerequisite.
+
+P2 — Rebuild test coverage from the actual deployed source:
+7. Reconcile INT-02..INT-07 route detection with the current deployed `doPost` and handler implementations. A route's presence alone is not a passing integration test.
+8. Implement module-specific tests only after verifying handler signatures, actor authorization, sheet schemas, safe fixtures, write/rollback behavior, and cleanup safeguards.
+9. Keep INT-08 separate until deployed TEST browser/LIFF E2E and failure-recovery conditions can be verified.
+
+No application source, schema, deployment, TEST data, or Production data was changed as part of recording this execution result.
