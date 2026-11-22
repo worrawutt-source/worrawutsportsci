@@ -556,3 +556,22 @@ The owner supplied the complete execution-log excerpt for `SNC_SystemPreflight_T
 - G-08: **BLOCKED / PARTIAL** — spreadsheet backup copy is owner-confirmed, but restore rehearsal and Drive-file recovery procedure are not evidenced.
 
 The Preflight run was read-only by its declared mode and reported zero expected writes/external calls. No fixture creation, Integration Test Runner execution, migration, trigger, notification, Drive upload, or cleanup was performed.
+
+
+## G-08 recovery work package — runbook prepared — 22 November 2026
+
+The current checkpoint and approved fixture plan were reviewed against SNC-WG-001 v1.0.0. No Google Drive/Sheets connector capable of performing live copy, restore, Trash, or ACL operations is available in this session. Therefore no live recovery operation was attempted.
+
+Created `sport-nutrition-classroom/docs/G08_RESTORE_REHEARSAL_RUNBOOK_v1.0_2026-11-22.md` (SNC-G08-RUNBOOK-001 v1.0) with a non-destructive recovery rehearsal using the owner-confirmed backup `Copy of SportNutritionApp` (backup ID retained in this private project checkpoint) as the source and a separate disposable spreadsheet copy as the target. The runbook requires comparison of all 22 sheets, headers, row counts, schema version 1.5.0, and private primary-key digests against the retained G-06 baseline. It explicitly prohibits restoring over live TEST or modifying the backup source.
+
+The runbook also defines a Drive sentinel-file trash/restore test in the Restricted TEST submission folder. Because both the disposable spreadsheet creation/cleanup and the Drive sentinel create/Trash/restore are persistent resource operations outside the already-approved synthetic fixture manifest, explicit owner authorization is required before those operations. No resource was created, copied, trashed, restored, or deleted in this work package.
+
+### G-08 status
+
+- Backup copy existence/completeness: **OWNER CONFIRMED**.
+- Spreadsheet restore rehearsal: **NOT RUN — awaiting explicit authorization for one disposable copy and exact-ID cleanup**.
+- Drive file restore rehearsal: **NOT RUN — awaiting explicit authorization for one temporary sentinel file and exact-ID Trash/restore**.
+- G-08: **BLOCKED / PARTIAL**.
+- Fixture creation and Integration Test Runner: **HOLD**.
+
+The runbook was committed on `development` as `62d2850509e54961da3a19393e827fd23746acfe`. No application source, TEST spreadsheet data, Drive files, Script Properties, triggers, deployment settings, or LINE messages were changed.
