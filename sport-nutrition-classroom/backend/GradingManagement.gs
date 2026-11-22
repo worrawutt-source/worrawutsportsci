@@ -97,14 +97,30 @@ function handleGradingAction_(action,actor,p,requestId){
       var g2=cmGet_('Grades','GradeID',rr.GradeID),s4=g2&&cmGet_('Submissions','SubmissionID',g2.SubmissionID);
       if(!s4)throw apiError_('NOT_FOUND','Related submission not found.');
       grCanManage_(actor,s4);
-      var status=cmText_(p.status,20,'status',true).toUpperCase();
-      if(['IN_REVIEW','RESOLVED','REJECTED'].indexOf(status)<0)throw apiError_('VALIDATION_ERROR','Invalid review status.');
+      var currentStatus=String(rr.Status||'').toUpperCase(),status=cmText_(p.status,20,'status',true).toUpperCase();
+      var allowedTransitions={PENDING:['IN_REVIEW','RESOLVED','REJECTED'],IN_REVIEW:['RESOLVED','REJECTED'],RESOLVED:[],REJECTED:[]};
+      if(!allowedTransitions[currentStatus])throw apiError_('CONFLICT','Grade review request has an invalid current status.');
+      if(allowedTransitions[currentStatus].indexOf(status)<0)
+        throw apiError_('INVALID_STATUS_TRANSITION','Grade review transition '+currentStatus+' -> '+status+' is not allowed.');
       var response=cmText_(p.instructorResponse||'',3000,'instructorResponse',false),sh2=cmSheet_('GradeReviewRequests'),h2=sh2.getRange(1,1,1,sh2.getLastColumn()).getDisplayValues()[0];
-      sh2.getRange(rr._row,h2.indexOf('Status')+1).setValue(status);
-      sh2.getRange(rr._row,h2.indexOf('InstructorResponse')+1).setValue(response);
-      sh2.getRange(rr._row,h2.indexOf('ReviewedByUserID')+1).setValue(actor.userId);
-      sh2.getRange(rr._row,h2.indexOf('UpdatedAt')+1).setValue(new Date());
-      appendAudit_(actor.userId,'GRADE_REVIEW_UPDATED','GradeReviewRequest',rid2,{status:status},requestId);
+      var statusCol=h2.indexOf('Status')+1,responseCol=h2.indexOf('InstructorResponse')+1,reviewerCol=h2.indexOf('ReviewedByUserID')+1,updatedCol=h2.indexOf('UpdatedAt')+1;
+      if(!statusCol||!responseCol||!reviewerCol||!updatedCol)throw apiError_('SCHEMA_MISMATCH','GradeReviewRequests schema is incomplete.');
+      var oldState={status:rr.Status,response:rr.InstructorResponse,reviewer:rr.ReviewedByUserID,updated:rr.UpdatedAt},now3=new Date();
+      try{
+        sh2.getRange(rr._row,statusCol).setValue(status);
+        sh2.getRange(rr._row,responseCol).setValue(response);
+        sh2.getRange(rr._row,reviewerCol).setValue(actor.userId);
+        sh2.getRange(rr._row,updatedCol).setValue(now3);
+        appendAudit_(actor.userId,'GRADE_REVIEW_UPDATED','GradeReviewRequest',rid2,{fromStatus:currentStatus,toStatus:status},requestId);
+      }catch(reviewWriteError){
+        try{
+          sh2.getRange(rr._row,statusCol).setValue(oldState.status);
+          sh2.getRange(rr._row,responseCol).setValue(oldState.response);
+          sh2.getRange(rr._row,reviewerCol).setValue(oldState.reviewer);
+          sh2.getRange(rr._row,updatedCol).setValue(oldState.updated);
+        }catch(rollbackError){console.error('GRADE_REVIEW_ROLLBACK_FAILED');}
+        throw apiError_('GRADE_REVIEW_WRITE_FAILED','Grade review update failed; automatic rollback was attempted. Verify GradeReviewRequests before retrying.');
+      }
       return cmGet_('GradeReviewRequests','ReviewRequestID',rid2);
     }
     throw apiError_('NOT_IMPLEMENTED','Grading action is not implemented.');
