@@ -621,3 +621,34 @@ This owner clarification supersedes the earlier G-08 runbook proposal and the su
 The owner approval previously given for the runbook is superseded by this later instruction to skip those additional rehearsals. No resources were created, copied, trashed, restored, or deleted by the assistant.
 
 **Next decision:** G-01 through G-08 entry gates are now satisfied on the evidence/owner confirmations recorded in this checkpoint. Proceed to the next controlled stage only after verifying the current source/deployment and TEST environment identities against the approved plan. The Integration Test Runner and fixture creation have not yet been run; this G-08 clarification does not convert any integration test status to PASS.
+
+## POST endpoint diagnostic and Code.gs synchronization — 22 November 2026
+
+The owner confirmed that the latest `testPostMissingToken()` function was copied from GitHub into the active GAS project and saved.
+
+### POST diagnostic evidence (owner-provided)
+
+- POST to the `/dev` URL returned HTTP 401 with HTML. This endpoint was not used for subsequent verification.
+- POST to the active deployed `/exec` URL returned HTTP 200 and `application/json; charset=utf-8`.
+- Response error code: `TOKEN_MISSING`, with the expected authentication rejection message.
+- Result: **POST /exec dispatch and missing-token rejection PASS**.
+- This does not test a valid LINE ID token, LINE identity verification success, or any database-backed application action.
+
+### GitHub source synchronization
+
+- Updated `sport-nutrition-classroom/backend/Code.gs` on `development` to use the active TEST `/exec` endpoint in `testPostMissingToken()`, emit safe response diagnostics, and assert the expected `TOKEN_MISSING` result.
+- Follow-up correction ensures the JSON detection regular expression is stored as executable JavaScript regex syntax.
+- Commits: `5e6a93ea7f628a80aaec9806909632a4e21e6294` (helper synchronization), then `875a0f074ea2b9ce4a0174077ccbeea75931c8e2` (regex correction).
+- Latest Code.gs blob SHA: `7c9928f7ae269287d1537dec6256dce13783d26d`.
+- Owner confirms the changed function has been copied into GAS. This confirms synchronization of the changed helper only; it is not a fresh whole-file GAS-versus-GitHub comparison.
+
+### Next controlled action
+
+The current `SNC_IntegrationTestRunner_TEST()` v1.1.0 source is explicitly read-only: it validates TEST Script Properties and active spreadsheet identity, inspects dispatcher/handler presence, and does not read or write application rows, Drive, triggers, or LINE. Its route presence findings are static inspection only and must remain `NOT RUN`, not integration PASS.
+
+After the owner confirms the helper copy/save, run `SNC_IntegrationTestRunner_TEST()` once in the active GAS project and provide its complete sanitized log. Do not run fixture creation, setup/migration, notification, trigger, upload, or cleanup functions during this read-only runner step. Review the runner output before preparing the next fixture execution procedure.
+
+- Synthetic fixture creation: **NOT RUN**.
+- Database-backed Functional Integration Tests: **NOT RUN**.
+- Real LINE LIFF valid-token test: **NOT RUN**.
+- No application data, Drive resources, Script Properties, triggers, deployment settings, or LINE messages were changed by this synchronization.
