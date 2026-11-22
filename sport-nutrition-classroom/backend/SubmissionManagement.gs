@@ -37,16 +37,35 @@ function smCanUseStagedFile_(staged,actor,assignmentId,target){
     gmMembers_(target.groupId).some(function(m){return String(m.UserID)===owner;});
 }
 function testGroupStagedFileAuthorizationUnit(){
+  // Isolate membership lookup so this test is genuinely in-memory and never
+  // reads the active spreadsheet. Restore the production helper even on failure.
+  var originalMembers=gmMembers_;
   var actor={userId:'LEADER'},target={type:'GROUP',groupId:'G1'};
+  var activeMembers=[
+    {GroupID:'G1',UserID:'LEADER',Status:'ACTIVE'},
+    {GroupID:'G1',UserID:'MEMBER',Status:'ACTIVE'}
+  ];
   var same={SubmissionID:'STAGED:LEADER:A1',UploadedByUserID:'LEADER'};
   var member={SubmissionID:'STAGED:MEMBER:A1',UploadedByUserID:'MEMBER'};
   var other={SubmissionID:'STAGED:OTHER:A1',UploadedByUserID:'OTHER'};
-  var results=[
-    {test:'submitter may attach own staged file',pass:smCanUseStagedFile_(same,actor,'A1',target)},
-    {test:'leader may attach active group member staged file',pass:smCanUseStagedFile_(member,actor,'A1',target)},
-    {test:'cannot attach non-member staged file',pass:!smCanUseStagedFile_(other,actor,'A1',target)},
-    {test:'cannot attach file staged for another assignment',pass:!smCanUseStagedFile_({SubmissionID:'STAGED:MEMBER:A2',UploadedByUserID:'MEMBER'},actor,'A1',target)}
-  ];
+  var inactive={SubmissionID:'STAGED:FORMER:A1',UploadedByUserID:'FORMER'};
+  var results=[];
+  try{
+    gmMembers_=function(groupId){
+      return activeMembers.filter(function(m){
+        return String(m.GroupID)===String(groupId)&&String(m.Status).toUpperCase()==='ACTIVE';
+      });
+    };
+    results=[
+      {test:'submitter may attach own staged file',pass:smCanUseStagedFile_(same,actor,'A1',target)},
+      {test:'leader may attach active group member staged file',pass:smCanUseStagedFile_(member,actor,'A1',target)},
+      {test:'cannot attach non-member staged file',pass:!smCanUseStagedFile_(other,actor,'A1',target)},
+      {test:'cannot attach former member staged file',pass:!smCanUseStagedFile_(inactive,actor,'A1',target)},
+      {test:'cannot attach file staged for another assignment',pass:!smCanUseStagedFile_({SubmissionID:'STAGED:MEMBER:A2',UploadedByUserID:'MEMBER'},actor,'A1',target)}
+    ];
+  }finally{
+    gmMembers_=originalMembers;
+  }
   var passed=results.filter(function(x){return x.pass;}).length;
   var out={success:passed===results.length,mode:'PURE_UNIT_GROUP_STAGED_FILE_AUTHORIZATION',database:'NONE',passed:passed,failed:results.length-passed,total:results.length,writesExpected:0,results:results};
   console.log(JSON.stringify(out));return out;
