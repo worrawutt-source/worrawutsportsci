@@ -402,8 +402,9 @@ function normalizeStudentId_(value) {
 }
 
 function makeOtp_() {
-  var raw = Utilities.getUuid().replace(/[^0-9]/g, '');
-  while (raw.length < 6) raw += String(Math.floor(Math.random() * 10));
+  // Use UUID entropy only; do not fall back to Math.random for an authentication code.
+  var raw = '';
+  while (raw.length < 6) raw += Utilities.getUuid().replace(/[^0-9]/g, '');
   return raw.slice(0, 6);
 }
 
@@ -514,16 +515,30 @@ function confirmStudentLink_(identity, payload, requestId) {
       return String(a.UserID) === String(user.UserID) &&
         String(a.Provider) === 'LINE' && String(a.Status).toUpperCase() === 'ACTIVE';
     })[0];
-    var now = new Date();
+    var now = new Date(), createdAccountId = '';
     if (!existing) {
+      createdAccountId = Utilities.getUuid();
       accountSheet_('LINEAccounts').appendRow([
-        Utilities.getUuid(), user.UserID, 'LINE', identity.sub,
+        createdAccountId, user.UserID, 'LINE', identity.sub,
         identity.name || '', identity.picture || '', 'ACTIVE', now, now, now
       ]);
     }
-    appendAudit_(String(user.UserID), 'STUDENT_ACCOUNT_LINKED', 'User', user.UserID, {
-      provider: 'LINE', studentId: studentId
-    }, requestId);
+    try {
+      appendAudit_(String(user.UserID), 'STUDENT_ACCOUNT_LINKED', 'User', user.UserID, {
+        provider: 'LINE', studentId: studentId
+      }, requestId);
+    } catch (auditError) {
+      if (createdAccountId) {
+        try {
+          var lineSheet = accountSheet_('LINEAccounts');
+          var created = rowsAsObjects_(lineSheet).filter(function(r) { return String(r.LINEAccountID) === createdAccountId; })[0];
+          if (created) lineSheet.deleteRow(created._row);
+        } catch (rollbackError) {
+          console.error('ACCOUNT_LINK_ROLLBACK_FAILED');
+        }
+      }
+      throw apiError_('ACCOUNT_LINK_WRITE_FAILED', 'Account linking could not be fully recorded; verify the account link before retrying.');
+    }
     return { accountStatus: 'LINKED', role: 'STUDENT', user: publicUser_(user) };
   } finally {
     lock.releaseLock();
@@ -575,11 +590,21 @@ function confirmEmailChange_(identity, payload, requestId) {
     var emailCol = headers.indexOf('Email') + 1;
     var updatedCol = headers.indexOf('UpdatedAt') + 1;
     if (!emailCol || !updatedCol) throw apiError_('SCHEMA_MISMATCH', 'Users schema is invalid.');
-    var oldEmail = String(linked.user.Email);
-    users.getRange(linked.user._row, emailCol).setValue(newEmail);
-    users.getRange(linked.user._row, updatedCol).setValue(new Date());
-    appendAudit_(String(linked.user.UserID), 'STUDENT_EMAIL_CHANGED', 'User',
-      linked.user.UserID, { oldEmail: oldEmail, newEmail: newEmail }, requestId);
+    var oldEmail = String(linked.user.Email), oldUpdatedAt = linked.user.UpdatedAt, changedAt = new Date();
+    try {
+      users.getRange(linked.user._row, emailCol).setValue(newEmail);
+      users.getRange(linked.user._row, updatedCol).setValue(changedAt);
+      appendAudit_(String(linked.user.UserID), 'STUDENT_EMAIL_CHANGED', 'User',
+        linked.user.UserID, { oldEmail: oldEmail, newEmail: newEmail }, requestId);
+    } catch (writeError) {
+      try {
+        users.getRange(linked.user._row, emailCol).setValue(oldEmail);
+        users.getRange(linked.user._row, updatedCol).setValue(oldUpdatedAt);
+      } catch (rollbackError) {
+        console.error('EMAIL_CHANGE_ROLLBACK_FAILED');
+      }
+      throw apiError_('EMAIL_CHANGE_WRITE_FAILED', 'Email change could not be fully recorded; verify the account email before retrying.');
+    }
     linked.user.Email = newEmail;
     return { status: 'EMAIL_UPDATED', user: publicUser_(linked.user) };
   } finally {
