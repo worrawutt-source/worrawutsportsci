@@ -65,6 +65,18 @@ Their GAS backup (3) and GitHub versions still require targeted semantic reconci
 - If the GAS editor reports duplicate declarations or compile errors, stop and restore the fresh backup; do not proceed to Step 4.
 - Synthetic fixture creation remains a separate approval gate under `SYNTHETIC_TEST_FIXTURE_PLAN_v1.0_2026-11-22.md`; no fixtures have been created or deleted.
 
+## Deployment identity clarification — 22 November 2026
+
+The owner clarified that the current GAS Web App is the sole pre-release development/test system; it has not yet been put into operational use. There is no separate Production deployment to protect at this stage. Do not continue requesting a separate TEST-versus-Production deployment split unless the project architecture changes.
+
+- Owner-confirmed active deployment version: **14**.
+- Owner-provided Web App URL deployment ID matches the visible prefix of the Active Deployment ID in the supplied Manage deployments screenshot.
+- Screenshot settings: Execute as **Me**; access **Anyone**.
+- G-03 deployment identity: **PASS for matching the active deployment URL/ID and owner-confirmed version 14**.
+- The web tool could not retrieve the Apps Script endpoint (cache miss); this is not evidence that the endpoint is unavailable. The URL match and version are based on owner-provided evidence.
+- The prior read-only Preflight already verified the active spreadsheet identity and TEST environment property at execution time. This project uses one pre-release environment, not parallel TEST/Production deployments.
+- Keep access configuration and backend authorization under security review; no deployment setting was changed.
+
 ## Latest owner-run Preflight evidence — 22 November 2026
 
 The owner copied `SNC_SystemPreflight_TEST.gs` v1.0.1 into GAS TEST and ran `SNC_SystemPreflight_TEST()`. The compact summary record was captured in the supplied execution log.
