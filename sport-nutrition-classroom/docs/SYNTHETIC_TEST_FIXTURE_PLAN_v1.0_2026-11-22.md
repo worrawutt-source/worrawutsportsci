@@ -190,11 +190,17 @@ The fixture batch is complete only when:
 ## 11. Current execution status
 
 - Plan preparation: **PASS**
-- Owner approval of exact fixture write/cleanup scope: **REVIEW REQUIRED**
-- GAS source synchronization and compile gates: **BLOCKED / not evidenced in this work package**
-- TEST API / LINE / Drive isolation gates: **BLOCKED / not evidenced**
+- Owner approval of exact fixture write/cleanup scope: **PASS — explicitly approved on 22 November 2026; recorded in CURRENT.md**
+- G-01 source synchronization: **BLOCKED / NOT VERIFIED in current TEST GAS project**
+- G-02 GAS project compile: **BLOCKED / NOT RUN** (local Node.js syntax parse of GAS Backup (3): 18/18 PASS; this is not GAS project compile evidence)
+- G-03 environment identity: **PASS**
+- G-04 external/LINE separation: **PASS WITH CAVEAT** — outbound LINE push is suppressed while the channel access token remains absent; separate TEST LINE/LIFF/Worker identity is not evidenced
+- G-05 Drive isolation: **PASS by owner confirmation**
+- G-06 data baseline: **PASS — complete 22-table read-only baseline**
+- G-07 fixture authorization: **PASS — exact v1.0 scope approved**
+- G-08 recovery: **BLOCKED / PARTIAL** — separate TEST spreadsheet copy owner-confirmed complete; restore rehearsal and Drive-file recovery procedure not verified
 - Fixture creation: **NOT RUN**
 - Functional Integration Tests: **NOT RUN**
 - Cleanup: **NOT RUN**
 
-**Decision: Do not create fixtures yet.** This document defines the proposed fixture set and exact cleanup scope. Fixture creation begins only after the entry gates and owner approval are recorded.
+**Decision: HOLD — do not create fixtures or run the Integration Test Runner.** G-01 and G-02 must be evidenced in the current TEST GAS project, and G-08 must meet the recovery criterion before fixture creation. Local syntax parsing, a spreadsheet copy, or owner approval does not substitute for these remaining entry gates.
