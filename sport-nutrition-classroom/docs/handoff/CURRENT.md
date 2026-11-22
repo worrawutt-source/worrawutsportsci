@@ -2,7 +2,7 @@
 
 The latest operational handoff for Batch 0 is `BATCH0_RECONCILIATION_STEP4_READINESS_2026-11-22.md`.
 
-The current source reconciliation decision is `../SOURCE_RECONCILIATION_DECISION_2026-11-22.md`. It records GitHub `development` as the canonical source, the controlled GitHub → GAS TEST synchronization model, per-file HOLD dispositions, and the current exact GAS replacement list (NONE pending semantic review).
+The current source reconciliation decision is `../SOURCE_RECONCILIATION_DECISION_2026-11-22.md`. The deep source comparison is `../DEEP_SOURCE_DIFF_ANALYSIS_2026-11-22.md`, covering all 13 backend modules, function/action inventory comparison, risk review, and exact GAS replacement decision (NONE pending completed function-body diff and validation).
 
 The continuity checkpoint preceding Batch 0 is `2026-11-22-CONTINUITY-CHECKPOINT-3.md`.
 
