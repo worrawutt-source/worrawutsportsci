@@ -350,3 +350,37 @@ The owner explicitly approved **Synthetic Test Fixture Plan v1.0** (document SNC
 - G-07: **PASS — explicit owner approval recorded**.
 - Approval does not waive any other entry gate and does not authorize fixture creation while G-01, G-02, or any other applicable gate remains BLOCKED or NOT RUN.
 - Fixture creation, Integration Test Runner execution, Drive upload, and cleanup remain **NOT RUN** pending completion and verification of all remaining gates.
+
+
+## Post-approval entry-gate review — 22 November 2026
+
+Following the owner's explicit approval of Synthetic Test Fixture Plan v1.0, the remaining entry gates were reviewed against the latest checkpoint, owner-provided evidence, the current development source references, and the supplied GAS Backup (3).
+
+### Static source check
+
+- Archive reviewed: `SNC_GAS_BACKUP_2026-11-22(3).zip`.
+- Node.js syntax parsing: **18/18 files PASS** (13 application modules plus the included test/support scripts and setup files).
+- This is local static syntax evidence only. It is not a Google Apps Script project compile, does not detect all Apps Script runtime/declaration conflicts, and does not prove the TEST GAS editor contains these exact file versions.
+- The current GitHub development source files were located for Code.gs, setup.gs, AssignmentManagement.gs, Integration Test Runner v1.1.0, and System Preflight v1.0.1. The Data Baseline helper v1.0.1 is also present in the repository.
+
+### Gate results
+
+- G-01 Source synchronization: **BLOCKED / NOT VERIFIED**. The checkpoint defines the exact approved files and copy sequence, but there is no new owner evidence confirming the current TEST GAS project contains those exact versions after the latest required synchronization. A source archive and GitHub files alone do not prove the GAS editor state.
+- G-02 GAS compile: **BLOCKED / NOT RUN**. Local Node.js parsing passed 18/18, but no evidence confirms that all files save in the current Apps Script project without duplicate global declarations or GAS compile errors.
+- G-03 Environment identity: **PASS** based on the owner-confirmed active pre-release deployment Version 14, matching deployment URL/ID, and successful API health response recorded above.
+- G-04 External/LINE separation: **PASS WITH CAVEAT** for current outbound suppression because `LINE_CHANNEL_ACCESS_TOKEN` is absent and `ntSend_()` exits before the LINE fetch. This does not prove a separate TEST LINE channel/LIFF or Worker/upstream identity. Do not add a token or execute notification paths; reassess before any test that depends on LINE/LIFF identity.
+- G-05 Drive isolation: **PASS BY OWNER CONFIRMATION** for the dedicated `SPORT_NUTRITION_SUBMISSIONS` folder, Restricted sharing, and configured `SNC_SUBMISSION_FOLDER_ID`. Preserve the current folder contents baseline.
+- G-06 Data baseline: **PASS** — complete read-only 22-table baseline, success=true, errorCount=0, and no blank/duplicate primary keys.
+- G-07 Fixture authorization: **PASS** — explicit owner approval of the complete v1.0 manifest and exact-ID cleanup scope recorded in this checkpoint.
+- G-08 Recovery: **BLOCKED / PARTIAL**. A separate copy of the TEST spreadsheet is owner-confirmed complete, but restore rehearsal is NOT RUN. A verified recovery procedure for the TEST Drive files and an evidenced recovery operator/authority are also not recorded. The backup copy is a safeguard, not proof of recoverability.
+
+### Decision
+
+**HOLD — do not create synthetic fixtures and do not run the Integration Test Runner.** G-01 and G-02 remain unverified, and G-08 does not yet meet the plan's recovery entry criterion. G-04's current no-token protection must remain unchanged. No application data, Drive files, triggers, LINE messages, or deployment settings were changed during this gate review.
+
+### Evidence needed to proceed
+
+1. Confirm the latest approved source files have been copied into the current TEST GAS project exactly as specified in the synchronization instructions; provide a fresh GAS export or editor evidence sufficient to verify the versions.
+2. Save/compile the complete GAS project and provide the execution/editor evidence showing no duplicate global declarations or compile errors.
+3. Perform a restore rehearsal against a separate disposable spreadsheet copy (not the live TEST spreadsheet), and verify the agreed recovery procedure for files created in the private TEST Drive folder. Record the authorized recovery operator and stop/escalation rule.
+4. Keep LINE token absent and do not run notification/trigger functions during this fixture batch.
