@@ -273,3 +273,45 @@ The per-table primary-key digests and row counts now provide a comparison baseli
 - G-08: **REVIEW REQUIRED** — recovery readiness evidence is still outstanding.
 
 **Decision:** G-06 is closed. This does not authorize fixture creation or integration execution. Keep Step 4 fixture activity and the Integration Test Runner on HOLD until G-07 and G-08 are closed and all other applicable entry gates are confirmed. No fixture or cleanup operation has been performed.
+
+
+## G-08 recovery readiness assessment — 22 November 2026
+
+A read-only review was performed after the owner asked to proceed with the next gate checks. The available evidence establishes a read-only baseline of 22 application tables, including row counts and per-table primary-key SHA-256 digests. The project also has a source-code archive (`SNC_GAS_BACKUP_2026-11-22(3).zip`). These are useful safeguards but are **not** evidence that the TEST spreadsheet and test Drive files can be restored to their pre-test state.
+
+The current evidence does not include:
+- A verified, restorable copy/export of the TEST spreadsheet captured immediately before fixture writes.
+- A demonstrated restore path and an identified operator who can restore that spreadsheet without affecting another resource.
+- A backup/restore or exact recovery procedure for files created in the private submission folder.
+- Evidence that recovery has been tested or that the owner can restore the TEST state if exact-ID cleanup partially fails.
+
+The SHA-256 baseline can detect primary-key-set changes; it cannot recreate deleted/modified row contents, formulas, formatting, or Drive file bytes. The GAS source archive restores source code only, not spreadsheet or Drive state.
+
+**G-08 status: BLOCKED / RECOVERY NOT VERIFIED.** No restore, copy, export, spreadsheet write, Drive operation, or fixture action was attempted.
+
+### Required evidence to close G-08
+
+1. Create a point-in-time backup of the exact TEST spreadsheet before any fixture write, using a clearly identified destination that is separate from the live TEST spreadsheet. Record source and backup spreadsheet IDs, names, capture time, owner, and access restrictions. Do not share publicly.
+2. Confirm the owner/operator can restore from that backup. Prefer a restore rehearsal against a separate disposable copy, not the live TEST spreadsheet. Verify sheet names, headers, row counts, formulas, and key records on the rehearsal copy.
+3. For Drive tests, confirm a recovery method for exact test-created files (for example, retaining source bytes in a controlled private location before upload, or another verified recovery approach). Do not rely on Trash as the only recovery mechanism.
+4. Record who has authority to initiate recovery and the stop/escalation rule if cleanup or restore is incomplete.
+5. Keep the baseline summary and private primary-key manifest outside GitHub; never publish raw identifiers or student/personal data.
+
+Only after this evidence is reviewed should G-08 be marked PASS. The recovery rehearsal must not overwrite or alter the live TEST spreadsheet or the configured submission folder.
+
+## G-07 owner authorization clarification — 22 November 2026
+
+The owner instructed the project to proceed with checking G-08 and confirming G-07. This authorizes the gate-review work; it does not unambiguously approve the exact fixture manifest, data-write scope, or cleanup/deletion policy required by G-07.
+
+**G-07 remains REVIEW REQUIRED / NOT APPROVED.** No fixture records, files, or test logs may be created or deleted until the owner explicitly approves the exact manifest in `SYNTHETIC_TEST_FIXTURE_PLAN_v1.0_2026-11-22.md`, including the proposed synthetic actors and academic entities, all fixture writes, exact-ID cleanup order, audit-log retention, and the stated exclusions. Any changes to that plan require renewed approval.
+
+### Current gate decision
+
+- G-03: PASS
+- G-04: PASS with no-token configuration caveat
+- G-05: PASS by owner confirmation
+- G-06: PASS — complete 22-table read-only baseline
+- G-07: REVIEW REQUIRED / NOT APPROVED
+- G-08: BLOCKED / RECOVERY NOT VERIFIED
+
+**Decision: HOLD.** Do not create fixtures, run the Integration Test Runner, upload test files, or execute cleanup until G-07 is explicitly approved and G-08 recovery evidence is verified. The next permitted action is to prepare and verify the isolated recovery copy/rehearsal, then obtain explicit fixture authorization.
