@@ -315,3 +315,29 @@ The owner instructed the project to proceed with checking G-08 and confirming G-
 - G-08: BLOCKED / RECOVERY NOT VERIFIED
 
 **Decision: HOLD.** Do not create fixtures, run the Integration Test Runner, upload test files, or execute cleanup until G-07 is explicitly approved and G-08 recovery evidence is verified. The next permitted action is to prepare and verify the isolated recovery copy/rehearsal, then obtain explicit fixture authorization.
+
+
+## G-08 owner-confirmed TEST Spreadsheet backup — 22 November 2026
+
+The owner confirmed that a separate copy of the latest TEST spreadsheet has been created and checked against the source: every sheet and its contents/structure are present as in the original.
+
+- Backup name: `Copy of SportNutritionApp`
+- Backup Spreadsheet ID: `18nqRH9ppjaFsO8cqys_F5NFAnI64arDjU4KTOPVYaqE`
+- Source: TEST spreadsheet `SportNutritionApp` (ID suffix `dYeWFk`, as recorded in G-06).
+- Backup creation: **OWNER CONFIRMED**.
+- All sheets and contents/structure matching the original: **OWNER CONFIRMED**.
+- The backup is a separate spreadsheet; no change to the source TEST spreadsheet was requested or performed by this review.
+- No restore rehearsal or overwrite of the live TEST spreadsheet was performed.
+
+**G-08 assessment: PASS for the agreed minimum backup safeguard (separate copy created and owner-confirmed complete).** Restore rehearsal is NOT RUN and is not represented as tested. The backup ID is recorded for recovery reference. Before any recovery action, verify the destination and obtain explicit owner authorization; do not overwrite the live TEST spreadsheet automatically.
+
+### Updated gate status
+
+- G-03: PASS
+- G-04: PASS with no-token configuration caveat
+- G-05: PASS by owner confirmation
+- G-06: PASS — complete 22-table read-only baseline
+- G-07: REVIEW REQUIRED / NOT APPROVED — exact synthetic fixture write/cleanup plan still requires explicit approval.
+- G-08: PASS — separate TEST Spreadsheet backup and completeness confirmed by owner; restore rehearsal NOT RUN.
+
+**Decision: HOLD remains in effect.** G-08 is closed for the minimum backup requirement, but no fixture creation, Integration Test Runner execution, Drive upload, or cleanup is authorized until G-07 receives explicit approval. No application data, Drive files, triggers, or LINE messages were changed as part of this gate update.
