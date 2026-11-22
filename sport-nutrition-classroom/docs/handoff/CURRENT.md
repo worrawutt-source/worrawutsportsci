@@ -98,9 +98,10 @@ Read-only review performed against GAS Backup (3) and the matching GitHub `devel
 - `NotificationManagement.gs` contains a direct LINE Push API call to `https://api.line.me/v2/bot/message/push` using Script Property `LINE_CHANNEL_ACCESS_TOKEN`.
 - Manual `notification.send`, `notification.retry`, assignment-open notifications, submission notifications, and `runDeadlineReminderNotifications()` can call `ntSend_()`.
 - `installDeadlineReminderTrigger()` creates an hourly trigger. It must not be run during the fixture batch.
-- Source code does not show a notification stub or environment guard that guarantees push suppression.
-- Prior property screenshot evidence disclosed property names but not values; it does not establish whether a real LINE token is configured. No proof of a separate TEST LINE channel/LIFF identity was supplied.
-- Status: **G-04 BLOCKED / NOT VERIFIED**. Treat outbound LINE delivery as potentially live. Do not call notification actions, assignment-open/submission notification paths, reminder functions, retry actions, or install triggers. Any later integration test must first add/use a verified stub or otherwise prove no external delivery; no code change is authorized in this review.
+- The owner clarified that a Script Property absent from the displayed complete property list is not configured; `LINE_CHANNEL_ACCESS_TOKEN` is absent.
+- In the current configuration, `ntSend_()` returns `LINE_TOKEN_NOT_CONFIGURED` and writes a FAILED notification log without calling LINE Push API, because the missing-token check occurs before `UrlFetchApp.fetch()`.
+- Source code has no notification stub or environment guard. If a token is added later, those notification paths can send real LINE messages.
+- Status: **G-04 PASS for current no-token outbound suppression, with a configuration-change caveat**. Do not add a token or invoke notification paths during integration tests; keep reminder/trigger installation disabled. Reassess G-04 if Script Properties change.
 
 ### G-05 Google Drive isolation
 
