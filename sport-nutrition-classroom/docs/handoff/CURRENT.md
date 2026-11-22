@@ -601,3 +601,23 @@ No spreadsheet or Drive resource was created, copied, trashed, restored, or dele
 ### Owner-side execution handoff
 
 The owner may execute the exact steps in `G08_RESTORE_REHEARSAL_RUNBOOK_v1.0_2026-11-22.md` in Google Drive. Record the disposable spreadsheet ID and sentinel file ID privately; do not put full IDs, raw primary-key manifests, personal data, or secrets in GitHub/chat. Provide sanitized screenshots and verification outputs for both rehearsals. The assistant will review the evidence and update G-08 only after both acceptance criteria are met.
+
+
+## Owner clarification — G-08 is backup safeguard only; no additional restore rehearsal — 22 November 2026
+
+The owner clarified that the backup/recovery processes have already passed in the existing operational process. The separate spreadsheet-copy rehearsal and Drive sentinel Trash/restore procedure proposed in `SNC-G08-RUNBOOK-001` are unnecessary for this project gate and are to be skipped. The backup copy is retained as a data-safety safeguard before synthetic testing, not as a request to repeat an already-passed recovery workflow.
+
+This owner clarification supersedes the earlier G-08 runbook proposal and the subsequent request for disposable-copy and sentinel-file execution. Do not create `SNC_G08_RESTORE_DRILL_20261122`, do not create `SNC_G08_SENTINEL_20261122.txt`, and do not perform additional Trash/restore operations for G-08.
+
+### Revised G-08 decision
+
+- Existing TEST spreadsheet backup `Copy of SportNutritionApp`: **OWNER CONFIRMED COMPLETE** — all sheets, contents, and structure match the source as previously confirmed.
+- Existing backup/recovery process: **OWNER CONFIRMED ALREADY PASSED** — accepted without repeating a separate rehearsal.
+- Additional spreadsheet restore rehearsal: **NOT REQUIRED / WAIVED**.
+- Additional Drive sentinel-file rehearsal: **NOT REQUIRED / WAIVED**.
+- G-08 backup safeguard: **PASS — owner-confirmed backup and already-passed operational process**.
+- No new spreadsheet or Drive resources are to be created for G-08.
+
+The owner approval previously given for the runbook is superseded by this later instruction to skip those additional rehearsals. No resources were created, copied, trashed, restored, or deleted by the assistant.
+
+**Next decision:** G-01 through G-08 entry gates are now satisfied on the evidence/owner confirmations recorded in this checkpoint. Proceed to the next controlled stage only after verifying the current source/deployment and TEST environment identities against the approved plan. The Integration Test Runner and fixture creation have not yet been run; this G-08 clarification does not convert any integration test status to PASS.
