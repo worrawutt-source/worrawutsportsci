@@ -15,7 +15,7 @@
 const SNC_SETUP = Object.freeze({
   VERSION: '1.5.0',
   IMPORT_SHEET: 'StudentImport',
-  IMPORT_HEADERS: ['EMAIL', 'DISPLAY_NAME', 'STUDENT_ID'],
+  IMPORT_HEADERS: ['STUDENT_ID', 'FIRST_NAME', 'LAST_NAME', 'EMAIL'],
   TABLES: {
     Users: [
       'UserID',
@@ -104,9 +104,10 @@ function validateSNCSchemaBeforeMigration_(ss){
   });
   var imp=ss.getSheetByName(SNC_SETUP.IMPORT_SHEET);
   if(imp&&imp.getLastRow()>0){
-    var h=imp.getRange(1,1,1,Math.max(1,imp.getLastColumn())).getDisplayValues()[0];
-    if(!SNC_SETUP.IMPORT_HEADERS.every(function(v,i){return String(h[i]||'').trim()===v;}))
-      issues.push(SNC_SETUP.IMPORT_SHEET+': HEADER_MISMATCH expected ['+SNC_SETUP.IMPORT_HEADERS.join('|')+'] found ['+h.join('|')+']');
+    var h=imp.getRange(1,1,1,Math.max(1,imp.getLastColumn())).getDisplayValues()[0].map(function(v){return String(v).trim();});
+    var canonical=h.length===4&&SNC_SETUP.IMPORT_HEADERS.every(function(v,i){return h[i]===v;});
+    var legacy=h.length===3&&['EMAIL','DISPLAY_NAME','STUDENT_ID'].every(function(v,i){return h[i]===v;});
+    if(!canonical&&!legacy)issues.push(SNC_SETUP.IMPORT_SHEET+': HEADER_MISMATCH expected canonical ['+SNC_SETUP.IMPORT_HEADERS.join('|')+'] or legacy [EMAIL|DISPLAY_NAME|STUDENT_ID], found ['+h.join('|')+']');
   }
   if(issues.length)throw new Error('SCHEMA_PREFLIGHT_FAILED. No migration writes were made. '+issues.join(' || '));
   return {success:true,mode:'PREFLIGHT',legacyAdditiveMigrations:['EmailOTPChallenges +3 columns','Assignments +6 columns']};
@@ -145,10 +146,10 @@ function setupAccountLinkingSheets() {
       formatSetupHeader_(importSheet, SNC_SETUP.IMPORT_HEADERS.length);
       report.push('Created StudentImport staging sheet');
     } else {
-      var importHeaders = importSheet.getRange(1, 1, 1, SNC_SETUP.IMPORT_HEADERS.length).getDisplayValues()[0];
-      if (!SNC_SETUP.IMPORT_HEADERS.every(function(h, i) { return String(importHeaders[i]).trim() === h; })) {
-        throw new Error('HEADER_MISMATCH in StudentImport. Expected: ' + SNC_SETUP.IMPORT_HEADERS.join(' | '));
-      }
+      var importHeaders=importSheet.getRange(1,1,1,importSheet.getLastColumn()).getDisplayValues()[0].map(function(v){return String(v).trim();});
+      var canonical=importHeaders.length===4&&SNC_SETUP.IMPORT_HEADERS.every(function(h,i){return importHeaders[i]===h;});
+      var legacy=importHeaders.length===3&&['EMAIL','DISPLAY_NAME','STUDENT_ID'].every(function(h,i){return importHeaders[i]===h;});
+      if(!canonical&&!legacy)throw new Error('HEADER_MISMATCH in StudentImport. Expected canonical '+SNC_SETUP.IMPORT_HEADERS.join(' | ')+' or supported legacy EMAIL | DISPLAY_NAME | STUDENT_ID.');
     }
 
     Object.keys(SNC_SETUP.TABLES).forEach(function(tableName) {
@@ -270,8 +271,11 @@ function importStudentsFromStaging() {
     var sourceLastRow = source.getLastRow();
     if (sourceLastRow < 2) throw new Error('StudentImport has no student rows.');
 
-    var rows = source.getRange(2, 1, sourceLastRow - 1, 3).getDisplayValues()
-      .filter(function(r) { return r.some(function(v) { return String(v).trim() !== ''; }); });
+    var stagingHeaders=source.getRange(1,1,1,source.getLastColumn()).getDisplayValues()[0].map(function(v){return String(v).trim();});
+    var canonicalImport=stagingHeaders.length===4&&['STUDENT_ID','FIRST_NAME','LAST_NAME','EMAIL'].every(function(h,i){return stagingHeaders[i]===h;});
+    var legacyImport=stagingHeaders.length===3&&['EMAIL','DISPLAY_NAME','STUDENT_ID'].every(function(h,i){return stagingHeaders[i]===h;});
+    if(!canonicalImport&&!legacyImport)throw new Error('StudentImport headers do not match canonical or supported legacy format.');
+    var rows=source.getRange(2,1,sourceLastRow-1,stagingHeaders.length).getDisplayValues().map(function(values,index){return {values:values,rowNumber:index+2};}).filter(function(item){return item.values.some(function(v){return String(v).trim()!=='';});});
 
     var userHeaders = users.getRange(1, 1, 1, users.getLastColumn()).getDisplayValues()[0];
     var required = ['UserID','StudentID','FirstName','LastName','Email','Status','CreatedAt','UpdatedAt'];
@@ -289,18 +293,19 @@ function importStudentsFromStaging() {
     });
 
     var seenIds={}, seenEmails={}, additions=[], skipped=0, errors=[];
-    rows.forEach(function(r, index) {
-      var email=String(r[0]||'').trim().toLowerCase();
-      var display=String(r[1]||'').trim();
-      var studentId=String(r[2]||'').trim();
-      var rowNo=index+2;
-      if (!email || !display || !studentId) { errors.push('Row '+rowNo+': missing EMAIL, DISPLAY_NAME, or STUDENT_ID'); return; }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errors.push('Row '+rowNo+': invalid email format'); return; }
-      if (!/^\d+$/.test(studentId)) { errors.push('Row '+rowNo+': STUDENT_ID must contain digits only'); return; }
-      var m=display.match(/^(นาย|นางสาว|นาง|น\.ส\.)\s*(.+)$/);
-      if (!m) { errors.push('Row '+rowNo+': cannot parse name prefix: '+display); return; }
-      var parts=m[2].trim().split(/\s+/);
-      if (parts.length < 2) { errors.push('Row '+rowNo+': name must contain first and last name'); return; }
+    rows.forEach(function(item) {
+      var r=item.values,rowNo=item.rowNumber,email,studentId,firstName,lastName;
+      if(canonicalImport){
+        studentId=String(r[0]||'').trim();firstName=String(r[1]||'').trim();
+        lastName=String(r[2]||'').trim();email=String(r[3]||'').trim().toLowerCase();
+      }else{
+        email=String(r[0]||'').trim().toLowerCase();studentId=String(r[2]||'').trim();
+        var display=String(r[1]||'').trim(),m=display.match(/^(นาย|นางสาว|นาง|น\\.ส\\.)\\s*(.+)$/);
+        if(m){var parts=m[2].trim().split(/\\s+/);if(parts.length>=2){firstName=parts[0];lastName=parts.slice(1).join(' ');}}
+      }
+      if(!email||!firstName||!lastName||!studentId){errors.push('Row '+rowNo+': missing STUDENT_ID, FIRST_NAME, LAST_NAME, or EMAIL (legacy rows must contain a parseable full name).');return;}
+      if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)){errors.push('Row '+rowNo+': invalid email format');return;}
+      if(!/^\\d+$/.test(studentId)){errors.push('Row '+rowNo+': STUDENT_ID must contain digits only');return;}
       if (seenIds[studentId] || seenEmails[email]) { errors.push('Row '+rowNo+': duplicate StudentID or Email in import file'); return; }
       seenIds[studentId]=true; seenEmails[email]=true;
 
@@ -317,7 +322,7 @@ function importStudentsFromStaging() {
 
       var now=new Date();
       additions.push([
-        'STU_'+studentId, studentId, parts[0], parts.slice(1).join(' '),
+        'STU_'+studentId, studentId, firstName, lastName,
         email, 'ACTIVE', now, now
       ]);
     });
