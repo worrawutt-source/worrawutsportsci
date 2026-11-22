@@ -193,3 +193,25 @@ P2 — Rebuild test coverage from the actual deployed source:
 9. Keep INT-08 separate until deployed TEST browser/LIFF E2E and failure-recovery conditions can be verified.
 
 No application source, schema, deployment, TEST data, or Production data was changed as part of recording this execution result.
+
+
+## 10. GAS archive audit — 22-Nov-2026
+
+Project owner supplied `SNC_GAS_BACKUP_2026-11-22.zip`. A detailed source reconciliation report was added:
+[`2026-11-22-GAS-SOURCE-RECONCILIATION.md`](./2026-11-22-GAS-SOURCE-RECONCILIATION.md).
+
+Key findings:
+- The archive includes the Group, Submission, File, Grading, Notification, and Enrollment handlers. The prior interpretation that these modules were absent from this 22-Nov snapshot is corrected.
+- INT-02..INT-07 were incorrectly reported BLOCKED because `sncITR_hasDoPostRoute_TEST_` applies start-anchored route regexes (e.g. `/^group\./`) to the entire `String(doPost)` source text, which starts with `function doPost(e)`. These checks therefore fail to detect routes that are visibly present in the dispatcher. After correcting route detection, these suites should be NOT RUN where suite-specific test procedures are not implemented, not PASS.
+- `enrollment.list` is present in the 22-Nov `EnrollmentManagement.txt`; the earlier warning about its absence applied to the older 21-Nov archive and is superseded for this snapshot.
+- INT-01 ran read-only checks: 10 subchecks PASS, 0 FAIL, 2 BLOCKED. Both students had no active enrollment records; the runner did not create/delete fixtures. Suite-level INT-01 remains BLOCKED.
+- INT-08 remains BLOCKED pending deployed browser/LIFF E2E and cross-module recovery evidence.
+- The archive's `setup.txt` is an exact content duplicate of `UserRoleManagement.txt`, not the repository's expected `backend/setup.gs`; no `SNC_SETUP` definition is present in the archive, although `SchemaMigration_TEST.txt` references it. Obtain the correct setup export before any migration work.
+- Hash comparison against current GitHub `development`: only `AssignmentManagement.txt` matches its repository counterpart after CRLF-to-LF normalization; 11 other comparable backend files differ; setup is missing/incorrectly represented. Hash differences prove source divergence but not semantic differences.
+- All JavaScript files in the archive passed Node.js syntax parsing. This is not Apps Script runtime validation.
+- The runner and fixture/migration helpers were inspected only; no fixture helper or migration was executed. No deployment, spreadsheet, or application data was changed.
+
+Repository branch HEAD after adding the reconciliation report:
+`a87a5a3583835bf1db3641ed8b2a0e372d85b3d9`.
+
+Next action: perform line-by-line semantic diff of the 11 divergent modules and obtain the correct `setup.gs`; then correct the runner's route detector and reclassify INT-02..INT-07 as NOT RUN until real suite procedures are implemented. Do not deploy or run migrations/fixture mutations during reconciliation.
