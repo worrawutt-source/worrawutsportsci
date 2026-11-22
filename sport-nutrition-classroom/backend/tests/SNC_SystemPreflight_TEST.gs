@@ -108,7 +108,8 @@ function SNC_SystemPreflight_TEST() {
     {id:'INT-04',name:'Submission / Revision / Idempotency',route:'/^submission\\./',handler:'handleSubmissionManagementAction_',actions:['submission.create','submission.revise','submission.list','submission.get']},
     {id:'INT-05',name:'File Upload / Access',route:'/^file\\./',handler:'handleFileManagementAction_',actions:['file.upload','file.access']},
     {id:'INT-06',name:'Grading / Grade Review',route:'/^(grade|gradeReview)\\./',handler:'handleGradingAction_',actions:['grade.create','grade.update','grade.get','grade.history','gradeReview.create','gradeReview.update']},
-    {id:'INT-07',name:'Notifications',route:'/^notification\\./',handler:'handleNotificationAction_',actions:['notification.send','notification.log','notification.retry']},\n    {id:'INT-07A',name:'Audit',route:'/^audit\\./',handler:'handleAuditAction_',actions:['audit.list']}
+    {id:'INT-07',name:'Notifications',route:'/^notification\\./',handler:'handleNotificationAction_',actions:['notification.send','notification.log','notification.retry']},
+    {id:'INT-07A',name:'Audit',route:'/^audit\\./',handler:'handleAuditAction_',actions:['audit.list']}
   ];
 
   routeSpecs.forEach(function(spec) {
@@ -193,7 +194,7 @@ function sncPreflight_validateEnvironment_TEST_() {
 
 function sncPreflight_safeError_TEST_(error) {
   var message = error && error.message ? String(error.message) : 'Unknown error';
-  return message.replace(/(Bearer\\s+)[A-Za-z0-9._-]+/gi, '$1[REDACTED]')
-    .replace(/(idToken["':= ]+)[^,\\s}]+/gi, '$1[REDACTED]')
+  return message.replace(/(Bearer\s+)[A-Za-z0-9._-]+/gi, '$1[REDACTED]')
+    .replace(/(idToken["':= ]+)[^,\s}]+/gi, '$1[REDACTED]')
     .slice(0, 500);
 }
