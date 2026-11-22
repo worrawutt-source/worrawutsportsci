@@ -5,7 +5,7 @@
 - Date: 22 November 2026 (Asia/Bangkok)
 - Branch: `development`
 - Related plan: `SYNTHETIC_TEST_FIXTURE_PLAN_v1.0_2026-11-22.md`
-- Status: **PREPARED — NOT EXECUTED**
+- Status: **OWNER APPROVED — EXECUTION NOT RUN (Google Drive/Sheets connector unavailable in assistant session)**
 
 ## 1. Purpose
 
@@ -33,7 +33,7 @@ Define a non-destructive rehearsal to establish that the owner can recover the p
 
 ## 4. Spreadsheet restore rehearsal — proposed procedure
 
-**This is a proposed owner-side operation. Do not start until the owner explicitly authorizes creation and cleanup of the disposable spreadsheet copy.**
+**Owner approval received on 22 November 2026. Execution remains pending because this assistant session has no live Google Drive/Sheets operation capability.**
 
 1. In Google Drive, locate the backup by its exact ID recorded above. Verify its name is `Copy of SportNutritionApp`; do not open the live TEST spreadsheet as the copy source.
 2. Use **Make a copy** on the backup source. Name the new disposable target `SNC_G08_RESTORE_DRILL_20261122`.
@@ -53,7 +53,7 @@ Define a non-destructive rehearsal to establish that the owner can recover the p
 
 ## 5. Drive file recovery rehearsal — proposed procedure
 
-**This requires explicit owner authorization because it creates and trashes a temporary file in the TEST Drive folder, outside the current fixture creation run.**
+**Owner approval received on 22 November 2026. Execution remains pending because this assistant session has no live Google Drive operation capability.**
 
 1. Verify the exact TEST folder is still `SPORT_NUTRITION_SUBMISSIONS`, Restricted, and contains no unexpected files.
 2. Create one harmless text sentinel file named `SNC_G08_SENTINEL_20261122.txt` in that folder, containing only a non-secret fixed marker such as `SNC-G08-RECOVERY-DRILL`.
@@ -81,8 +81,8 @@ Do not place full spreadsheet IDs, Drive file IDs, raw key manifests, student da
 ## 7. Current status
 
 - Backup copy existence and completeness: **OWNER CONFIRMED**.
-- Spreadsheet restore rehearsal: **NOT RUN — owner authorization for disposable copy creation/cleanup required**.
-- Drive sentinel restore rehearsal: **NOT RUN — owner authorization for temporary file creation/Trash/restore required**.
+- Spreadsheet restore rehearsal: **NOT RUN — owner authorized; live Drive/Sheets operation unavailable in assistant session**.
+- Drive sentinel restore rehearsal: **NOT RUN — owner authorized; live Drive operation unavailable in assistant session**.
 - G-08: **BLOCKED / PARTIAL** until both rehearsals pass and evidence is recorded.
 - Fixture creation and Integration Test Runner: **HOLD** until G-08 passes.
 
