@@ -172,15 +172,15 @@ Next action: reduce baseline logging to a compact summary that contains all 22 t
 
 ## G-06 read-only baseline collector prepared — 22 November 2026
 
-Added `sport-nutrition-classroom/backend/tests/SNC_DataBaseline_TEST.gs` v1.0.0 on `development` (commit `dd75f7fe888d6afbb5c59de03087aa3aa937a2cb`). The helper:
+Added `sport-nutrition-classroom/backend/tests/SNC_DataBaseline_TEST.gs` v1.0.1 on `development` (latest commit `2c07885ba07bb156f1ac4806d512a8eddd196609`; initial helper commit `dd75f7fe888d6afbb5c59de03087aa3aa937a2cb`). The helper:
 
 - Requires `SNC_ITR_ENVIRONMENT=TEST` and exact match between active spreadsheet ID and `SNC_ITR_TEST_SPREADSHEET_ID`.
 - Reads only the 21 tables declared in `SNC_SETUP.TABLES`.
 - Captures row counts, first-column primary key names, blank/duplicate key counts, SHA-256 digest, and sorted primary-key values.
 - Does not read personal fields (names, emails, StudentID), and performs no Sheets/Drive/Properties/trigger/external writes.
-- Emits one `SNC_DATA_BASELINE_JSON=` record for private retention by the owner.
+- Emits one compact `SNC_DATA_BASELINE_SUMMARY=` record with all 22 table summaries and digests, without raw primary-key arrays. The returned report still contains the full primary-key manifest for private owner-side retention.
 
-Status: helper prepared and committed; **NOT YET COPIED TO GAS OR EXECUTED**. G-06 remains NOT RUN until the owner copies this single new helper file into the current Apps Script project, runs `sncCaptureDataBaseline_TEST()` once, and securely retains the output outside the live spreadsheet. If the function stops on environment/spreadsheet identity mismatch, do not bypass the guard; report the error for review. Do not run setup, migration, fixture, integration, or notification functions.
+Status: helper v1.0.1 prepared and committed; v1.0.0 was executed once and its log was truncated. **v1.0.1 NOT YET COPIED TO GAS OR EXECUTED**. G-06 remains NOT RUN until the owner copies this single new helper file into the current Apps Script project, runs `sncCaptureDataBaseline_TEST()` once, and securely retains the output outside the live spreadsheet. If the function stops on environment/spreadsheet identity mismatch, do not bypass the guard; report the error for review. Do not run setup, migration, fixture, integration, or notification functions.
 
 ## Latest owner-run Preflight evidence — 22 November 2026
 
