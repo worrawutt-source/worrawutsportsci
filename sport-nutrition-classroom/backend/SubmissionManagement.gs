@@ -66,50 +66,79 @@ function smCreateRevision_(actor,a,target,p,previous,requestId){
   if(fileIds.length+driveUrls.length>10)throw apiError_('VALIDATION_ERROR','A submission may reference at most ten files or URLs.');
   var stagedFiles=fileIds.map(function(fileId){
     var staged=cmGet_('SubmissionFiles','SubmissionFileID',fileId);
-    if(!staged||String(staged.SubmissionID)!=='STAGED:'+String(actor.userId)+':'+String(a.AssignmentID))
-      throw apiError_('FILE_INVALID','Uploaded file is invalid or does not belong to this user.');
+    var stagedOwner=staged&&String(staged.UploadedByUserID||'');
+    var sameOwner=staged&&String(staged.SubmissionID)==='STAGED:'+String(actor.userId)+':'+String(a.AssignmentID);
+    var eligibleGroupMember=target.type==='GROUP'&&staged&&
+      String(staged.SubmissionID)==='STAGED:'+stagedOwner+':'+String(a.AssignmentID)&&
+      gmMembers_(target.groupId).some(function(m){return String(m.UserID)===stagedOwner;});
+    if(!staged||(!sameOwner&&!eligibleGroupMember))
+      throw apiError_('FILE_INVALID','File must be staged by the submitter or an active member of the same group for this assignment.');
     return staged;
   });
   driveUrls.forEach(function(url){
     if(typeof url!=='string'||url.length>2048||!/^https:\/\/(drive|docs)\.google\.com\//i.test(url))
       throw apiError_('FILE_INVALID','Only Google Drive or Google Docs HTTPS URLs are accepted.');
   });
-  stagedFiles.forEach(function(staged){
-    if(staged.DriveFileID&&typeof fmShareWithSubmissionActors_==='function'){
-      try{fmShareWithSubmissionActors_(DriveApp.getFileById(String(staged.DriveFileID)),actor,a,target);}
-      catch(e){throw apiError_('FILE_PERMISSION_FAILED','Unable to grant submission file access to authorized participants.');}
-    }
-  });
   var now=new Date(),deadline=new Date(a.Deadline),status=now.getTime()>deadline.getTime()?'LATE':'SUBMITTED';
   var id=Utilities.getUuid(),rev=previous?Number(previous.RevisionNumber)+1:1;
-  cmSheet_('Submissions').appendRow([
-    id,a.AssignmentID,target.type,target.studentUserId,target.groupId,actor.userId,now,status,rev,
-    previous?previous.SubmissionID:'',now
-  ]);
-  if(target.type==='GROUP'&&!target.group.MembershipLockedAt){
-    var gs=gmSheet_('Groups'),gh=gs.getRange(1,1,1,gs.getLastColumn()).getDisplayValues()[0];
-    gs.getRange(target.group._row,gh.indexOf('MembershipLockedAt')+1).setValue(now);
+  var submissionSheet=cmSheet_('Submissions'),fileSheet=cmSheet_('SubmissionFiles');
+  var fileHeaders=fileSheet.getRange(1,1,1,fileSheet.getLastColumn()).getDisplayValues()[0];
+  var submissionRow=submissionSheet.getLastRow()+1,createdUrlRows=[],stagedPrevious={},groupPreviousLock=null;
+  var groupSheet=null,groupLockCol=0;
+  try{
+    // Share every selected file before committing database links. The sharing helper
+    // rolls back permissions it added when an individual file share operation fails.
+    stagedFiles.forEach(function(staged){
+      if(staged.DriveFileID&&typeof fmShareWithSubmissionActors_==='function')
+        fmShareWithSubmissionActors_(DriveApp.getFileById(String(staged.DriveFileID)),actor,a,target);
+    });
+    submissionSheet.appendRow([
+      id,a.AssignmentID,target.type,target.studentUserId,target.groupId,actor.userId,now,status,rev,
+      previous?previous.SubmissionID:'',now
+    ]);
+    if(target.type==='GROUP'){
+      groupSheet=gmSheet_('Groups');
+      var gh=groupSheet.getRange(1,1,1,groupSheet.getLastColumn()).getDisplayValues()[0];
+      groupLockCol=gh.indexOf('MembershipLockedAt')+1;
+      if(groupLockCol<1)throw apiError_('SCHEMA_MISMATCH','Groups table is missing MembershipLockedAt.');
+      groupPreviousLock=target.group.MembershipLockedAt||'';
+      if(!groupPreviousLock)groupSheet.getRange(target.group._row,groupLockCol).setValue(now);
+    }
+    stagedFiles.forEach(function(staged){
+      stagedPrevious[String(staged.SubmissionFileID)]=staged.SubmissionID;
+      fileSheet.getRange(staged._row,fileHeaders.indexOf('SubmissionID')+1).setValue(id);
+    });
+    driveUrls.forEach(function(url){
+      var row=new Array(fileHeaders.length);
+      row[fileHeaders.indexOf('SubmissionFileID')]=Utilities.getUuid();
+      row[fileHeaders.indexOf('SubmissionID')]=id;
+      row[fileHeaders.indexOf('FileName')]='Google Drive URL';
+      row[fileHeaders.indexOf('MimeType')]='text/uri-list';
+      row[fileHeaders.indexOf('FileSize')]=0;
+      row[fileHeaders.indexOf('DriveFileID')]='';
+      row[fileHeaders.indexOf('DriveUrl')]=url;
+      row[fileHeaders.indexOf('UploadedByUserID')]=actor.userId;
+      row[fileHeaders.indexOf('CreatedAt')]=now;
+      createdUrlRows.push(fileSheet.getLastRow()+1);
+      fileSheet.appendRow(row);
+    });
+    appendAudit_(actor.userId,previous?'SUBMISSION_REVISED':'SUBMISSION_CREATED','Submission',id,{
+      assignmentId:a.AssignmentID,submissionType:target.type,revisionNumber:rev,status:status
+    },requestId);
+  }catch(writeError){
+    try{
+      createdUrlRows.sort(function(x,y){return y-x;}).forEach(function(row){if(fileSheet.getLastRow()>=row)fileSheet.deleteRow(row);});
+      Object.keys(stagedPrevious).forEach(function(fileId){
+        var current=cmGet_('SubmissionFiles','SubmissionFileID',fileId);
+        if(current)fileSheet.getRange(current._row,fileHeaders.indexOf('SubmissionID')+1).setValue(stagedPrevious[fileId]);
+      });
+      if(target.type==='GROUP'&&groupSheet&&groupLockCol&&groupPreviousLock!==null)
+        groupSheet.getRange(target.group._row,groupLockCol).setValue(groupPreviousLock);
+      var createdSubmission=cmGet_('Submissions','SubmissionID',id);
+      if(createdSubmission)submissionSheet.deleteRow(createdSubmission._row);
+    }catch(rollbackError){console.error('SUBMISSION_ROLLBACK_FAILED');}
+    throw apiError_('SUBMISSION_WRITE_FAILED','Submission failed; automatic rollback was attempted. Verify Submissions, SubmissionFiles and group lock before retrying.');
   }
-  var fileSheet=cmSheet_('SubmissionFiles'),fileHeaders=fileSheet.getRange(1,1,1,fileSheet.getLastColumn()).getDisplayValues()[0];
-  stagedFiles.forEach(function(staged){
-    fileSheet.getRange(staged._row,fileHeaders.indexOf('SubmissionID')+1).setValue(id);
-  });
-  driveUrls.forEach(function(url){
-    var row=new Array(fileHeaders.length);
-    row[fileHeaders.indexOf('SubmissionFileID')]=Utilities.getUuid();
-    row[fileHeaders.indexOf('SubmissionID')]=id;
-    row[fileHeaders.indexOf('FileName')]='Google Drive URL';
-    row[fileHeaders.indexOf('MimeType')]='text/uri-list';
-    row[fileHeaders.indexOf('FileSize')]=0;
-    row[fileHeaders.indexOf('DriveFileID')]='';
-    row[fileHeaders.indexOf('DriveUrl')]=url;
-    row[fileHeaders.indexOf('UploadedByUserID')]=actor.userId;
-    row[fileHeaders.indexOf('CreatedAt')]=now;
-    fileSheet.appendRow(row);
-  });
-  appendAudit_(actor.userId,previous?'SUBMISSION_REVISED':'SUBMISSION_CREATED','Submission',id,{
-    assignmentId:a.AssignmentID,submissionType:target.type,revisionNumber:rev,status:status
-  },requestId);
   if(typeof notifySubmissionReceived_==='function'){
     try{notifySubmissionReceived_(a,cmGet_('Submissions','SubmissionID',id));}
     catch(notificationError){console.error('SUBMISSION_NOTIFICATION_FAILED');}
