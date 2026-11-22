@@ -410,3 +410,25 @@ The available connected tools in this work session do not provide access to the 
 4. Provide GAS editor/save evidence showing the project has no duplicate global declarations and no compile/syntax errors. Do not execute application functions as a substitute for compile verification. If Apps Script reports an error, stop and report the exact sanitized message before making further changes.
 
 **Decision: HOLD.** G-01 and G-02 remain BLOCKED. No GAS file was copied or changed, no Apps Script function was executed, and no spreadsheet, Drive, trigger, LINE, or deployment operation was performed in this work session.
+
+
+## G-01 owner confirmation — five GAS TEST files match approved source — 22 November 2026
+
+The owner inspected the current GAS TEST project and confirmed that all five controlled files match the approved GitHub `development` source versions:
+
+1. `Code.gs`
+2. `setup.gs`
+3. `AssignmentManagement.gs`
+4. `SNC_IntegrationTestRunner_TEST.gs`
+5. `SNC_SystemPreflight_TEST.gs`
+
+- G-01 Source synchronization: **PASS — owner-confirmed exact match for all five controlled files**.
+- This is owner-provided verification; no direct live GAS project read or independent byte-for-byte comparison was available to the assistant in this session.
+- The ten held backend modules remain unchanged. No setup, migration, fixture, trigger, notification, or Integration Test Runner function was run as part of this confirmation.
+- G-02 GAS project compile: **BLOCKED / EVIDENCE PENDING**. File-content matching and Node.js syntax parsing do not establish that the complete Apps Script project saves without duplicate global declarations or GAS-specific compile errors.
+
+### Remaining evidence for G-02
+
+Please provide the GAS editor save/compile result or a fresh execution log from a safe read-only project preflight that confirms the current project loads without duplicate declarations or syntax/compile errors. Do not run setup, migration, fixtures, scheduler, trigger installation, notification, or Integration Test Runner functions. Keep the project and application data unchanged.
+
+**Decision: G-01 is closed; G-02 remains BLOCKED pending Apps Script project-level evidence. G-08 recovery evidence also remains outstanding. Fixture creation remains on HOLD.**
