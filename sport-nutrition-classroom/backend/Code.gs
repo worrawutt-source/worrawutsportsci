@@ -308,8 +308,8 @@ function testConfiguration() {
  * Expected result: success=false and error.code=TOKEN_MISSING.
  */
 function testPostMissingToken() {
-  var url = ScriptApp.getService().getUrl();
-  if (!url) throw new Error('Deploy this project as a Web App before running this test.');
+  // Use the deployed /exec endpoint. ScriptApp.getService().getUrl() may return /dev.
+  var url = 'https://script.google.com/macros/s/AKfycbwIvdYeUa4IqFZVKAuwfc4ANtGUrLRBilXv51t2YPuSAOj3tFKi9HCBtGhWuN7HwTT0/exec';
 
   var response = UrlFetchApp.fetch(url, {
     method: 'post',
@@ -322,14 +322,35 @@ function testPostMissingToken() {
     muteHttpExceptions: true
   });
 
-  var result = JSON.parse(response.getContentText());
+  var body = response.getContentText();
+  var headers = response.getHeaders();
+
+  var result = null;
+  var isJson = /^\\s*[\\{\\[]/.test(body);
+  if (isJson) {
+    try {
+      result = JSON.parse(body);
+    } catch (_) {
+      isJson = false;
+    }
+  }
+
+  var errorCode = result && result.error ? result.error.code : null;
   console.log(JSON.stringify({
+    test: 'POST_MISSING_TOKEN_EXEC',
+    targetUrl: url,
     httpStatus: response.getResponseCode(),
-    success: result.success,
-    errorCode: result.error && result.error.code,
+    contentType: headers['Content-Type'] || headers['content-type'] || null,
+    responseLength: body.length,
+    responsePreview: body.substring(0, 1200),
+    isJson: isJson,
+    success: result ? result.success : null,
+    errorCode: errorCode,
     expected: 'TOKEN_MISSING',
-    pass: result.success === false && result.error && result.error.code === 'TOKEN_MISSING'
-  }));
+    pass: response.getResponseCode() === 200 &&
+      isJson && result && result.success === false &&
+      errorCode === 'TOKEN_MISSING'
+  }, null, 2));
 }
 
 
