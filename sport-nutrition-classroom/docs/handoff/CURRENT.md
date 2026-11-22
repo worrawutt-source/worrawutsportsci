@@ -125,11 +125,11 @@ The owner supplied the Google Drive Folder ID for `SPORT_NUTRITION_SUBMISSIONS` 
 
 - Folder name/location: owner screenshot evidence.
 - Folder ID: owner-supplied; recorded above.
-- Sharing state (General access): **NOT YET VERIFIED**.
-- Script Property `SNC_SUBMISSION_FOLDER_ID`: **NOT YET CONFIGURED**.
-- G-05: **BLOCKED pending confirmation that this exact folder is Restricted/Private**.
+- Sharing state (General access): **OWNER CONFIRMED — Restricted**.
+- Script Property `SNC_SUBMISSION_FOLDER_ID`: **OWNER CONFIRMED — configured with the supplied Folder ID**.
+- G-05: **PASS — folder identity, Restricted sharing, and configuration confirmed by owner**. Folder appears empty in the supplied screenshot.
 
-Do not configure the Script Property or perform uploads until the owner confirms General access is Restricted. After confirmation, the owner may add `SNC_SUBMISSION_FOLDER_ID` with the supplied ID; then perform a read-only configuration check before any file integration test. No Drive or Script Properties change was performed by this review.
+No upload, sharing change, or file mutation was performed as part of this review. Before file integration tests, retain the folder contents baseline and test only with synthetic files created by the approved fixture run.
 
 
 The owner supplied a screenshot showing a newly created, currently empty Google Drive folder named `SPORT_NUTRITION_SUBMISSIONS` under `ProjectLine`. This establishes that the folder has been created and appears empty in the screenshot. The screenshot does not show its URL/Folder ID or sharing configuration.
