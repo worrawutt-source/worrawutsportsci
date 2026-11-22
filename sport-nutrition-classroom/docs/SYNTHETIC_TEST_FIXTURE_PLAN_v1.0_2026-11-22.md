@@ -199,9 +199,9 @@ The fixture batch is complete only when:
 - G-05 Drive isolation: **PASS by owner confirmation**
 - G-06 data baseline: **PASS — complete 22-table read-only baseline**
 - G-07 fixture authorization: **PASS — exact v1.0 scope approved**
-- G-08 recovery: **BLOCKED / PARTIAL** — backup copy owner-confirmed complete; non-destructive restore rehearsal runbook prepared but spreadsheet and Drive recovery rehearsals NOT RUN pending owner authorization for disposable resources
+- G-08 backup safeguard: **PASS — owner confirmed the complete TEST spreadsheet backup exists and the existing backup/recovery process has already passed. Additional spreadsheet restore and Drive sentinel rehearsals are waived as unnecessary**
 - Fixture creation: **NOT RUN**
 - Functional Integration Tests: **NOT RUN**
 - Cleanup: **NOT RUN**
 
-**Decision: HOLD — do not create fixtures or run the Integration Test Runner until G-08 recovery rehearsals pass.** See `G08_RESTORE_REHEARSAL_RUNBOOK_v1.0_2026-11-22.md` for the exact procedure and evidence criteria.
+**Decision: ENTRY GATES G-01 THROUGH G-08 SATISFIED — proceed to the controlled fixture execution stage after re-verifying the current TEST source/deployment and environment identity.** Do not perform the additional G-08 restore/sentinel rehearsals; the owner confirms the existing backup/recovery process has already passed. Integration tests remain NOT RUN until actually executed.
