@@ -326,7 +326,7 @@ function testPostMissingToken() {
   var headers = response.getHeaders();
 
   var result = null;
-  var isJson = /^\\s*[\\{\\[]/.test(body);
+  var isJson = /^\s*[\{\[]/.test(body);
   if (isJson) {
     try {
       result = JSON.parse(body);
