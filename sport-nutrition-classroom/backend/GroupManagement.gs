@@ -59,10 +59,22 @@ function handleGroupManagementAction_(action,actor,p,requestId){
       if(gmRows_('GroupMembers').some(function(m){return String(m.UserID)===String(actor.userId)&&String(m.Status).toUpperCase()==='ACTIVE'&&
         (function(){var g=gmGet_('Groups','GroupID',m.GroupID);return g&&String(g.OfferingID)===oid&&String(g.Status).toUpperCase()==='ACTIVE';})();}))
         throw apiError_('CONFLICT','You already belong to a group in this offering.');
-      var gid=Utilities.getUuid(),now=new Date();
-      gmSheet_('Groups').appendRow([gid,oid,name,actor.userId,'','ACTIVE',now,now]);
-      gmSheet_('GroupMembers').appendRow([Utilities.getUuid(),gid,actor.userId,'LEADER',now,'','ACTIVE']);
-      appendAudit_(actor.userId,'GROUP_CREATED','Group',gid,{offeringId:oid},requestId);
+      var gid=Utilities.getUuid(),memberId=Utilities.getUuid(),now=new Date();
+      var groupSheet=gmSheet_('Groups'),memberSheet=gmSheet_('GroupMembers');
+      var groupRow=groupSheet.getLastRow()+1,memberRow=0;
+      try{
+        groupSheet.appendRow([gid,oid,name,actor.userId,'','ACTIVE',now,now]);
+        memberRow=memberSheet.getLastRow()+1;
+        memberSheet.appendRow([memberId,gid,actor.userId,'LEADER',now,'','ACTIVE']);
+        appendAudit_(actor.userId,'GROUP_CREATED','Group',gid,{offeringId:oid},requestId);
+      }catch(createError){
+        try{
+          if(memberRow&&memberSheet.getLastRow()>=memberRow&&String(memberSheet.getRange(memberRow,2).getDisplayValue())===gid)memberSheet.deleteRow(memberRow);
+          var createdGroup=gmRows_('Groups').filter(function(x){return String(x.GroupID)===gid;})[0];
+          if(createdGroup)groupSheet.deleteRow(createdGroup._row);
+        }catch(rollbackError){console.error('GROUP_CREATE_ROLLBACK_FAILED');}
+        throw apiError_('GROUP_CREATE_FAILED','Group creation failed; automatic rollback was attempted. Verify Groups and GroupMembers before retrying.');
+      }
       return gmPublicGroup_(gmGet_('Groups','GroupID',gid),actor);
     }
     if(action==='group.join'){
