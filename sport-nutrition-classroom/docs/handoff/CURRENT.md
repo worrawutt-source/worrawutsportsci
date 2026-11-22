@@ -3,8 +3,9 @@
 - Updated: 22 November 2026 (Asia/Bangkok)
 - Repository: `worrawutt-source/worrawutsportsci`
 - Working branch: `development` only
-- Checkpoint source HEAD before this update: `8fb2a4bda6e73cc5a8a72462f54dea1efe77439b`
-- This checkpoint commit: `61a8422f60bc132d79667f4725e4a2cfe478592b`
+- Initial HEAD before this checkpoint work: `8fb2a4bda6e73cc5a8a72462f54dea1efe77439b`
+- Integration runner update commit: `61a8422f60bc132d79667f4725e4a2cfe478592b`
+- Current branch HEAD was verified after the documentation update.
 - GAS evidence: `SNC_GAS_BACKUP_2026-11-22(3).zip`
 - Approved requirements: DOCS v1.3 DOC-01 v1.0 / DOC-02 v1.1; Working Guidelines SNC-WG-001 v1.0.0
 - Test plan: SNC-TEST-PLAN-001 v1.1, Steps 0–3 previously completed by owner; next target is Step 4.
