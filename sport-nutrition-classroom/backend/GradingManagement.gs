@@ -11,6 +11,23 @@ function grCanStudent_(actor,submission){
   return gmMembers_(submission.GroupID).some(function(m){return String(m.UserID)===String(actor.userId);});
 }
 function grPublic_(g){return {gradeId:String(g.GradeID),submissionId:String(g.SubmissionID),score:Number(g.Score),feedback:String(g.Feedback||''),gradedByUserId:String(g.GradedByUserID),gradedAt:g.GradedAt,updatedAt:g.UpdatedAt};}
+function grAllowedReviewTransition_(fromStatus,toStatus){
+  var transitions={PENDING:['IN_REVIEW','RESOLVED','REJECTED'],IN_REVIEW:['RESOLVED','REJECTED'],RESOLVED:[],REJECTED:[]};
+  return Boolean(transitions[String(fromStatus||'').toUpperCase()])&&
+    transitions[String(fromStatus||'').toUpperCase()].indexOf(String(toStatus||'').toUpperCase())>=0;
+}
+function testGradeReviewTransitionUnit(){
+  var cases=[
+    ['PENDING','IN_REVIEW',true],['PENDING','RESOLVED',true],['PENDING','REJECTED',true],
+    ['IN_REVIEW','RESOLVED',true],['IN_REVIEW','REJECTED',true],
+    ['RESOLVED','IN_REVIEW',false],['REJECTED','PENDING',false],['IN_REVIEW','PENDING',false],
+    ['PENDING','PENDING',false],['UNKNOWN','RESOLVED',false]
+  ];
+  var results=cases.map(function(c){return {transition:c[0]+' -> '+c[1],pass:grAllowedReviewTransition_(c[0],c[1])===c[2]};});
+  var passed=results.filter(function(x){return x.pass;}).length;
+  var out={success:passed===results.length,mode:'PURE_UNIT_GRADE_REVIEW_STATE_MACHINE',database:'NONE',passed:passed,failed:results.length-passed,total:results.length,writesExpected:0,results:results};
+  console.log(JSON.stringify(out));return out;
+}
 function handleGradingAction_(action,actor,p,requestId){
   var lock=LockService.getScriptLock();lock.waitLock(30000);
   try{
@@ -98,9 +115,7 @@ function handleGradingAction_(action,actor,p,requestId){
       if(!s4)throw apiError_('NOT_FOUND','Related submission not found.');
       grCanManage_(actor,s4);
       var currentStatus=String(rr.Status||'').toUpperCase(),status=cmText_(p.status,20,'status',true).toUpperCase();
-      var allowedTransitions={PENDING:['IN_REVIEW','RESOLVED','REJECTED'],IN_REVIEW:['RESOLVED','REJECTED'],RESOLVED:[],REJECTED:[]};
-      if(!allowedTransitions[currentStatus])throw apiError_('CONFLICT','Grade review request has an invalid current status.');
-      if(allowedTransitions[currentStatus].indexOf(status)<0)
+      if(!grAllowedReviewTransition_(currentStatus,status))
         throw apiError_('INVALID_STATUS_TRANSITION','Grade review transition '+currentStatus+' -> '+status+' is not allowed.');
       var response=cmText_(p.instructorResponse||'',3000,'instructorResponse',false),sh2=cmSheet_('GradeReviewRequests'),h2=sh2.getRange(1,1,1,sh2.getLastColumn()).getDisplayValues()[0];
       var statusCol=h2.indexOf('Status')+1,responseCol=h2.indexOf('InstructorResponse')+1,reviewerCol=h2.indexOf('ReviewedByUserID')+1,updatedCol=h2.indexOf('UpdatedAt')+1;
