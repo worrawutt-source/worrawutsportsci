@@ -155,6 +155,21 @@ Impact based on `FileManagement.gs`:
 
 Do not add the property or create/select a Drive folder yet. First decide the intended submission folder and approve its exact Drive location, access policy, and recovery/baseline procedure. After approval, configure the property and verify the exact folder's Restricted/Private sharing and contents before any upload test. No property or Drive resource was changed.
 
+## G-06 owner-run baseline execution — partial log evidence — 22 November 2026
+
+The owner ran `sncCaptureDataBaseline_TEST()` in GAS. Execution log reports **Execution completed** and the visible baseline JSON reports:
+
+- mode `READ_ONLY`;
+- spreadsheet `SportNutritionApp`, ID suffix `dYeWFk`, schema version `1.5.0`;
+- `tableCount=22` (corrects the earlier estimate of 21 tables; use actual `SNC_SETUP.TABLES` output);
+- `errorCount=0` and `errors=[]`;
+- every table entry visible before the log truncation has zero blank and duplicate primary keys;
+- log output was truncated before the complete table list and final `success` field were visible. The visible excerpt includes table data through the beginning of `Submissions`, but does not establish the status of all 22 tables.
+
+Assessment: **G-06 PARTIAL / REVIEW REQUIRED**, not yet PASS. No write or external operation is indicated by the collector's read-only mode. Do not run fixtures yet.
+
+Next action: reduce baseline logging to a compact summary that contains all 22 table names, row counts, blank/duplicate key counts, per-table primary-key SHA-256 digests, `errorCount`, and `success` without printing the raw primary-key arrays. Retain the complete primary-key manifest privately for owner recovery; do not put raw IDs into GitHub. Re-run only the read-only baseline after installing the compact logger/helper, then verify all 22 entries and the final success flag.
+
 ## G-06 read-only baseline collector prepared — 22 November 2026
 
 Added `sport-nutrition-classroom/backend/tests/SNC_DataBaseline_TEST.gs` v1.0.0 on `development` (commit `dd75f7fe888d6afbb5c59de03087aa3aa937a2cb`). The helper:
