@@ -28,6 +28,29 @@ function testGroupSubmissionRepresentativeUnit(){
   var out={success:passed===cases.length,mode:'PURE_UNIT_GROUP_SUBMISSION_AUTHORIZATION',database:'NONE',passed:passed,failed:cases.length-passed,total:cases.length,writesExpected:0,cases:cases};
   console.log(JSON.stringify(out,null,2));return out;
 }
+function smCanUseStagedFile_(staged,actor,assignmentId,target){
+  if(!staged)return false;
+  var owner=String(staged.UploadedByUserID||'');
+  if(String(staged.SubmissionID)==='STAGED:'+String(actor.userId)+':'+String(assignmentId))return true;
+  return target&&target.type==='GROUP'&&
+    String(staged.SubmissionID)==='STAGED:'+owner+':'+String(assignmentId)&&
+    gmMembers_(target.groupId).some(function(m){return String(m.UserID)===owner;});
+}
+function testGroupStagedFileAuthorizationUnit(){
+  var actor={userId:'LEADER'},target={type:'GROUP',groupId:'G1'};
+  var same={SubmissionID:'STAGED:LEADER:A1',UploadedByUserID:'LEADER'};
+  var member={SubmissionID:'STAGED:MEMBER:A1',UploadedByUserID:'MEMBER'};
+  var other={SubmissionID:'STAGED:OTHER:A1',UploadedByUserID:'OTHER'};
+  var results=[
+    {test:'submitter may attach own staged file',pass:smCanUseStagedFile_(same,actor,'A1',target)},
+    {test:'leader may attach active group member staged file',pass:smCanUseStagedFile_(member,actor,'A1',target)},
+    {test:'cannot attach non-member staged file',pass:!smCanUseStagedFile_(other,actor,'A1',target)},
+    {test:'cannot attach file staged for another assignment',pass:!smCanUseStagedFile_({SubmissionID:'STAGED:MEMBER:A2',UploadedByUserID:'MEMBER'},actor,'A1',target)}
+  ];
+  var passed=results.filter(function(x){return x.pass;}).length;
+  var out={success:passed===results.length,mode:'PURE_UNIT_GROUP_STAGED_FILE_AUTHORIZATION',database:'NONE',passed:passed,failed:results.length-passed,total:results.length,writesExpected:0,results:results};
+  console.log(JSON.stringify(out));return out;
+}
 function smValidateTarget_(actor,a,p,requireRepresentative){
   if(String(a.Status).toUpperCase()!=='OPEN')throw apiError_('ASSIGNMENT_CLOSED','Assignment is not open.');
   var type=String(a.SubmissionType).toUpperCase();
@@ -66,12 +89,7 @@ function smCreateRevision_(actor,a,target,p,previous,requestId){
   if(fileIds.length+driveUrls.length>10)throw apiError_('VALIDATION_ERROR','A submission may reference at most ten files or URLs.');
   var stagedFiles=fileIds.map(function(fileId){
     var staged=cmGet_('SubmissionFiles','SubmissionFileID',fileId);
-    var stagedOwner=staged&&String(staged.UploadedByUserID||'');
-    var sameOwner=staged&&String(staged.SubmissionID)==='STAGED:'+String(actor.userId)+':'+String(a.AssignmentID);
-    var eligibleGroupMember=target.type==='GROUP'&&staged&&
-      String(staged.SubmissionID)==='STAGED:'+stagedOwner+':'+String(a.AssignmentID)&&
-      gmMembers_(target.groupId).some(function(m){return String(m.UserID)===stagedOwner;});
-    if(!staged||(!sameOwner&&!eligibleGroupMember))
+    if(!smCanUseStagedFile_(staged,actor,a.AssignmentID,target))
       throw apiError_('FILE_INVALID','File must be staged by the submitter or an active member of the same group for this assignment.');
     return staged;
   });
