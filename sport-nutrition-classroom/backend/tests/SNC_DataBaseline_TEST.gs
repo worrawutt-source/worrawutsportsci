@@ -1,6 +1,6 @@
 /**
  * SPORT NUTRITION CLASSROOM — Read-only data baseline collector
- * Version: 1.0.0
+ * Version: 1.0.1
  *
  * SAFETY:
  * - Reads only the active spreadsheet and Script Properties.
@@ -81,6 +81,32 @@ function sncCaptureDataBaseline_TEST() {
   report.success = errors.length === 0 && tables.every(function(t){
     return t.blankPrimaryKeyRows === 0 && t.duplicatePrimaryKeyCount === 0;
   });
-  console.log('SNC_DATA_BASELINE_JSON=' + JSON.stringify(report));
+  // Log only compact, non-PII integrity evidence. The returned report retains
+  // the full primary-key manifest for private owner-side retention if needed.
+  var compact = {
+    report:report.report,
+    version:'1.0.1',
+    mode:report.mode,
+    capturedAt:report.capturedAt,
+    spreadsheetName:report.spreadsheetName,
+    spreadsheetIdSuffix:report.spreadsheetIdSuffix,
+    schemaVersion:report.schemaVersion,
+    tableCount:report.tableCount,
+    errorCount:report.errorCount,
+    errors:report.errors,
+    success:report.success,
+    tables:report.tables.map(function(t){
+      return {
+        table:t.table,
+        primaryKey:t.primaryKey,
+        dataRows:t.dataRows,
+        nonBlankPrimaryKeys:t.nonBlankPrimaryKeys,
+        blankPrimaryKeyRows:t.blankPrimaryKeyRows,
+        duplicatePrimaryKeyCount:t.duplicatePrimaryKeyCount,
+        primaryKeySha256:t.primaryKeySha256
+      };
+    })
+  };
+  console.log('SNC_DATA_BASELINE_SUMMARY=' + JSON.stringify(compact));
   return report;
 }
