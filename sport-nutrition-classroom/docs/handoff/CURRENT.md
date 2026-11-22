@@ -384,3 +384,29 @@ Following the owner's explicit approval of Synthetic Test Fixture Plan v1.0, the
 2. Save/compile the complete GAS project and provide the execution/editor evidence showing no duplicate global declarations or compile errors.
 3. Perform a restore rehearsal against a separate disposable spreadsheet copy (not the live TEST spreadsheet), and verify the agreed recovery procedure for files created in the private TEST Drive folder. Record the authorized recovery operator and stop/escalation rule.
 4. Keep LINE token absent and do not run notification/trigger functions during this fixture batch.
+
+
+## G-01 / G-02 execution attempt — GAS TEST access limitation — 22 November 2026
+
+The latest supplied source archive `SNC_GAS_BACKUP_2026-11-22(3).zip` was extracted and all source-bearing files were checked locally with Node.js v22.16.0 using `node --check`.
+
+- JavaScript/GAS source files checked: **18/18 PASS**.
+- The archive also contains `json.txt`, which is configuration/data rather than a JavaScript source file and was not included in the syntax count.
+- No source file was modified by this check.
+- This confirms syntax parseability under Node.js only. It does not confirm Apps Script-specific compilation, global symbol uniqueness in the live project, or that the live GAS TEST editor contains the same file contents.
+
+The available connected tools in this work session do not provide access to the live Google Apps Script editor/project or its file APIs. Therefore the assistant cannot directly copy files into GAS TEST, save the project, or execute a GAS compile from this session. No claim is made that those operations were performed.
+
+### Gate status after this attempt
+
+- G-01 Source synchronization: **BLOCKED / NOT VERIFIED** — live GAS TEST file contents cannot be read from the available tools in this session. The approved copy list and order remain as documented in the earlier synchronization instructions. In particular, the latest checkpoint directs replacing only `SNC_SystemPreflight_TEST.gs` v1.0.1 at this stage; do not bulk-replace the other ten held modules or run setup/migration/trigger functions.
+- G-02 GAS compile: **BLOCKED / NOT RUN** — 18/18 local Node.js syntax checks passed, but no live Apps Script save/compile evidence is available.
+
+### Required owner-side evidence to close G-01 and G-02
+
+1. In the existing GAS TEST project, verify the five controlled application/test files against the approved GitHub `development` versions and the current synchronization instructions: `Code.gs`, `setup.gs`, `AssignmentManagement.gs`, `SNC_IntegrationTestRunner_TEST.gs`, and `SNC_SystemPreflight_TEST.gs`. The Data Baseline helper v1.0.1 was separately required for the completed G-06 run; retain it. Do not replace the ten held backend modules.
+2. If the current GAS project does not contain the latest `SNC_SystemPreflight_TEST.gs` v1.0.1, replace that file only with the GitHub `development` version. Do not run setup, migration, fixtures, scheduler, trigger installation, notifications, or the Integration Test Runner.
+3. Save the GAS project and provide a fresh export of the project files (or equivalent file-content evidence) so the synchronized source can be compared to the approved versions. Redact all credentials/secrets; do not include real student data.
+4. Provide GAS editor/save evidence showing the project has no duplicate global declarations and no compile/syntax errors. Do not execute application functions as a substitute for compile verification. If Apps Script reports an error, stop and report the exact sanitized message before making further changes.
+
+**Decision: HOLD.** G-01 and G-02 remain BLOCKED. No GAS file was copied or changed, no Apps Script function was executed, and no spreadsheet, Drive, trigger, LINE, or deployment operation was performed in this work session.
