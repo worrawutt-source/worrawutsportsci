@@ -1,6 +1,6 @@
 # SPORT NUTRITION CLASSROOM — Current Handoff
 
-**Latest checkpoint:** [2026-11-22 Continuity Checkpoint](./2026-11-22-CONTINUITY-CHECKPOINT.md)
+**Latest checkpoint:** [2026-11-22 Continuity Checkpoint 2](./2026-11-22-CONTINUITY-CHECKPOINT-2.md)
 
 For every new conversation or after a context limit:
 1. Read the latest dated continuity checkpoint.
