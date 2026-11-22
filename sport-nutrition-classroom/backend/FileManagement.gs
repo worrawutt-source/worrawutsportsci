@@ -91,7 +91,16 @@ function handleFileManagementAction_(action,actor,p,requestId){
       try{file.setTrashed(true);}catch(cleanupError){console.error('ORPHAN_FILE_CLEANUP_FAILED');}
       throw apiError_('FILE_STORAGE_FAILED','Unable to register uploaded file; the temporary Drive file was removed when possible.');
     }
-    appendAudit_(actor.userId,'SUBMISSION_FILE_UPLOADED','SubmissionFile',fid,{assignmentId:aid,fileSize:bytes.length,mimeType:mime},requestId);
+    try{
+      appendAudit_(actor.userId,'SUBMISSION_FILE_UPLOADED','SubmissionFile',fid,{assignmentId:aid,fileSize:bytes.length,mimeType:mime},requestId);
+    }catch(auditError){
+      try{
+        var saved=cmGet_('SubmissionFiles','SubmissionFileID',fid);
+        if(saved)sh.deleteRow(saved._row);
+        file.setTrashed(true);
+      }catch(cleanupError){console.error('FILE_AUDIT_ROLLBACK_FAILED');}
+      throw apiError_('FILE_STORAGE_FAILED','File upload audit failed; metadata and Drive file cleanup were attempted.');
+    }
     return {fileId:fid,fileName:name,mimeType:mime,fileSize:bytes.length};
   }
   if(action==='file.access'){
