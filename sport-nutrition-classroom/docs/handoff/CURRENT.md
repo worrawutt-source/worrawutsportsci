@@ -119,7 +119,63 @@ Read-only review performed against GAS Backup (3) and the matching GitHub `devel
 
 **Decision:** G-04 and G-05 remain BLOCKED. G-03 is closed based on owner-confirmed active deployment Version 14, matching URL/ID, and successful API health response. Fixture creation and integration execution remain on HOLD.
 
-## G-05 folder preparation update — 22 November 2026
+## G-05 folder identity supplied — 22 November 2026
+
+The owner supplied the Google Drive Folder ID for `SPORT_NUTRITION_SUBMISSIONS` under `ProjectLine`: `1LmHuJKetRb6K8zyifpjvcKIYiMzUU7tj`.
+
+- Folder name/location: owner screenshot evidence.
+- Folder ID: owner-supplied; recorded above.
+- Sharing state (General access): **NOT YET VERIFIED**.
+- Script Property `SNC_SUBMISSION_FOLDER_ID`: **NOT YET CONFIGURED**.
+- G-05: **BLOCKED pending confirmation that this exact folder is Restricted/Private**.
+
+Do not configure the Script Property or perform uploads until the owner confirms General access is Restricted. After confirmation, the owner may add `SNC_SUBMISSION_FOLDER_ID` with the supplied ID; then perform a read-only configuration check before any file integration test. No Drive or Script Properties change was performed by this review.
+
+
+The owner supplied a screenshot showing a newly created, currently empty Google Drive folder named `SPORT_NUTRITION_SUBMISSIONS` under `ProjectLine`. This establishes that the folder has been created and appears empty in the screenshot. The screenshot does not show its URL/Folder ID or sharing configuration.
+
+- Folder existence/name: **OWNER EVIDENCE — PASS**
+- Empty contents at screenshot time: **OWNER EVIDENCE — PASS**
+- Folder ID matched to intended resource: **NOT VERIFIED**
+- Sharing set to Restricted / Private: **NOT VERIFIED**
+- `SNC_SUBMISSION_FOLDER_ID` Script Property configured: **NOT DONE**
+- G-05 overall: **BLOCKED pending Folder ID and sharing verification**.
+
+Next read-only check: open the folder's Share dialog and confirm General access is Restricted; copy the folder ID from the Drive URL (the text after `/folders/`). Do not change sharing or add the Script Property until the ID and sharing state are confirmed. No Drive or Script Properties change was performed by this review.
+
+## G-05 owner confirmation — submission folder property absent — 22 November 2026
+
+The owner inspected Apps Script Project Settings → Script Properties and confirmed that `SNC_SUBMISSION_FOLDER_ID` is **not present**.
+
+Impact based on `FileManagement.gs`:
+- `file.upload` reads this exact Script Property and returns `CONFIGURATION_ERROR` when it is missing.
+- Therefore, submission file upload cannot be considered configured or integration-test ready in the current project.
+- The code's private-folder ACL check is only reached after the property is present; it does not establish a configured private folder.
+- G-05 status: **BLOCKED — required configuration absent**.
+
+Do not add the property or create/select a Drive folder yet. First decide the intended submission folder and approve its exact Drive location, access policy, and recovery/baseline procedure. After approval, configure the property and verify the exact folder's Restricted/Private sharing and contents before any upload test. No property or Drive resource was changed.
+
+## Latest owner-run Preflight evidence — 22 November 2026
+
+The owner copied `SNC_SystemPreflight_TEST.gs` v1.0.1 into GAS TEST and ran `SNC_SystemPreflight_TEST()`. The compact summary record was captured in the supplied execution log.
+
+- Overall status: **BLOCKED**; PASS 11, FAIL 0, BLOCKED 1, NOT RUN 8.
+- ENV-01: PASS — TEST environment and active spreadsheet identity verified.
+- DB-01: PASS — read-only schema inspection passed for declared `SNC_SETUP.TABLES`.
+- Pure unit tests: **84/84 PASS across 9 suites**, 0 failures.
+- Static API route/handler presence: INT-02 through INT-07 and INT-07A present; this is not evidence of runtime integration.
+- Integration suites INT-01 through INT-07A: NOT RUN. INT-08: BLOCKED pending verified deployed TEST endpoint, browser/LIFF execution and recovery evidence.
+- `writesExpected=0`; `externalCallsExpected=0`. No fixture creation, data mutation, Drive operation, LINE push or deployment was performed.
+
+The compact summary is complete. Earlier verbose Logger output from called schema/unit-test functions remains truncated in the execution log, but this does not invalidate the complete summary record.
+
+## Current readiness
+
+**Preflight execution: BLOCKED. Step 4 database-backed integration execution and fixture creation remain on HOLD.** The 84 pure unit tests and schema/environment checks passed, but they do not establish deployed API or cross-module integration behavior.
+
+Next work is limited to closing the outstanding entry evidence: (1) verify the exact TEST Web App deployment identity/version and endpoint without redeploying; (2) confirm source synchronization and compile status in the TEST GAS project; (3) complete G-04/G-05/G-06/G-08 isolation, baseline and recovery evidence; and (4) obtain explicit owner approval of the exact fixture manifest and write/cleanup scope (G-07). Do not create fixtures or run the Integration Test Runner until all applicable gates are evidenced and approval is recorded. The ten backend modules listed under HOLD remain unchanged pending targeted semantic reconciliation.
+
+No source synchronization, spreadsheet write, Drive operation, migration, fixture creation/cleanup, LINE message or deployment was performed by this checkpoint.
 
 The owner supplied a screenshot showing a newly created, currently empty Google Drive folder named `SPORT_NUTRITION_SUBMISSIONS` under `ProjectLine`. This establishes that the folder has been created and appears empty in the screenshot. The screenshot does not show its URL/Folder ID or sharing configuration.
 
