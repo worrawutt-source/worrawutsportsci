@@ -200,9 +200,9 @@ Keep the following GAS files unchanged in this batch:
 - `StudentPortalManagement.gs`
 - `AuditManagement.gs`
 
-Do not replace `SNC_IntegrationTestRunner_TEST.gs` with GitHub runner v1.0.1 as-is. It omits the archived runner's strict environment guard and read-only INT-01 procedure. The GAS runner v1.0.0 has a defective route detector that applies anchored route regexes to the entire `String(doPost)`. A merged runner is required before the consolidated run.
+Do not replace `SNC_IntegrationTestRunner_TEST.gs` with GitHub runner v1.0.1 as-is. It omits the archived runner's strict environment guard and read-only INT-01 procedure. The GAS runner v1.0.0 has a defective route detector that applies anchored route regexes to the entire `String(doPost)`. A new read-only `SNC_SystemPreflight_TEST.gs` has now been added under `backend/tests`; it preserves the strict TEST environment guard, runs read-only schema inspection, executes pure in-memory unit checks, and inspects dispatcher route/handler presence without writing data. It is a preflight runner only, not a substitute for full integration/E2E testing.
 
-## 6. One-batch system test plan
+### 5.1 New TEST preflight runner\n\nGitHub file: `backend/tests/SNC_SystemPreflight_TEST.gs` (Version 1.0.0). **ADD** this file to the TEST GAS project; do not replace the existing integration runner with it. Execute `SNC_SystemPreflight_TEST()` after the three backend replacements and before creating any fixtures. It checks the TEST environment binding, read-only schema inspection, nine pure unit-test functions, and static dispatcher/handler/action presence. It performs no Sheets/Drive writes, does not install triggers, and makes no LINE calls. Any integration suite reported NOT RUN or BLOCKED remains untested.\n\n## 6. One-batch system test plan
 
 Run the test batch only after the three replacements are installed in the verified TEST project and the remaining HOLD files have passed exact diff review.
 
@@ -228,7 +228,7 @@ Do not start Stage 3–7 until a separate test fixture manifest identifies synth
 4. LINE TEST/PRODUCTION channel, LIFF ID, and Worker upstream separation remain unverified.
 5. A merged runner preserving the strict environment guard and fixing route detection is still required.
 6. Synthetic TEST fixture plan and cleanup manifest have not been approved or executed.
-7. No GAS V8 runtime tests or deployed browser/LIFF E2E tests have been run in this work package.
+7. No GAS V8 runtime tests or deployed browser/LIFF E2E tests have been run in this work package. The new preflight runner has been committed to GitHub but has not yet been copied to or executed in GAS.
 
 ## 8. Execution record
 
