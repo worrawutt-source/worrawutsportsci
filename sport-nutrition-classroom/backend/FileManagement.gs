@@ -62,6 +62,12 @@ function fmShareWithSubmissionActors_(file,actor,a,target){
     added.forEach(function(email){try{file.removeViewer(email);}catch(_){}});
     throw apiError_('FILE_PERMISSION_FAILED','Unable to grant file access to every authorized participant.');
   }
+  return added;
+}
+function fmRollbackSubmissionFileShares_(changes){
+  (changes||[]).forEach(function(change){
+    (change.emails||[]).forEach(function(email){try{change.file.removeViewer(email);}catch(e){console.error('FILE_SHARE_ROLLBACK_FAILED');}});
+  });
 }
 function handleFileManagementAction_(action,actor,p,requestId){
   if(action==='file.upload'){
