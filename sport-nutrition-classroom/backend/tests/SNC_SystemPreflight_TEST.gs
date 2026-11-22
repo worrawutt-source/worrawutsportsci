@@ -11,7 +11,7 @@
  */
 
 var SNC_PREFLIGHT_CONFIG_TEST = Object.freeze({
-  VERSION: '1.0.0',
+  VERSION: '1.0.1',
   TEST_SPREADSHEET_ID: '1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk'
 });
 
@@ -39,7 +39,7 @@ function SNC_SystemPreflight_TEST() {
     report.environment = gate.environment || 'UNVERIFIED';
     report.overallStatus = 'BLOCKED';
     report.summary = { PASS: 0, FAIL: 0, BLOCKED: 1, 'NOT RUN': 0 };
-    Logger.log(JSON.stringify(report, null, 2));
+    sncPreflight_logCompact_TEST_(report);
     return report;
   }
 
@@ -164,8 +164,58 @@ function SNC_SystemPreflight_TEST() {
     (counts.BLOCKED > 0 ? 'BLOCKED' :
     (counts['NOT RUN'] > 0 ? 'NOT RUN' : 'PASS'));
 
-  Logger.log(JSON.stringify(report, null, 2));
+  sncPreflight_logCompact_TEST_(report);
   return report;
+}
+
+
+/**
+ * Emits a compact, complete summary so Apps Script execution logs are not truncated.
+ * Keeps detailed per-case unit-test payloads out of Logger output; returned report
+ * remains unchanged for callers that inspect the function result.
+ */
+function sncPreflight_logCompact_TEST_(report) {
+  var compact = {
+    runner: report.runner,
+    version: report.version,
+    mode: report.mode,
+    environment: report.environment || 'UNVERIFIED',
+    spreadsheetName: report.spreadsheetName || null,
+    spreadsheetIdSuffix: report.spreadsheetIdSuffix || null,
+    overallStatus: report.overallStatus || 'BLOCKED',
+    summary: report.summary || {},
+    writesExpected: report.writesExpected,
+    externalCallsExpected: report.externalCallsExpected,
+    checks: (report.checks || []).map(function(x) {
+      return { id: x.id, status: x.status, detail: x.detail || null };
+    }),
+    unitTests: (report.unitTests || []).map(function(x) {
+      var r = x.result || {};
+      return {
+        id: x.id,
+        name: x.name,
+        status: x.status,
+        passed: r.passed !== undefined ? r.passed : null,
+        failed: r.failed !== undefined ? r.failed : null,
+        total: r.total !== undefined ? r.total : null,
+        detail: x.detail || null
+      };
+    }),
+    apiRoutes: (report.apiRoutes || []).map(function(x) {
+      return {
+        id: x.id,
+        name: x.name,
+        status: x.status,
+        dispatcherRoutePresent: x.dispatcherRoutePresent,
+        handlerPresent: x.handlerPresent,
+        expectedActionsPresent: x.expectedActionsPresent
+      };
+    }),
+    integrationSuites: (report.integrationSuites || []).map(function(x) {
+      return { id: x.id, name: x.name, status: x.status, detail: x.detail || null };
+    })
+  };
+  Logger.log('SNC_PREFLIGHT_SUMMARY=' + JSON.stringify(compact));
 }
 
 function sncPreflight_validateEnvironment_TEST_() {
