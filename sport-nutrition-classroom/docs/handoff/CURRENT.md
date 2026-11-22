@@ -1,13 +1,11 @@
 # Current Project Checkpoint
 
-The latest operational handoff for Batch 0 is `BATCH0_RECONCILIATION_STEP4_READINESS_2026-11-22.md`.
+The latest system test handoff is `SYSTEM_TEST_READINESS_RECONCILIATION_2026-11-22.md`.
 
-The current source reconciliation decision is `../SOURCE_RECONCILIATION_DECISION_2026-11-22.md`. The deep source comparison is `../DEEP_SOURCE_DIFF_ANALYSIS_2026-11-22.md`, covering all 13 backend modules, function/action inventory comparison, risk review, and exact GAS replacement decision (NONE pending completed function-body diff and validation).
+The report records the function-block comparison of all 13 GAS backend modules against GitHub `development`, the exact three-file TEST GAS replacement recommendation, the remaining HOLD modules, and the single-batch test plan. Current status: **NOT CLEARED for the full system test run**.
 
-The continuity checkpoint preceding Batch 0 is `2026-11-22-CONTINUITY-CHECKPOINT-3.md`.
+The source reconciliation decision is `../SOURCE_RECONCILIATION_DECISION_2026-11-22.md`. The prior deep source comparison is `../DEEP_SOURCE_DIFF_ANALYSIS_2026-11-22.md`.
 
-Latest backend source review: `../BACKEND_RECONCILIATION_REMEDIATION_2026-11-22.md`.
+The Batch 0 environment evidence and remaining deployment/LINE/runner blockers are recorded in `../BATCH0_RECONCILIATION_STEP4_READINESS_2026-11-22.md`.
 
-Batch 0 status: NOT CLEARED for deployed integration testing. See the Batch 0 report and source reconciliation decision for verified HEAD, source hash comparison, runner defect, environment blockers, and the required gates before system testing step 4.
-
-No GAS source synchronization, deployment, schema migration, fixture operation, or spreadsheet data modification was performed.
+No GAS source synchronization, deployment, schema migration, fixture creation/cleanup, spreadsheet data modification, Drive upload, grade change, or LINE message was performed.
