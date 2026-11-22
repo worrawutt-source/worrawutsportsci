@@ -190,11 +190,12 @@ The fixture batch is complete only when:
 ## 11. Current execution status
 
 - Plan preparation: **PASS**
-- Owner approval of exact fixture write/cleanup scope: **PASS — explicitly approved on 22 November 2026; recorded in CURRENT.md**
-- G-01 source synchronization: **BLOCKED / NOT VERIFIED in current TEST GAS project**
-- G-02 GAS project compile: **BLOCKED / NOT RUN** (local Node.js syntax parse of GAS Backup (3): 18/18 PASS; this is not GAS project compile evidence)
+- Owner approval of exact fixture write/cleanup scope: **PASS**
+- G-01 source synchronization: **PASS — owner confirmed all five controlled files match approved development source**
+- G-02 GAS project save/load/syntax execution: **PASS — owner-provided `SNC_SystemPreflight_TEST` v1.0.1 execution completed without reported syntax/runtime load error**
+- Preflight overall: **BLOCKED** — 11 checks PASS, 0 FAIL, 1 BLOCKED, 8 NOT RUN. This does not reverse G-02: the blocker is INT-08 and unrun integration suites, not project syntax/compile.
 - G-03 environment identity: **PASS**
-- G-04 external/LINE separation: **PASS WITH CAVEAT** — outbound LINE push is suppressed while the channel access token remains absent; separate TEST LINE/LIFF/Worker identity is not evidenced
+- G-04 external/LINE separation: **PASS WITH CAVEAT** — outbound LINE push suppressed while token remains absent; do not enable token or run notification paths
 - G-05 Drive isolation: **PASS by owner confirmation**
 - G-06 data baseline: **PASS — complete 22-table read-only baseline**
 - G-07 fixture authorization: **PASS — exact v1.0 scope approved**
@@ -203,4 +204,4 @@ The fixture batch is complete only when:
 - Functional Integration Tests: **NOT RUN**
 - Cleanup: **NOT RUN**
 
-**Decision: HOLD — do not create fixtures or run the Integration Test Runner.** G-01 and G-02 must be evidenced in the current TEST GAS project, and G-08 must meet the recovery criterion before fixture creation. Local syntax parsing, a spreadsheet copy, or owner approval does not substitute for these remaining entry gates.
+**Decision: HOLD — do not create fixtures or run the Integration Test Runner until G-08 recovery requirements are met.** The Preflight's integration NOT RUN/BLOCKED results remain open test work and must not be reported as PASS.
