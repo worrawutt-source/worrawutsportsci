@@ -225,37 +225,3 @@ function createAssignmentSchedulerTriggerFixtures(){
 function verifyAssignmentSchedulerTriggerFixtures(){
   return {success:true,disabled:true,writesExpected:0};
 }
-
-/** Create two persistent TEST records for verification by the actual one-minute time trigger. */
-function createAssignmentSchedulerTriggerFixtures(){
-  var TEST_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk',ss=SpreadsheetApp.getActiveSpreadsheet();
-  if(!ss||ss.getId()!==TEST_ID)throw new Error('SAFETY_STOP: TEST spreadsheet only.');
-  var instructors=cmRows_('CourseInstructors').filter(function(x){return String(x.Status).toUpperCase()==='ACTIVE';});
-  if(!instructors.length)throw new Error('BLOCKED: No active TEST instructor assignment.');
-  var assignmentSheet=ss.getSheetByName('Assignments'),instructor=instructors[0],offering=cmGet_('CourseOfferings','OfferingID',instructor.OfferingID);
-  if(!assignmentSheet||!offering||String(offering.Status).toUpperCase()!=='ACTIVE')throw new Error('BLOCKED: No active TEST offering.');
-  var future=new Date(Math.ceil(Date.now()/60000)*60000+120000),local=Utilities.formatDate(future,'Asia/Bangkok',"yyyy-MM-dd'T'HH:mm"),now=new Date(),tag='[SCHED-TRIGGER-E2E] '+Utilities.getUuid();
-  var openId=Utilities.getUuid(),closeId=Utilities.getUuid();
-  assignmentSheet.appendRow([openId,offering.OfferingID,tag+' AUTO-OPEN','TEST trigger fixture','TEST only',100,new Date(now.getTime()+86400000),'INDIVIDUAL','','','DRAFT','','',now,now,instructor.InstructorUserID,true,future,'',false,'','']);
-  assignmentSheet.appendRow([closeId,offering.OfferingID,tag+' AUTO-CLOSE','TEST trigger fixture','TEST only',100,new Date(now.getTime()+86400000),'INDIVIDUAL','','','OPEN',now,'',now,now,instructor.InstructorUserID,false,'','',true,future,'']);
-  PropertiesService.getScriptProperties().setProperty('SNC_SCHEDULER_TRIGGER_TEST_TAG',tag);
-  return {success:true,database:'TEST',tag:tag,scheduledLocalTime:local,openAssignmentId:openId,closeAssignmentId:closeId,waitAtLeastMinutes:3,fixturesPersistent:true,cleanupPerformed:false};
-}
-/** Read-only verification of fixtures after the real time-driven trigger has had time to run. */
-function verifyAssignmentSchedulerTriggerFixtures(){
-  var TEST_ID='1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk',ss=SpreadsheetApp.getActiveSpreadsheet();
-  if(!ss||ss.getId()!==TEST_ID)throw new Error('SAFETY_STOP: TEST spreadsheet only.');
-  var tag=PropertiesService.getScriptProperties().getProperty('SNC_SCHEDULER_TRIGGER_TEST_TAG');
-  if(!tag)throw new Error('No scheduler trigger test tag. Run createAssignmentSchedulerTriggerFixtures() first.');
-  var rows=cmRows_('Assignments').filter(function(a){return String(a.Title||'').indexOf(tag)===0;});
-  var audits=cmRows_('AuditLogs'),cases=[];
-  rows.forEach(function(a){
-    var open=String(a.Title).indexOf('AUTO-OPEN')>=0,action=open?'ASSIGNMENT_AUTO_OPENED':'ASSIGNMENT_AUTO_CLOSED',requestId=(open?'SCHED-OPEN-':'SCHED-CLOSE-')+a.AssignmentID;
-    var matches=audits.filter(function(x){return String(x.RequestID)===requestId&&String(x.Action)===action;});
-    cases.push({test:open?'Trigger auto-open fixture':'Trigger auto-close fixture',result:(a.Status===(open?'OPEN':'CLOSED')&&Boolean(open?a.AutoOpenProcessedAt:a.AutoCloseProcessedAt)&&matches.length===1)?'PASS':'FAIL',status:a.Status,auditCount:matches.length});
-  });
-  var passed=cases.filter(function(x){return x.result==='PASS';}).length;
-  var result={success:rows.length===2&&passed===2,mode:'REAL_TIME_TRIGGER_TEST_READ_ONLY',database:'TEST',fixturesFound:rows.length,passed:passed,failed:cases.length-passed,total:cases.length,cases:cases,writesExpected:0};
-  console.log(JSON.stringify(result,null,2));
-  return result;
-}
