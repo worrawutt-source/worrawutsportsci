@@ -159,3 +159,39 @@ NOT RUN:
 - Schema migration and fixture operations.
 
 No production or live TEST data was changed. No source code was synchronized. No deployment was performed.
+
+
+## 12. Addendum — Owner confirmation and live read-only schema inspection
+
+Evidence received after the initial report:
+- Project Owner confirmed `SNC_ITR_ENVIRONMENT = TEST`. This closes the explicit environment-property value check based on owner confirmation; the value was not independently read by the assistant.
+- Project Owner ran `inspectSNCDatabaseSchema()`. Execution completed with `success: true`, `mode: READ_ONLY_SCHEMA_INSPECTION`, `schemaVersion: 1.5.0`, spreadsheet ID `1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk`, and spreadsheet name `SportNutritionApp`.
+- The inspected function sets success to true only when `missingTables.length === 0` and `headerMismatches.length === 0`. Therefore the returned success=true establishes that every table declared in the active `SNC_SETUP.TABLES` was present and matched the expected header sequence under this inspector's criteria. The output itself was truncated in the execution log, so individual table rows beyond the visible portion are not separately evidenced in the supplied log.
+- This verifies the active spreadsheet binding for the execution that produced the log. No write operation was performed by this inspection.
+
+## 13. Addendum — Runner source comparison
+
+The GAS archive runner and GitHub development runner are not the same revision:
+- Archived GAS backup runner contains `sncITR_hasDoPostRoute_TEST_(routeRegex)`, which applies route regexes to `String(doPost)`; this is defective because it tests an anchored action regex against the entire function source.
+- GitHub development contains `backend/tests/SNC_IntegrationTestRunner_TEST.gs`, version 1.0.1, with a different read-only static dispatcher inspection design. It searches for exact route literals and handler names, includes positive/negative route-detector unit checks, and explicitly leaves integration suites NOT RUN unless suite procedures are implemented.
+- This GitHub runner is a proposed reconciliation target, not evidence that the deployed GAS project currently contains it. It has not been copied into GAS or executed.
+- GitHub runner blob at the HEAD reviewed for this addendum: `49cee4ea49b99cb27024c2647cb85de890286743`.
+
+Required action: review and approve the exact runner replacement before synchronizing it into the verified TEST GAS project. The replacement must be syntax-checked and its pure route detector unit check executed in GAS TEST before any database-backed suite is considered.
+
+## 14. Updated gate status
+
+| Gate | Updated result | Basis |
+|---|---|---|
+| GitHub branch/HEAD | PASS | Re-fetched development HEAD |
+| GAS project inventory | PASS | Owner screenshots |
+| SNC_ITR_ENVIRONMENT | PASS (owner-confirmed) | Owner explicitly confirmed TEST |
+| Active TEST spreadsheet binding | PASS | Read-only execution returned the exact TEST ID and name |
+| Schema inspection | PASS | success=true from read-only inspector; function success criteria reviewed |
+| TEST deployment/API URL mapping | BLOCKED | Deployment URL and identity remain truncated/unverified |
+| LINE TEST/PRODUCTION separation | BLOCKED | No verified LIFF/channel/Worker runtime configuration evidence |
+| 13 backend semantic differences | BLOCKED | Hashes differ; full function-by-function semantic decision matrix not yet completed |
+| GAS runner reconciliation | BLOCKED | Archive runner defective; GitHub v1.0.1 candidate exists but is not deployed to GAS |
+| Step 4 readiness | NOT CLEARED | Deployment, LINE, source and runner gates remain open |
+
+No source synchronization, deployment, migration, fixture creation/cleanup, spreadsheet write, or Production access was performed after the initial report.
