@@ -459,3 +459,36 @@ The screenshots also show `SchemaMigration_TEST.gs` and `TestFixtures_TEST.gs` i
 - `SNC_SETUP` declaration: **PASS — single declaration in setup.gs**.
 - Complete live GAS project duplicate/global and compile status: **REVIEW REQUIRED / NOT CLOSED** until the two GAS-only files (`SchemaMigration_TEST.gs`, `TestFixtures_TEST.gs`) and any other editor-only files are inspected, and the Apps Script project save/compile evidence is available.
 - No GAS-only file was removed or modified; no setup, migration, fixture, trigger, notification, or integration function was executed.
+
+
+## Audit correction — include GAS archive-only files — 22 November 2026
+
+The prior audit statement that `SchemaMigration_TEST.gs` and `TestFixtures_TEST.gs` were not available for inspection was incorrect. Both files were present in the owner-provided archive `/mnt/data/SNC_GAS_BACKUP_2026-11-22(3).zip` as `SchemaMigration_TEST.txt` (164 lines) and `TestFixtures_TEST.txt` (390 lines). The archive was reopened and both complete sources were reviewed. This correction supersedes the earlier statement that their source was unavailable.
+
+### `SchemaMigration_TEST.txt`
+- Contains one top-level function: `migrateMissingSNCTables_TEST_20261122()`.
+- References the single shared `SNC_SETUP` declaration in `setup.gs`; it does not redeclare `SNC_SETUP`.
+- It is an additive TEST schema migration: preflights all declared table headers, requires an exact nine-sheet missing-table list (`Groups`, `GroupMembers`, `Submissions`, `SubmissionFiles`, `Grades`, `GradeHistory`, `GradeReviewRequests`, `NotificationLogs`, `IdempotencyKeys`), creates those sheets and verifies the declared schemas.
+- It is not a normal runtime module and should not be run as part of routine testing. The archive proves the function exists, not whether it has already been executed. Do not run it again without checking the current TEST spreadsheet schema and migration evidence.
+- Recommendation: retain as a migration record/source artifact, but keep it out of the normal runtime source set or clearly isolate it as a one-time TEST migration utility. Do not delete the historical source without preserving it in the archive/change history.
+
+### `TestFixtures_TEST.txt`
+- Contains fixture inspection, creation, inspection-after-creation, exact-ID cleanup, and private helper functions.
+- It writes to `Enrollments` and `Assignments`, and stores a fixture manifest in Script Properties. Cleanup deletes exact manifest IDs only.
+- Critical discrepancy: this is an older fixture design using hard-coded existing `UserID` values (`STU_00000000000` through `...002`) and a hard-coded existing `OfferingID`, requiring those accounts and offering to already exist and be active. It does not implement the currently approved synthetic-actor fixture plan (`SNC_TST_20261122_...`) and therefore must not be used for the current integration test batch.
+- The source also allows reuse of pre-existing active enrollments, and creates two assignments (one GROUP, one INDIVIDUAL); this is materially different from the approved fixture plan's actor/entity matrix and exact scope.
+- Recommendation: classify as **LEGACY / DO NOT RUN** for the current test cycle. Preserve it as historical source until dependency and execution-history review is complete; do not copy it into the active GAS runtime or run create/cleanup functions.
+
+### Duplicate and usage findings
+- Neither file declares `SNC_SETUP`; both use the shared declaration from `setup.gs` as intended.
+- The top-level functions declared by these two files do not collide by name with the top-level function declarations found in the 16 current GitHub backend `.gs` files.
+- The earlier finding remains valid only for the 16 tracked GitHub `.gs` files: no duplicate top-level declaration names were detected there. The two archive-only files were absent from the tracked GitHub tree, not absent from the owner-provided source archive.
+- Whether the two files are currently present in the live GAS editor and whether their functions are referenced by triggers or other dynamic calls cannot be established from the archive alone. The migration function is an explicit one-time utility; the fixture file exposes callable test functions. No evidence supports deleting either file as unused.
+
+### Corrected status
+- GitHub tracked backend declaration audit: **PASS — no duplicate top-level declarations detected in the 16 tracked `.gs` files**.
+- Archive-only migration and fixture source review: **PASS — reviewed; no `SNC_SETUP` redeclaration or top-level function-name collision with tracked backend source detected**.
+- `SchemaMigration_TEST`: **LEGACY MIGRATION UTILITY — retain as historical source; do not rerun without schema-state verification**.
+- `TestFixtures_TEST`: **LEGACY / DO NOT RUN for current fixture plan; uses existing hard-coded accounts/offering and conflicts with the approved synthetic fixture approach**.
+- GAS live-project compile and complete usage status: **REVIEW REQUIRED**; archive inspection is not proof of current editor contents, successful compilation, or execution history.
+- No GAS source, spreadsheet rows, Script Properties, triggers, Drive files, or LINE messages were modified by this audit.
