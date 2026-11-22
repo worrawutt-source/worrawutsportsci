@@ -101,14 +101,17 @@ function smCreateRevision_(actor,a,target,p,previous,requestId){
   var id=Utilities.getUuid(),rev=previous?Number(previous.RevisionNumber)+1:1;
   var submissionSheet=cmSheet_('Submissions'),fileSheet=cmSheet_('SubmissionFiles');
   var fileHeaders=fileSheet.getRange(1,1,1,fileSheet.getLastColumn()).getDisplayValues()[0];
-  var submissionRow=submissionSheet.getLastRow()+1,createdUrlRows=[],stagedPrevious={},groupPreviousLock=null;
+  var submissionRow=submissionSheet.getLastRow()+1,createdUrlRows=[],stagedPrevious={},groupPreviousLock=null,fileShareChanges=[];
   var groupSheet=null,groupLockCol=0;
   try{
-    // Share every selected file before committing database links. The sharing helper
-    // rolls back permissions it added when an individual file share operation fails.
+    // Share every selected file before committing database links. Track newly added
+    // viewers across all files so a later failure can compensate earlier share writes.
     stagedFiles.forEach(function(staged){
-      if(staged.DriveFileID&&typeof fmShareWithSubmissionActors_==='function')
-        fmShareWithSubmissionActors_(DriveApp.getFileById(String(staged.DriveFileID)),actor,a,target);
+      if(staged.DriveFileID&&typeof fmShareWithSubmissionActors_==='function'){
+        var file=DriveApp.getFileById(String(staged.DriveFileID));
+        var added=fmShareWithSubmissionActors_(file,actor,a,target)||[];
+        if(added.length)fileShareChanges.push({file:file,emails:added});
+      }
     });
     submissionSheet.appendRow([
       id,a.AssignmentID,target.type,target.studentUserId,target.groupId,actor.userId,now,status,rev,
@@ -154,6 +157,7 @@ function smCreateRevision_(actor,a,target,p,previous,requestId){
         groupSheet.getRange(target.group._row,groupLockCol).setValue(groupPreviousLock);
       var createdSubmission=cmGet_('Submissions','SubmissionID',id);
       if(createdSubmission)submissionSheet.deleteRow(createdSubmission._row);
+      if(typeof fmRollbackSubmissionFileShares_==='function')fmRollbackSubmissionFileShares_(fileShareChanges);
     }catch(rollbackError){console.error('SUBMISSION_ROLLBACK_FAILED');}
     throw apiError_('SUBMISSION_WRITE_FAILED','Submission failed; automatic rollback was attempted. Verify Submissions, SubmissionFiles and group lock before retrying.');
   }
