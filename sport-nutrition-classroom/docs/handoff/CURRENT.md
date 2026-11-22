@@ -155,6 +155,18 @@ Impact based on `FileManagement.gs`:
 
 Do not add the property or create/select a Drive folder yet. First decide the intended submission folder and approve its exact Drive location, access policy, and recovery/baseline procedure. After approval, configure the property and verify the exact folder's Restricted/Private sharing and contents before any upload test. No property or Drive resource was changed.
 
+## G-06 read-only baseline collector prepared — 22 November 2026
+
+Added `sport-nutrition-classroom/backend/tests/SNC_DataBaseline_TEST.gs` v1.0.0 on `development` (commit `dd75f7fe888d6afbb5c59de03087aa3aa937a2cb`). The helper:
+
+- Requires `SNC_ITR_ENVIRONMENT=TEST` and exact match between active spreadsheet ID and `SNC_ITR_TEST_SPREADSHEET_ID`.
+- Reads only the 21 tables declared in `SNC_SETUP.TABLES`.
+- Captures row counts, first-column primary key names, blank/duplicate key counts, SHA-256 digest, and sorted primary-key values.
+- Does not read personal fields (names, emails, StudentID), and performs no Sheets/Drive/Properties/trigger/external writes.
+- Emits one `SNC_DATA_BASELINE_JSON=` record for private retention by the owner.
+
+Status: helper prepared and committed; **NOT YET COPIED TO GAS OR EXECUTED**. G-06 remains NOT RUN until the owner copies this single new helper file into the current Apps Script project, runs `sncCaptureDataBaseline_TEST()` once, and securely retains the output outside the live spreadsheet. If the function stops on environment/spreadsheet identity mismatch, do not bypass the guard; report the error for review. Do not run setup, migration, fixture, integration, or notification functions.
+
 ## Latest owner-run Preflight evidence — 22 November 2026
 
 The owner copied `SNC_SystemPreflight_TEST.gs` v1.0.1 into GAS TEST and ran `SNC_SystemPreflight_TEST()`. The compact summary record was captured in the supplied execution log.
