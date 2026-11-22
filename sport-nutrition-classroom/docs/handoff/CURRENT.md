@@ -118,6 +118,18 @@ Read-only review performed against GAS Backup (3) and the matching GitHub `devel
 
 **Decision:** G-04 and G-05 remain BLOCKED. G-03 is closed based on owner-confirmed active deployment Version 14, matching URL/ID, and successful API health response. Fixture creation and integration execution remain on HOLD.
 
+## G-05 owner confirmation — submission folder property absent — 22 November 2026
+
+The owner inspected Apps Script Project Settings → Script Properties and confirmed that `SNC_SUBMISSION_FOLDER_ID` is **not present**.
+
+Impact based on `FileManagement.gs`:
+- `file.upload` reads this exact Script Property and returns `CONFIGURATION_ERROR` when it is missing.
+- Therefore, submission file upload cannot be considered configured or integration-test ready in the current project.
+- The code's private-folder ACL check is only reached after the property is present; it does not establish a configured private folder.
+- G-05 status: **BLOCKED — required configuration absent**.
+
+Do not add the property or create/select a Drive folder yet. First decide the intended submission folder and approve its exact Drive location, access policy, and recovery/baseline procedure. After approval, configure the property and verify the exact folder's Restricted/Private sharing and contents before any upload test. No property or Drive resource was changed.
+
 ## Latest owner-run Preflight evidence — 22 November 2026
 
 The owner copied `SNC_SystemPreflight_TEST.gs` v1.0.1 into GAS TEST and ran `SNC_SystemPreflight_TEST()`. The compact summary record was captured in the supplied execution log.
