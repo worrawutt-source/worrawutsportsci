@@ -65,8 +65,24 @@ Their GAS backup (3) and GitHub versions still require targeted semantic reconci
 - If the GAS editor reports duplicate declarations or compile errors, stop and restore the fresh backup; do not proceed to Step 4.
 - Synthetic fixture creation remains a separate approval gate under `SYNTHETIC_TEST_FIXTURE_PLAN_v1.0_2026-11-22.md`; no fixtures have been created or deleted.
 
+## Latest owner-run Preflight evidence — 22 November 2026
+
+The owner copied `SNC_SystemPreflight_TEST.gs` v1.0.1 into GAS TEST and ran `SNC_SystemPreflight_TEST()`. The compact summary record was captured in the supplied execution log.
+
+- Overall status: **BLOCKED**; PASS 11, FAIL 0, BLOCKED 1, NOT RUN 8.
+- ENV-01: PASS — TEST environment and active spreadsheet identity verified.
+- DB-01: PASS — read-only schema inspection passed for declared `SNC_SETUP.TABLES`.
+- Pure unit tests: **84/84 PASS across 9 suites**, 0 failures.
+- Static API route/handler presence: INT-02 through INT-07 and INT-07A present; this is not evidence of runtime integration.
+- Integration suites INT-01 through INT-07A: NOT RUN. INT-08: BLOCKED pending verified deployed TEST endpoint, browser/LIFF execution and recovery evidence.
+- `writesExpected=0`; `externalCallsExpected=0`. No fixture creation, data mutation, Drive operation, LINE push or deployment was performed.
+
+The compact summary is complete. Earlier verbose Logger output from called schema/unit-test functions remains truncated in the execution log, but this does not invalidate the complete summary record.
+
 ## Current readiness
 
-**READY FOR OWNER TO COPY ONLY SNC_SystemPreflight_TEST.gs v1.0.1 INTO TEST GAS. NOT READY FOR STEP 4 INTEGRATION EXECUTION YET.**
+**Preflight execution: BLOCKED. Step 4 database-backed integration execution and fixture creation remain on HOLD.** The 84 pure unit tests and schema/environment checks passed, but they do not establish deployed API or cross-module integration behavior.
 
-Step 4 may begin only after owner confirms the five-file synchronization, the TEST project compiles, and the preflight execution passes. Remaining ten backend modules stay on HOLD pending semantic review. No GAS source synchronization, spreadsheet write, Drive operation, migration, fixture creation/cleanup, LINE message, or deployment was performed by this checkpoint.
+Next work is limited to closing the outstanding entry evidence: (1) verify the exact TEST Web App deployment identity/version and endpoint without redeploying; (2) confirm source synchronization and compile status in the TEST GAS project; (3) complete G-04/G-05/G-06/G-08 isolation, baseline and recovery evidence; and (4) obtain explicit owner approval of the exact fixture manifest and write/cleanup scope (G-07). Do not create fixtures or run the Integration Test Runner until all applicable gates are evidenced and approval is recorded. The ten backend modules listed under HOLD remain unchanged pending targeted semantic reconciliation.
+
+No source synchronization, spreadsheet write, Drive operation, migration, fixture creation/cleanup, LINE message or deployment was performed by this checkpoint.
