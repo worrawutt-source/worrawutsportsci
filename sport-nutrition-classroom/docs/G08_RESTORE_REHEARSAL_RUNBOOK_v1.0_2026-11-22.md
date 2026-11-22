@@ -86,3 +86,8 @@ Do not place full spreadsheet IDs, Drive file IDs, raw key manifests, student da
 - G-08: **BLOCKED / PARTIAL** until both rehearsals pass and evidence is recorded.
 - Fixture creation and Integration Test Runner: **HOLD** until G-08 passes.
 
+
+
+## Superseded by owner clarification — 22 November 2026
+
+**This runbook is superseded for the current SNC test cycle. Do not execute it.** The owner clarified that the existing backup/recovery process has already passed and that the spreadsheet backup is retained as a data-safety safeguard only. The additional disposable spreadsheet restore rehearsal and Drive sentinel Trash/restore rehearsal are waived and are not required for G-08. No resources should be created or trashed under this runbook. The controlling status is recorded in `docs/handoff/CURRENT.md` and `docs/SYNTHETIC_TEST_FIXTURE_PLAN_v1.0_2026-11-22.md`.
