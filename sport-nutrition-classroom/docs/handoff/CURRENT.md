@@ -89,6 +89,35 @@ The owner opened the active Web App URL in a browser and confirmed the endpoint 
 
 This confirms the active URL responds to the browser request and identifies itself as the SPORT NUTRITION CLASSROOM API version 1.5.0. Combined with the owner-confirmed active Deployment Version 14, this closes the endpoint reachability/identity evidence for G-03. It does **not** establish authenticated action routes, database-backed integration, browser/LIFF workflows, or failure recovery; those remain separate test levels.
 
+## G-04 / G-05 source-level review — 22 November 2026
+
+Read-only review performed against GAS Backup (3) and the matching GitHub `development` source for `FileManagement.gs` and `NotificationManagement.gs`. No GAS function was executed and no external request, Drive read/write, spreadsheet write, or setting change was made.
+
+### G-04 External service / LINE separation
+
+- `NotificationManagement.gs` contains a direct LINE Push API call to `https://api.line.me/v2/bot/message/push` using Script Property `LINE_CHANNEL_ACCESS_TOKEN`.
+- Manual `notification.send`, `notification.retry`, assignment-open notifications, submission notifications, and `runDeadlineReminderNotifications()` can call `ntSend_()`.
+- `installDeadlineReminderTrigger()` creates an hourly trigger. It must not be run during the fixture batch.
+- Source code does not show a notification stub or environment guard that guarantees push suppression.
+- Prior property screenshot evidence disclosed property names but not values; it does not establish whether a real LINE token is configured. No proof of a separate TEST LINE channel/LIFF identity was supplied.
+- Status: **G-04 BLOCKED / NOT VERIFIED**. Treat outbound LINE delivery as potentially live. Do not call notification actions, assignment-open/submission notification paths, reminder functions, retry actions, or install triggers. Any later integration test must first add/use a verified stub or otherwise prove no external delivery; no code change is authorized in this review.
+
+### G-05 Google Drive isolation
+
+- `FileManagement.gs` reads `SNC_SUBMISSION_FOLDER_ID` from Script Properties before upload.
+- Upload code checks `folder.getSharingAccess() === DriveApp.Access.PRIVATE` and rejects a folder whose inherited sharing is not private.
+- It creates files inside that configured folder and may grant viewer access to uploader, group members, and assigned instructors. File access is additionally checked against submission authorization.
+- Source code therefore contains a private-folder guard, but source inspection does not prove the configured folder ID points to a dedicated test folder, that the folder currently exists, or that it contains no pre-existing files / inherited or direct sharing.
+- No owner-provided evidence currently identifies the configured `SNC_SUBMISSION_FOLDER_ID` or verifies its actual folder ACL and contents.
+- Status: **G-05 BLOCKED / NOT VERIFIED**. Do not upload, share, move, trash, or delete Drive files until the exact folder identity, privacy, contents baseline, and recovery plan are evidenced.
+
+### Evidence required to close these gates
+
+- G-04: owner verifies whether `LINE_CHANNEL_ACCESS_TOKEN` is configured without revealing its value; provide non-secret evidence of the intended LINE channel/LIFF environment identity and confirm notification stub/disable strategy. Do not paste secrets or tokens into chat, GitHub, or logs.
+- G-05: owner shows the Script Properties key `SNC_SUBMISSION_FOLDER_ID` with its value masked except a short suffix, then opens that exact Drive folder and provides evidence of folder identity, sharing set to Restricted / Private, and current contents. Do not change sharing or folder contents during inspection.
+
+**Decision:** G-04 and G-05 remain BLOCKED. G-03 is closed based on owner-confirmed active deployment Version 14, matching URL/ID, and successful API health response. Fixture creation and integration execution remain on HOLD.
+
 ## Latest owner-run Preflight evidence — 22 November 2026
 
 The owner copied `SNC_SystemPreflight_TEST.gs` v1.0.1 into GAS TEST and ran `SNC_SystemPreflight_TEST()`. The compact summary record was captured in the supplied execution log.
