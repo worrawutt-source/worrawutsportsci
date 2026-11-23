@@ -110,3 +110,38 @@ Only after the owner runs that read-only utility and every required reference ch
 - No deletion utility has been created or executed.
 - No live TEST Spreadsheet rows were read or changed by this static source audit.
 - Cleanup remains **NOT STARTED**.
+
+
+## 7. Read-only scan utility added
+
+A TEST-only all-sheet exact-ID scan utility has been added:
+
+- File: `backend/tests/SNC_PG09ReferenceScan_READONLY_TEST.gs`
+- Function: `SNC_PG09ReferenceScan_READONLY_TEST()`
+- Version: 1.0.0
+- Commit: `191bb4eb11c5c88475df670d645b1577926b6d0f`
+- Current blob SHA after fetch: `97dbacadfccb5fa086c11cc2413bccef08ed827b`
+
+The utility:
+- verifies exact TEST Script Properties and active Spreadsheet identity;
+- cross-checks its literal 14-ID allowlist against the core and Assignment/Group manifests;
+- enumerates every current Spreadsheet tab and scans all used cells for exact candidate ID tokens;
+- detects delimited composite references such as `AssignmentID|GroupID` and staged `STAGED:<userId>:<assignmentId>` markers;
+- classifies target allowlist rows, AuditLogs (preserve-only), and all other matching rows as unexpected references;
+- emits sheet names, headers/data-row counts, matching sheet/row/column references, and zero-write metadata;
+- contains no Sheet/Properties/Drive/trigger/LINE write APIs, no business-handler calls, and no deletion calls.
+
+Static inspection confirmed the exact TEST guard, manifest/allowlist cross-check, all-sheet traversal, delimiter-token scan, AuditLog preservation classification, fail-closed result behavior, and absence of mutation APIs. This is **STATIC SOURCE REVIEW**, not GAS runtime evidence.
+
+### Owner action — read-only only
+
+1. Add only `SNC_PG09ReferenceScan_READONLY_TEST.gs` to the existing TEST GAS project.
+2. Run only `SNC_PG09ReferenceScan_READONLY_TEST()`.
+3. Share the complete `SNC_PG09_REFERENCE_SCAN` log.
+4. Do not run cleanup, deletion, persistent test runners, migration, triggers, Drive, LINE or deployment functions.
+
+Interpretation:
+- Any `UNEXPECTED_REFERENCE` row blocks cleanup and must be reviewed.
+- AuditLog matches are expected evidence and must remain preserved.
+- The scan is read-only and does not prove cleanup readiness until the owner supplies a PASS runtime result.
+- Cleanup remains **NOT STARTED**.
