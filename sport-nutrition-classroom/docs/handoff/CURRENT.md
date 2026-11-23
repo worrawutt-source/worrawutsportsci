@@ -359,3 +359,49 @@ Latest file was re-fetched from GitHub `development`. Static checks:
 - Group continuation: NOT IMPLEMENTED / NOT RUN.
 - Assignment & Group stage: INCOMPLETE pending diagnostic, continuation and terminal reconciliation.
 - Cleanup: NOT STARTED.
+
+
+## Group continuation diagnostic manifest-resolution correction — 23 Nov 2026
+
+### Owner runtime evidence reviewed
+The owner ran `SNC_GroupContinuationStateDiagnostic_READONLY_TEST()` v1.0.0:
+- ENV-01 PASS
+- MANIFEST-01 PASS
+- CONTINUATION-01 PASS
+- CASE-LEDGER-01 PASS
+- FIXTURE-MANIFEST-01 BLOCKED
+- No Apps Script exception; execution completed normally.
+
+### Root cause from source inspection
+The diagnostic v1.0.0 incorrectly expected `userIds` and `offeringId` inside the Assignment/Group extension object returned by `SNC_GetAssignmentGroupManifest_TEST()`. Source inspection confirms the manifest has two layers:
+- Core fixture fields (`offeringId`, `userIds`) are returned by `SNC_GetSyntheticFixtureManifest_TEST()`.
+- Assignment/Group fields (`assignments`, `groups`, `preBatchIds`, `cases`) are returned by `SNC_GetAssignmentGroupManifest_TEST()`.
+
+Therefore, the reported BLOCKED was caused by a diagnostic source defect, not evidence that fixture rows or IDs are missing. No data mutation is indicated by the supplied read-only execution log.
+
+### Correction implemented on development
+- File: `sport-nutrition-classroom/backend/tests/SNC_GroupContinuationStateDiagnostic_READONLY_TEST.gs`
+- Version: 1.0.1
+- Commit: `aa3aebdf3276f6f53e1691aa86bf3bca1b44c302`
+- Blob SHA: `c43fb2e8312cbafa17cc910d0926752ed147233c`
+- URL: https://github.com/worrawutt-source/worrawutsportsci/blob/development/sport-nutrition-classroom/backend/tests/SNC_GroupContinuationStateDiagnostic_READONLY_TEST.gs
+
+Changes:
+- Reads the core fixture manifest via `SNC_GetSyntheticFixtureManifest_TEST()`.
+- Reads the Assignment/Group extension via `SNC_GetAssignmentGroupManifest_TEST()`.
+- Gets the six UserIDs and OfferingID from the core manifest; Assignment, Group and GroupMember IDs from the extension.
+- Retains redacted output and all existing state checks. No writes, handler calls, external calls, cleanup or fixture creation were added.
+
+### Verification boundary and next owner action
+- Static source inspection: correction reviewed in GitHub `development`.
+- GAS runtime for v1.0.1: NOT RUN.
+- Owner should replace the previous diagnostic file with this v1.0.1 source (do not add a second copy with duplicate function names), then run only `SNC_GroupContinuationStateDiagnostic_READONLY_TEST()`.
+- Share the complete sanitized `SNC_GROUP_CONTINUATION_STATE` JSON and any exception.
+- Do not rerun the original persistent Assignment/Group Runner or execute any Group mutation/continuation, cleanup, migration, trigger, Drive, LINE or deployment action.
+
+### Current status
+- Diagnostic v1.0.0: RUNTIME BLOCKED due to diagnostic manifest-layer mismatch.
+- Diagnostic v1.0.1: IMPLEMENTED ON DEVELOPMENT; STATIC REVIEW ONLY.
+- Group continuation: NOT IMPLEMENTED / NOT RUN.
+- Assignment & Group stage: INCOMPLETE.
+- Cleanup: NOT STARTED.
