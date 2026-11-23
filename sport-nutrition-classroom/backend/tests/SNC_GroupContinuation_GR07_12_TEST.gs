@@ -419,7 +419,7 @@ function SNC_RunGroupContinuation_TEST(confirmation) {
     var deltaMembers=finalIds.GroupMembers.filter(function(id){return (a.preBatchIds.GroupMembers||[]).indexOf(id)<0;});
     var expectedMemberIds=[];
     ['alpha','beta','solo'].forEach(function(k){expectedMemberIds=expectedMemberIds.concat(a.groups[k].memberIds||[]);});
-    var memberSetOk=deltaMembers.length===expectedMemberIds.length+1 &&
+    var memberSetOk=deltaMembers.length===expectedMemberIds.length &&
       expectedMemberIds.every(function(id){return deltaMembers.indexOf(String(id))>=0;});
     if(!terminal||!allCases||!memberSetOk) throw new Error('TERMINAL_RECONCILIATION_FAILED');
     c.status='COMPLETE_WITH_HISTORICAL_FAILURE';
