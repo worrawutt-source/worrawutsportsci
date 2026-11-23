@@ -2,7 +2,7 @@
 
 **Date:** 23 November 2026  
 **Repository branch:** `development`  
-**Status:** FINAL DRY-RUN PREVIEW — OWNER REVIEW REQUIRED — NOT AUTHORIZED FOR EXECUTION  
+**Status:** 14-ROW SCOPE APPROVED — FINAL READ-ONLY DRY-RUN REQUIRED — NOT AUTHORIZED FOR EXECUTION  
 **Scope:** Exact-ID candidates limited to Assignment, Group and GroupMember records (14 rows total)
 
 ## 1. Purpose and decision boundary
@@ -165,15 +165,19 @@ These are expected counts only if the approved 14 exact rows are the sole rows r
 ## 8. Execution and verification gates
 
 - **Gate A — Exact inventory:** satisfied by owner-provided read-only runtime PASS (8/8).
-- **Gate B — PG-09 all-sheet reference scan:** satisfied by owner-provided read-only runtime PASS (6/6) across 23 tabs; zero unexpected references. This is a point-in-time result and must be repeated immediately before cleanup.\n- **Gate C — Preview review:** pending owner review of this exact v1.2 allowlist, exclusions, guards and operation order.
+- **Gate B — PG-09 all-sheet reference scan:** satisfied by owner-provided read-only runtime PASS (6/6) across 23 tabs; zero unexpected references. This is a point-in-time result and must be repeated immediately before cleanup.
+- **Gate C — Preview review and exact 14-row scope:** OWNER APPROVED. Owner approved the scope of exactly 14 records in v1.2; this approval does not authorize execution.
 - **Gate D — Explicit cleanup authorization:** not granted. Requires a separate, unambiguous instruction naming this v1.2 preview and TEST scope.
 - **Gate E — Controlled cleanup:** not started; no cleanup code is included in this document.
 - **Gate F — Post-cleanup reconciliation:** not started; must independently verify exact deletions and preservation of all other data.
 
-Approval of the preview alone must not be interpreted as authorization to execute cleanup. A separate approval is required after the owner has reviewed the v1.2 allowlist and final dry-run.
+Approval of the 14-row scope is not authorization to execute cleanup. After the fresh final read-only dry-run is reviewed, a separate explicit execution instruction is still required.
 
 ## 9. Current disposition
 
+**Owner scope approval:** 14 exact rows in v1.2 approved; no expansion or substitution.
+**Final pre-deletion dry-run:** PENDING.
+**Execution authorization:** NOT GRANTED.
 **Cleanup status: NOT STARTED.**  
 **Deletion utility: NOT IMPLEMENTED.**  
 **Exact allowlist: documented for review only.**  
