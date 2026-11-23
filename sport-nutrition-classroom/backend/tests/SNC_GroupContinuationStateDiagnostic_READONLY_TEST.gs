@@ -127,13 +127,36 @@ function SNC_GroupContinuationStateDiagnostic_READONLY_TEST() {
       groupKeys.length === 3 &&
       sameSet(groupKeys, expectedGroupKeys) &&
       memberIds.length === 6 &&
+      duplicates(users).length === 0 &&
       duplicates(assignmentIds).length === 0 &&
       duplicates(groupIds).length === 0 &&
       duplicates(memberIds).length === 0;
     check('FIXTURE-MANIFEST-01', fixtureShapeOk,
-      fixtureShapeOk ? 'Manifest contains six users, four assignments, three groups and six original memberships.'
+      fixtureShapeOk ? 'Manifest contains six unique users, four assignments, three groups and six original memberships.'
         : 'Fixture manifest does not have the expected entity counts or unique identifiers.');
     if (!fixtureShapeOk) return sncGCD_finish_(result);
+
+    var offeringRows = oneRow(sncAGR_rows_TEST_(ss, 'CourseOfferings'),
+      'OfferingID', m.offeringId);
+    var userRows = sncAGR_rows_TEST_(ss, 'Users');
+    var enrollmentRows = sncAGR_rows_TEST_(ss, 'Enrollments');
+    var coreEntitiesOk = offeringRows.length === 1 &&
+      String(offeringRows[0].Status).toUpperCase() === 'ACTIVE' &&
+      users.every(function(uid) {
+        return oneRow(userRows, 'UserID', uid).length === 1 &&
+          String(oneRow(userRows, 'UserID', uid)[0].Status).toUpperCase() === 'ACTIVE';
+      }) &&
+      users.every(function(uid) {
+        return enrollmentRows.filter(function(e) {
+          return String(e.UserID) === uid &&
+            String(e.OfferingID) === String(m.offeringId) &&
+            String(e.Status).toUpperCase() === 'ACTIVE';
+        }).length === 1;
+      });
+    check('CORE-ENTITIES-01', coreEntitiesOk,
+      coreEntitiesOk ? 'Offering is ACTIVE; all six manifest users and enrollments are uniquely active.'
+        : 'Offering, User or Enrollment state differs from the existing core fixture manifest.');
+    if (!coreEntitiesOk) return sncGCD_finish_(result);
 
     // Validate the columns required for safe, unambiguous inspection.
     var requiredColumns = {
@@ -243,7 +266,12 @@ function SNC_GroupContinuationStateDiagnostic_READONLY_TEST() {
       var allForGroup = memberRows.filter(function(r) {
         return String(r.GroupID) === gid;
       });
-      if (allForGroup.length !== expected.length ||
+      var manifestMemberIds = (groups[key].memberIds || []).map(String);
+      var actualGroupMemberIds = allForGroup.map(function(r) {
+        return String(r.GroupMemberID);
+      });
+      if (!sameSet(actualGroupMemberIds, manifestMemberIds) ||
+          allForGroup.length !== expected.length ||
           allForGroup.some(function(r) {
             return String(r.Status).toUpperCase() !== 'ACTIVE' ||
               Boolean(r.LeftAt);
