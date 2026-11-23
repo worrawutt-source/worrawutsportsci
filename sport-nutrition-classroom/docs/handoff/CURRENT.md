@@ -650,3 +650,45 @@ Function: `SNC_GroupContinuationTerminalReconciliation_READONLY_TEST()`, version
 - No cleanup/deletion function has been implemented or executed.
 - No TEST Spreadsheet data, AuditLogs, manifests, Script Properties, triggers, Drive files, LINE bindings or deployments were changed.
 - Next gate: owner review of Preview v1.1. A separate explicit execution approval and final read-only dry-run are required before any cleanup.
+
+
+## PG-09 reference audit and read-only scan utility — 23 Nov 2026
+
+### Static source audit
+- Inspected current `development` source modules:
+  - `AssignmentManagement.gs` blob `460c7a0eb244fa5a85239d0e2f531404d58601d8`
+  - `GroupManagement.gs` blob `9dc280d88bcee8e346d028082cae725fe2d88ee8`
+  - `SubmissionManagement.gs` blob `ef4b86678e8c1feeea425ba578501846129a229c`
+  - `FileManagement.gs` blob `86cd29160dd00207c9a575ce801da09e643911cb`
+  - `GradingManagement.gs` blob `12bd34c5dd857250c7d6ccd76e28b5da7f4507f8`
+  - `NotificationManagement.gs` blob `875b60d90f4599ee0f9bdf0f60dcea31e215de7b`
+  - `CourseManagement.gs` blob `52a7f4049ff51772226fe33369cc26a0acb02a1b`
+- Confirmed source-level references beyond Submissions:
+  - NotificationLogs: Assignment RelatedEntityID and group reminder composite AssignmentID|GroupID.
+  - SubmissionFiles: staged rows encode AssignmentID as STAGED:<userId>:<assignmentId>; committed rows refer to SubmissionID.
+  - Grades: SubmissionID; GradeHistory and GradeReviewRequests: GradeID (transitive Submission dependency).
+  - GroupMembers: GroupID child relationship; scan must detect non-allowlisted members referencing candidate Groups.
+  - AuditLogs: Assignment/Group entity IDs; preserve all logs.
+- Static source audit does not inspect live TEST rows or establish all runtime references. PG-09 remains BLOCKED pending the read-only live scan.
+
+### PG-09 utility
+- Added `backend/tests/SNC_PG09ReferenceScan_READONLY_TEST.gs`.
+- Function: `SNC_PG09ReferenceScan_READONLY_TEST()`.
+- Version: 1.0.0.
+- Commit: `191bb4eb11c5c88475df670d645b1577926b6d0f`.
+- Current blob SHA: `97dbacadfccb5fa086c11cc2413bccef08ed827b`.
+- Utility verifies exact TEST identity and manifest allowlist, enumerates all current Spreadsheet tabs, scans all used cells for exact allowlisted ID tokens and delimited composite references, and classifies AuditLogs as preserve-only.
+- Static inspection: exact TEST guard, manifest cross-check, all-sheet scan, composite token parsing, fail-closed behavior and no mutation/deletion APIs.
+- No GAS runtime execution has occurred; do not claim runtime PASS.
+
+### Owner action — read-only only
+1. Add only `SNC_PG09ReferenceScan_READONLY_TEST.gs` to the existing TEST GAS project.
+2. Run only `SNC_PG09ReferenceScan_READONLY_TEST()`.
+3. Share the complete `SNC_PG09_REFERENCE_SCAN` log.
+4. Do not run cleanup, deletion, persistent test runners, migration, triggers, Drive, LINE or deployment.
+
+### Safety state
+- Any unexpected reference blocks cleanup.
+- AuditLogs remain PRESERVE_ALL; core fixture remains excluded.
+- Cleanup remains NOT STARTED; no deletion utility exists.
+- A final dry-run and separate explicit cleanup authorization remain required after PG-09 runtime evidence is reviewed.
