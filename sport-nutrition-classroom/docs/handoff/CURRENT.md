@@ -719,3 +719,13 @@ Function: `SNC_GroupContinuationTerminalReconciliation_READONLY_TEST()`, version
 - Cleanup utility: **NOT IMPLEMENTED**.
 - Cleanup status: **NOT STARTED**. No rows/files/properties/triggers/deployments were changed by this work package.
 - Do not run any cleanup function. A separate explicit authorization and a fresh final read-only dry-run are required before any deletion.
+
+
+## Owner approval — exact 14-row cleanup scope — 23 Nov 2026
+
+- Owner explicitly approved the deletion **scope** documented in `SNC_SYNTHETIC_FIXTURE_CLEANUP_PREVIEW_v1.2_2026-11-23.md`: exactly 4 Assignment rows, 3 Group rows and 7 GroupMember rows (14 exact primary IDs).
+- Scope approval is recorded as an owner decision; it does not authorize execution.
+- No additions, substitutions, predicate-based deletion, or expansion to Core Fixture, AuditLogs, Drive files, Script Properties, triggers, deployments, LINE bindings, or any non-allowlisted records are approved.
+- Next gate: prepare a fresh, read-only final dry-run against the exact TEST Spreadsheet immediately before any proposed cleanup. It must revalidate TEST identity, all 14 exact IDs and unique row matches, all-sheet references (PG-09), all exclusions and AuditLog preservation.
+- **Explicit execution authorization: NOT GRANTED.**
+- **Cleanup utility: NOT IMPLEMENTED. Cleanup: NOT STARTED.** No data was deleted or modified.
