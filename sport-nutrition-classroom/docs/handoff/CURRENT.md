@@ -620,3 +620,33 @@ Function: `SNC_GroupContinuationTerminalReconciliation_READONLY_TEST()`, version
 - It will return `REQUIRES_REVIEW` if any ID set, row resolution, relationship, Submission dependency, synthetic prefix, or AuditLog count differs from the reconciled state.
 - A PASS inventory is a proposed candidate list for owner review only; it does not authorize deletion.
 - Cleanup remains **NOT STARTED**. The core fixture is not included in this Assignment/Group inventory.
+
+
+## Exact-ID Cleanup Preview v1.1 — 23 Nov 2026
+
+### Owner-provided runtime inventory reviewed
+- Owner supplied the complete execution log for `SNC_ExactIdInventory_READONLY_TEST()` v1.0.0.
+- Result: `PASS`, 8 checks passed, 0 blocked; read-only mode, writesExpected=0, externalCallsExpected=0.
+- Exact candidate set: 4 Assignments, 3 Groups, 7 GroupMembers; every ID resolves to exactly one row.
+- Offering and GroupMember relationships pass; no Submission references candidate Assignment/Group IDs.
+- All candidate Assignment titles and Group names carry the reserved synthetic prefix.
+- Nineteen post-baseline AuditLog IDs remain present; current AuditLogs count is 68.
+- The supplied inventory explicitly excludes the core fixture.
+
+### Preview created
+- Added `docs/SNC_SYNTHETIC_FIXTURE_CLEANUP_PREVIEW_v1.1_2026-11-23.md`.
+- Commit: `fbaaa448adb6cfc84d0e094f466f7bfafc71fa8a`.
+- The preview records all 14 exact candidate primary IDs and limited metadata:
+  - 4 AssignmentID values
+  - 3 GroupID values
+  - 7 GroupMemberID values, including the historical LEFT row as a separate exact ID
+- Explicit exclusions: all 68 AuditLogs, six core Users, six Enrollments, Course, Semester, CourseOffering, Submissions, Script Properties/manifests, triggers, deployments, LINE bindings, Drive files and all non-allowlisted/baseline rows.
+- Proposed dependency order, conditional expected post-cleanup state, and 14 fail-closed pre-deletion guards are documented.
+- PG-09 requires inspection of all known reference tables/columns. The current inventory only establishes absence of Submission references and does not prove absence of every possible downstream reference.
+- Preview is for owner review only. It does not authorize execution.
+
+### Safety state
+- Cleanup remains `NOT STARTED`.
+- No cleanup/deletion function has been implemented or executed.
+- No TEST Spreadsheet data, AuditLogs, manifests, Script Properties, triggers, Drive files, LINE bindings or deployments were changed.
+- Next gate: owner review of Preview v1.1. A separate explicit execution approval and final read-only dry-run are required before any cleanup.
