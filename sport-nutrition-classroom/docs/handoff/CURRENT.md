@@ -303,3 +303,59 @@ This checkpoint records the owner-supplied runtime log. No Spreadsheet mutation 
 - Assignment & Group batch: INCOMPLETE; original manifest remains IN_PROGRESS and retains historical ASG-13 FAIL.
 - Continuation runner: NOT IMPLEMENTED; no continuation preflight executed.
 - Next step: owner review/approval of the design, then implement only the read-only state diagnostic as the first separately reviewed artifact.
+
+## Approved Group continuation Read-only State Diagnostic — 23 Nov 2026
+
+### Owner approval
+- Owner approved development of the Read-only State Diagnostic only.
+- Approval does not authorize implementation/execution of the continuation runner, any persistent Group action, cleanup, deployment, triggers, Drive, or LINE.
+
+### Artifact created on development
+- File: `sport-nutrition-classroom/backend/tests/SNC_GroupContinuationStateDiagnostic_READONLY_TEST.gs`
+- Function: `SNC_GroupContinuationStateDiagnostic_READONLY_TEST()`
+- Latest commit: `ff00a76b5d671f385bf892428a8341e3d502b916`
+- Latest blob SHA: `fda9de5861908cbf939dbd055bae3f6917fba40d`
+- URL: https://github.com/worrawutt-source/worrawutsportsci/blob/development/sport-nutrition-classroom/backend/tests/SNC_GroupContinuationStateDiagnostic_READONLY_TEST.gs
+- Version: 1.0.0; evidence level: READ_ONLY_TEST_DATA_INSPECTION.
+
+### Diagnostic scope
+The diagnostic uses existing Runner read-only helpers and checks:
+- Exact TEST environment and active Spreadsheet identity.
+- Core/Assignment-Group manifest checkpoint, expected case ledger and absence of continuation markers.
+- Six active users and enrollments, one active CourseOffering.
+- Four Assignment IDs, three Group IDs and six original GroupMember IDs against exact pre-batch ID deltas.
+- Group ACTIVE/unlocked state and exact Alpha (A/B), Beta (C/D/E), Solo (F) membership/roles/statuses.
+- Exact 16 previously reconciled AuditLog IDs and expected Action/EntityType counts and EntityID references.
+- No Submission referencing any synthetic Assignment or Group.
+- Unique active SYSTEM_ADMIN actor.
+
+The diagnostic emits redacted counts and check statuses only; it does not log raw manifest or synthetic identifiers. It does not invoke application handlers or write Sheets, Script Properties, files, or call external services. Any discrepancy returns BLOCKED; it does not repair or normalize data.
+
+### Static source review
+Latest file was re-fetched from GitHub `development`. Static checks:
+- TEST environment and exact Spreadsheet guard: PASS
+- manifest checkpoint validation: PASS
+- active Offering/User/Enrollment validation: PASS
+- exact Assignment/Group/GroupMember IDs: PASS
+- membership role/status/lock validation: PASS
+- AuditLog 16-ID and event matrix validation: PASS
+- Submission absence validation: PASS
+- no persistent Sheet/Properties writes: PASS
+- no handler or external service calls: PASS
+- no raw manifest/ID logging: PASS
+- Static inspection only; no Apps Script runtime execution has occurred.
+- Requires the existing `SNC_AssignmentGroupIntegrationRunner_TEST.gs` helper functions to remain in the TEST GAS project:
+  `sncAGR_env_TEST_`, `SNC_GetAssignmentGroupManifest_TEST`, `sncAGR_rows_TEST_`, `sncAGR_ids_TEST_`, `sncAGR_admin_TEST_`.
+
+### Next owner action
+1. Copy only `SNC_GroupContinuationStateDiagnostic_READONLY_TEST.gs` into the TEST GAS project.
+2. Run only `SNC_GroupContinuationStateDiagnostic_READONLY_TEST()`.
+3. Share the complete sanitized `SNC_GROUP_CONTINUATION_STATE` JSON and any Apps Script exception.
+4. Do not run the original Assignment/Group Runner or any Group mutation/continuation function. No continuation runner has been implemented. Wait for diagnostic evidence and separate review before proceeding.
+
+### Current status
+- Diagnostic source: IMPLEMENTED ON DEVELOPMENT; STATIC REVIEW PASS.
+- Diagnostic GAS runtime: NOT RUN.
+- Group continuation: NOT IMPLEMENTED / NOT RUN.
+- Assignment & Group stage: INCOMPLETE pending diagnostic, continuation and terminal reconciliation.
+- Cleanup: NOT STARTED.
