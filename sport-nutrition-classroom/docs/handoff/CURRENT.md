@@ -405,3 +405,57 @@ Changes:
 - Group continuation: NOT IMPLEMENTED / NOT RUN.
 - Assignment & Group stage: INCOMPLETE.
 - Cleanup: NOT STARTED.
+
+
+## Group continuation runner implemented — 23 Nov 2026
+
+### Owner approval and scope
+- Owner approved development of the Continuation Runner for GRP-07 through GRP-12.
+- Work performed on `development` only.
+- The owner-run read-only Group Continuation State Diagnostic v1.0.1 was READY with 15 PASS and 0 BLOCKED before implementation.
+- No GAS execution, Spreadsheet mutation, Script Properties mutation, fixture creation, cleanup, deployment, triggers, Drive, LINE, or Submissions were performed during implementation.
+
+### New source artifact
+- File: `sport-nutrition-classroom/backend/tests/SNC_GroupContinuation_GR07_12_TEST.gs`
+- Version: 0.1.0
+- Commit (latest correction): `6b035995645ffa87d0333654d8d1e3e4fb4fc935`
+- Blob SHA: `d5b8d8fa12b9422d786dcf16efc8d1adb11cba36`
+- URL: https://github.com/worrawutt-source/worrawutsportsci/blob/development/sport-nutrition-classroom/backend/tests/SNC_GroupContinuation_GR07_12_TEST.gs
+- Read-only preflight: `SNC_GroupContinuationPreflight_TEST()`
+- Persistent entry point: `SNC_RunGroupContinuation_CONFIRMED_TEST()`
+- Exact confirmation phrase embedded in source: `CONTINUE SNC GROUP TESTS GRP-07 TO GRP-12 2026-11-23`
+
+### Implemented safeguards and scope
+- Uses the existing core and Assignment/Group manifest getters; does not initialize or replace the existing fixture manifest.
+- Uses existing GroupIDs, UserIDs and OfferingID only.
+- Covers GRP-07, GRP-08A/B/C, GRP-09, GRP-10A/B, GRP-11 and GRP-12 only.
+- Group mutations call `handleGroupManagementAction_()`; no direct writes to application tables.
+- Includes TEST environment and exact Spreadsheet identity guard, document lock, preflight, case checkpoints, RequestID-linked AuditLog matching, state verification, duplicate-event detection, stop-on-error behavior, and terminal reconciliation.
+- GRP-12 captures the single new GroupMemberID in the existing manifest.
+- Original case ledger and ASG-13 historical FAIL are retained; summary labels the continuation as complete with historical failure rather than a clean overall PASS.
+- No notification, LINE, Drive, trigger, Submission, cleanup, migration or deployment behavior is included.
+
+### Static source review
+Latest source was re-fetched from `development`; static checks passed for:
+- Version and preflight function present.
+- Exact confirmation phrase present.
+- Scope limited to the nine intended case IDs.
+- Existing manifest getters used.
+- Group handler used for application mutations.
+- Original persistent runner is not called.
+- No cleanup/delete-row/trash operation present.
+- Before-handler and handler-returned checkpoints present.
+- AuditLog verification includes RequestID.
+- Historical ASG-13 FAIL is preserved.
+- Terminal GroupMember ID count reconciliation corrected.
+
+Static review is not GAS runtime verification. The new preflight and continuation have NOT been run in Apps Script.
+
+### Important execution boundary / next action
+- The persistent entry point is implemented but is NOT authorized to run by this development approval.
+- Owner should copy the new file into the TEST GAS project and run only `SNC_GroupContinuationPreflight_TEST()` first.
+- Share the complete sanitized preflight output for source/result review.
+- Do not run `SNC_RunGroupContinuation_CONFIRMED_TEST()` until the owner separately approves persistent execution after reviewing the complete source and READY preflight.
+- If an execution is interrupted after a mutation, do not rerun blindly. Preserve the checkpoint and request read-only reconciliation before any further action.
+- Original Assignment/Group runner must never be rerun.
+- Cleanup remains NOT STARTED.
