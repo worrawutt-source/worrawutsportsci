@@ -107,7 +107,8 @@ function SNC_CreateSyntheticCoreFixtures_TEST(confirmation) {
   var gate=sncSFR_validateEnvironment_TEST_();
   if(!gate.ok)throw new Error('SAFETY_STOP: '+gate.reason);
 
-  var lock=LockService.getScriptLock();
+  var lock=LockService.getDocumentLock();
+  if(!lock)throw new Error('SAFETY_STOP: document lock is unavailable in this bound TEST project.');
   lock.waitLock(30000);
   try {
     var preflight=SNC_SyntheticFixturePreflight_TEST();
