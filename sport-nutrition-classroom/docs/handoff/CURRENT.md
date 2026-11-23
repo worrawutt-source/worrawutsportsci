@@ -274,3 +274,32 @@ Event-count reconciliation:
 4. Keep cleanup and all other out-of-scope operations prohibited absent separate approval.
 
 This checkpoint records the owner-supplied runtime log. No Spreadsheet mutation or GAS execution was performed during this documentation update.
+## Group continuation design — GRP-07 through GRP-12 — 23 Nov 2026
+
+### Design artifact
+- Created `sport-nutrition-classroom/docs/GROUP_CONTINUATION_DESIGN_v1.0_2026-11-23.md`.
+- Commit: `34141c67ae5423d1da7e917a83e2ff44250939b9`.
+- URL: https://github.com/worrawutt-source/worrawutsportsci/blob/development/sport-nutrition-classroom/docs/GROUP_CONTINUATION_DESIGN_v1.0_2026-11-23.md
+- Design only. No GAS code was created or executed; no Spreadsheet/Script Properties writes, deployment, triggers, LINE, Drive, or cleanup occurred.
+
+### Source review
+- Re-fetched `backend/tests/SNC_AssignmentGroupIntegrationRunner_TEST.gs` from `development`: blob SHA `56b8fd81d6392e6c43138e4f9ce2769fccdb28cf`.
+- Re-fetched `backend/GroupManagement.gs` from `development`: blob SHA `9dc280d88bcee8e346d028082cae725fe2d88ee8`.
+- Confirmed source sequence after GRP-06B: GRP-07 non-enrolled create; GRP-08A/B/C visibility; GRP-09 representative selection; GRP-10A/B forbidden selection attempts; GRP-11 leave; GRP-12 rejoin.
+- GRP-13 membership-lock test remains deferred to Submission Integration; GRP-14 is not in the current runner and is out of scope.
+- Original execution interruption cause remains NOT DETERMINED; no Apps Script execution termination record has been provided.
+
+### Continuation safety requirements
+- Never rerun the original persistent Assignment/Group Runner.
+- Proposed new runner: `SNC_GroupContinuation_GR07_12_TEST.gs`, only after separate review and approval.
+- It must reuse the existing manifest and IDs, never create fixtures, never replay completed cases, and never write directly to application sheets.
+- Before implementation/execution, a new read-only state gate must verify exact current Group/GroupMember states, roles, lock state, Submission absence, case ledger, and AuditLog baseline. Any ambiguity blocks continuation.
+- Mutating cases GRP-09, GRP-11, and GRP-12 require state-plus-AuditLog reconciliation before any retry; ambiguous partial mutations must stop rather than repeat.
+- Cleanup remains NOT STARTED and out of scope.
+
+### Current status
+- AuditLog reconciliation at GRP-05 capture: RUNTIME PASS (16/16 exact IDs and event matrix).
+- ASG-13 focused CLOSED edit regression: RUNTIME PASS.
+- Assignment & Group batch: INCOMPLETE; original manifest remains IN_PROGRESS and retains historical ASG-13 FAIL.
+- Continuation runner: NOT IMPLEMENTED; no continuation preflight executed.
+- Next step: owner review/approval of the design, then implement only the read-only state diagnostic as the first separately reviewed artifact.
