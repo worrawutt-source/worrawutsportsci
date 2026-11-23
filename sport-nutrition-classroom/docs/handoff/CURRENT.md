@@ -464,3 +464,49 @@ Static review is not GAS runtime verification. The new preflight and continuatio
 ### Additional fail-closed limitation
 - The preflight deliberately requires the original pre-GRP-07 membership composition and exact original GroupMember ID set. Therefore, if a persistent run is interrupted after GRP-09, GRP-11 or GRP-12 has changed application state, a fresh preflight will BLOCK rather than resume automatically.
 - The RequestID/state recovery checks in the runner are not a substitute for a successful resume gate. In that interruption scenario, preserve the manifest/checkpoint and obtain a separate read-only reconciliation before changing or rerunning anything. Do not claim automatic resumability.
+
+
+## Owner-run Group Continuation Runner — runtime completion evidence — 23 Nov 2026
+
+### Owner-provided GAS execution log
+- `SNC_GroupContinuationPreflight_TEST()`: READY; 10 PASS, 0 BLOCKED.
+- `SNC_RunGroupContinuation_CONFIRMED_TEST()`: completed normally.
+- Structured result:
+  - status: `COMPLETE_WITH_HISTORICAL_FAILURE`
+  - evidenceLevel: `HANDLER_LEVEL_INTEGRATION`
+  - continuationCaseCount: 9
+  - pass: 9; recovered: 0; fail: 0
+  - historicalASG13: `FAIL_PRESERVED`
+  - terminalReconciliation: PASS
+  - cleanupStatus: `NOT STARTED`
+- This is owner-supplied runtime evidence. No independent access to the GAS execution was available.
+
+### Assessment
+- GRP-07, GRP-08A/B/C, GRP-09, GRP-10A/B, GRP-11 and GRP-12 are recorded as nine passing continuation cases.
+- The Runner's own terminal check passed. This confirms the checks encoded in that Runner; it is not a substitute for independent read-only inspection of the final rows and AuditLogs.
+- Original ASG-13 FAIL remains preserved in the historical Assignment/Group ledger. The separate focused CLOSED-edit regression previously passed, but the historical batch result must not be rewritten.
+- No cleanup was started. Do not rerun either persistent Assignment/Group Runner or the Group continuation Runner.
+
+### Independent terminal reconciliation utility added
+- File: `backend/tests/SNC_GroupContinuationTerminalReconciliation_READONLY_TEST.gs`
+- Version: 1.0.0
+- Function: `SNC_GroupContinuationTerminalReconciliation_READONLY_TEST()`
+- Commit: 81d7a5cbbed55d18162ed76a729f28b703163aa7
+- URL: https://github.com/worrawutt-source/worrawutsportsci/blob/development/sport-nutrition-classroom/backend/tests/SNC_GroupContinuationTerminalReconciliation_READONLY_TEST.gs
+- Read-only scope: TEST environment; core and Assignment/Group manifests; all nine continuation ledger records; historical ASG-13 preservation; Alpha/Beta/Solo terminal membership and roles; Assignment/Group/GroupMember primary IDs; Submission absence; and AuditLog delta since the pre-batch baseline.
+- Expected AuditLog delta encoded from the existing baseline plus the three mutating continuation cases: 19 records total (the original 16 plus representative selection, leave, and rejoin events).
+- The utility reads live TEST Sheets and Script Properties through existing read-only helpers. It performs no Sheet/Properties/file writes, application-handler calls, external calls, cleanup, trigger, Drive, LINE, or deployment operation.
+- Static review of this newly authored source is limited to its written logic; no GAS runtime has been run for this utility.
+
+### Next owner action
+1. Copy this single new file into the TEST GAS project.
+2. Run only `SNC_GroupContinuationTerminalReconciliation_READONLY_TEST()`.
+3. Share the complete sanitized `SNC_GROUP_TERMINAL_RECONCILIATION` result and any exception.
+4. Do not run any persistent Runner or Cleanup function. Cleanup remains NOT STARTED and requires separate approval after the read-only reconciliation is reviewed.
+
+### Current stage status
+- Group continuation Runner: owner-reported runtime PASS, 9/9 cases; zero recovered, zero failed.
+- Runner terminal check: owner-reported PASS.
+- Independent terminal row/AuditLog reconciliation: NOT RUN.
+- Assignment & Group overall historical status: `COMPLETE_WITH_HISTORICAL_FAILURE`; retain ASG-13 historical FAIL.
+- Cleanup: NOT STARTED.
