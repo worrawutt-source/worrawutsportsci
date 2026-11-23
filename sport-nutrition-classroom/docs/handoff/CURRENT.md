@@ -786,3 +786,16 @@ The original creation function accepts a confirmation argument, but the Apps Scr
 - Cleanup remains NOT STARTED. Do not rerun core fixture creation and do not perform broad cleanup.
 - This confirms fixture creation and ID reconciliation only; it does not establish end-to-end API/browser/LIFF integration or pass Group, Assignment, Submission, Drive, Notification, Trigger, or LINE tests.
 - Next: use the stored exact manifest IDs to design/execute the next approved integration stage with narrowly scoped checks; first inspect current handlers and dependencies. Keep all existing baseline records unchanged.
+
+
+## Assignment & Group Integration Test Design — 23 Nov 2026
+- Inspected current development source: AssignmentManagement.gs, GroupManagement.gs, SubmissionManagement.gs, Code.gs, NotificationManagement.gs, existing fixture runner, and approved synthetic fixture plan.
+- Created design document: `docs/ASSIGNMENT_GROUP_INTEGRATION_TEST_DESIGN_v1.0_2026-11-23.md`.
+- Scope: handler-level integration using existing CourseOffering and six synthetic student accounts; planned downstream records are four Assignment variants and three Groups (Alpha 2, Beta 3, Solo 1). No new Course/Semester/Offering/Users.
+- Key safety finding: `assignment.open` invokes `notifyAssignmentOpened_`, which may reach LINE Push API if a linked account and token are configured. Any future runner must stub this function and restore it in finally; if not verifiable, skip open/close tests.
+- Key requirement gap: inspected `assignment.update` has no status guard, despite approved rule that Closed assignments reject edits. ASG-13 is designed to detect this; no source fix was made.
+- Group lock is written by SubmissionManagement on first Group Submission, not by GroupManagement. Membership-lock tests are deferred to Submission Integration.
+- Handler-level tests bypass LINE identity verification and do not prove deployed API/Browser/LIFF E2E.
+- No GAS execution, spreadsheet writes, deployment, source synchronization, notifications, LINE, Drive, trigger, migration, or cleanup was performed for this design.
+- Next step: review/implement a separate TEST-only Assignment/Group runner with read-only preflight, exact-ID manifest extension, notification stub, stop-on-error and post-run reconciliation. Execute only after runner review and explicit owner authorization.
+- Design document commit: `5054d9b4e6790122cb6752e986f4c55f89e4e52c`.
