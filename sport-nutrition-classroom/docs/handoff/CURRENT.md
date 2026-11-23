@@ -54,3 +54,43 @@
 - No cleanup has been performed; cleanup status remains **NOT STARTED**.
 
 This checkpoint records owner-provided execution evidence and the next safe continuation point. It does not claim that any new GAS execution, source comparison, runtime verification, cleanup, or code fix occurred during this documentation update.
+
+
+## Assignment & Group — read-only source diagnosis checkpoint — 23 Nov 2026
+
+### Latest source inspected
+- Re-fetched from GitHub `development`:
+  - `backend/tests/SNC_AssignmentGroupIntegrationRunner_TEST.gs` — blob SHA `56b8fd81d6392e6c43138e4f9ce2769fccdb28cf`.
+  - `backend/AssignmentManagement.gs` — blob SHA `ae56f8931c986dd8bbaafe72af219c9ca3d5044b`.
+  - `backend/GroupManagement.gs` — blob SHA `9dc280d88bcee8e346d028082cae725fe2d88ee8`.
+  - Design reference remains `docs/ASSIGNMENT_GROUP_INTEGRATION_TEST_DESIGN_v1.0_2026-11-23.md`.
+- This is a current GitHub source inspection. The owner previously confirmed GAS/GitHub Runner synchronization; the current GAS copy has not been independently fetched or hash-compared.
+
+### Confirmed source finding — ASG-13
+- In `AssignmentManagement.gs`, the `assignment.update` branch checks assignment existence, offering authorization, and field validation, then writes updates and `UpdatedAt` and appends `ASSIGNMENT_UPDATED`.
+- It contains **no guard on `current.Status` before writing.
+- Therefore the source-level cause of ASG-13 is confirmed: a Closed Assignment can pass through the update handler. This matches the owner-run result (expected `CONFLICT`, actual `SUCCESS`).
+- Proposed correction for review (not implemented): enforce the approved DOC-02 edit-state rule immediately after loading and authorizing the current Assignment, before any sheet mutation or audit append. Reject Closed state with `apiError_('CONFLICT', ...)`. The exact allowed editable states must follow DOC-02 wording; do not silently broaden the rule to DRAFT or other states.
+- No application code was changed.
+
+### Runner control-flow review — interruption remains undetermined
+- The current Runner records each case by persisting the manifest. `GRP-06A` and `GRP-06B` are both expected to return `CONFLICT` because the actors already belong to a group in the same offering.
+- After GRP-06B, the Runner compares the complete GroupMembers primary-key list against the pre-join snapshot. It then proceeds to GRP-07.
+- The outer catch block is designed to re-read the manifest, compute post-minus-pre ID deltas, set `STOPPED_REQUIRES_RECONCILIATION`, and save. However, its inner catch suppresses any failure during this recovery write. Thus a failed recovery operation can leave the manifest at `IN_PROGRESS` without surfacing the recovery failure. An Apps Script forced termination/timeout could also prevent catch/finally execution. These are plausible mechanisms, **not established root causes**.
+- The supplied manifest has 28 cases and ends at GRP-06B, but the current source's expected path and the available log do not establish whether the next assertion, an execution interruption, or a manifest persistence issue occurred. Root cause remains **NOT DETERMINED**.
+- The current helper `SNC_LogAssignmentGroupFailureDetail_TEST()` reports recorded cases and capture metadata but does not expose the underlying exception stack or execution termination reason.
+- No persistent runner was executed during this source review.
+
+### Next owner action — read-only only
+Run these existing functions individually in GAS; do not run the persistent runner:
+1. `SNC_LogAssignmentGroupManifestSummary_TEST()`
+2. `SNC_LogAssignmentGroupFailureDetail_TEST()`
+3. `SNC_ReconcileAssignmentGroup_READONLY_TEST()`
+
+Share the complete sanitized log outputs. Do not paste the full raw manifest or synthetic IDs. Also share the Apps Script execution record for the original Runner execution if still available (start/end/duration and any timeout/exception text); redact identifiers and personal data.
+
+### Safety and approval boundary
+- Do not rerun `SNC_RunAssignmentGroupIntegration_CONFIRMED_TEST()`.
+- Do not change Assignment/Group/GroupMember/AuditLog rows, delete data, or run cleanup.
+- No GAS source changes, deployment, trigger, Drive, LINE, or external calls were made in this checkpoint.
+- After the three read-only outputs are reviewed, prepare a formal exact-ID reconciliation and a narrowly scoped ASG-13 patch/regression proposal for owner approval. Do not modify application code before approval.
