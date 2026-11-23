@@ -684,3 +684,49 @@ Proceed to a source-level review of the approved synthetic fixture creation path
 - Synthetic fixture creation: **NOT RUN**.
 - Database-backed integration tests: **NOT RUN**.
 - Browser/LIFF E2E: **BLOCKED / NOT RUN**.
+
+## Synthetic fixture runner v0.1.0 — core fixture handoff — 23 November 2026
+
+Created `sport-nutrition-classroom/backend/tests/SNC_SyntheticFixtureRunner_TEST.gs` on `development`.
+
+- Version: **0.1.0**.
+- Source commit: `f1e57d15dcdd6894578183aefae0a5d5f3cbf3d4`.
+- Exact-ID recovery-capture hardening commit: `08caf08f95160259bc514fbb03ffec06297c4db9`.
+- Current file blob SHA: `080cb3771c18586f835f31858a5fa2adb18f2a92`.
+- Source: https://github.com/worrawutt-source/worrawutsportsci/blob/development/sport-nutrition-classroom/backend/tests/SNC_SyntheticFixtureRunner_TEST.gs
+
+### Scope of this first runner batch
+
+The file is limited to creating the synthetic core needed to start INT-01:
+- One synthetic Course, Semester, and CourseOffering.
+- Six synthetic student Users and six active Enrollments through the existing `course.*` and `import.*` application handlers.
+- Uses the existing active SYSTEM_ADMIN actor context; does not create a fake administrator, fake LINE account, or grant SYSTEM_ADMIN.
+- Uses reserved numeric StudentIDs and `.invalid` email addresses.
+- Captures generated IDs in a Script Properties manifest. A baseline of relevant primary keys is captured before writes; if execution stops, the runner records exact newly appearing IDs for reconciliation.
+- No direct application-sheet writes, Drive files, uploads, group/assignment/submission fixtures, notifications, LINE calls, triggers, deployment changes, or automatic cleanup.
+- Cleanup remains a separate operation and is not implemented or invoked by this file.
+
+### Functions to copy into GAS
+
+1. `SNC_SyntheticFixturePreflight_TEST()` — read-only environment, manifest, reserved-ID, and actor readiness check.
+2. `SNC_CreateSyntheticCoreFixtures_TEST(confirmation)` — persistent fixture creation; requires the exact confirmation phrase embedded in the source.
+3. `SNC_GetSyntheticFixtureManifest_TEST()` — reads the exact stored manifest for private owner-side retention.
+
+### Safety and execution status
+
+- Environment guard requires `SNC_ITR_ENVIRONMENT=TEST`, exact configured TEST spreadsheet ID, and active spreadsheet match.
+- Creation requires preflight status READY and exactly one active SYSTEM_ADMIN actor.
+- A script lock prevents concurrent fixture-runner execution.
+- Manifest is saved after each successful creation stage; no IDs or student details are printed in the compact creation summary.
+- On an error, the runner stops, records the exact-ID delta against the pre-write baseline when possible, and requires manual reconciliation. It does not attempt broad or automatic rollback.
+- Static source review: **prepared; not yet executed in GAS**.
+- GAS syntax/compile: **NOT RUN** (file has not yet been copied into the Apps Script project).
+- Fixture creation: **NOT RUN**.
+- INT-01 database-backed verification: **NOT RUN**.
+- INT-02 through INT-08 remain NOT RUN/BLOCKED as previously recorded.
+
+### Owner handoff
+
+Copy only this new file into the existing GAS TEST project as a new script file named `SNC_SyntheticFixtureRunner_TEST.gs`. Do not replace any existing module. After saving, run `SNC_SyntheticFixturePreflight_TEST()` only and provide the complete sanitized log. Do not run the creation function until the preflight output is reviewed. Do not run setup/migration, legacy fixture functions, file upload, notification, trigger, or cleanup functions.
+
+No GAS project, spreadsheet, Drive resource, Script Properties, trigger, deployment, or LINE configuration was changed by creating this GitHub source file.
