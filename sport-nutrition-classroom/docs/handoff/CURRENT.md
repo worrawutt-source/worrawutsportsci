@@ -768,3 +768,10 @@ The original creation function accepts a confirmation argument, but the Apps Scr
 - Cleanup status: NOT STARTED. No automatic rollback or cleanup was run.
 - Not tested in this run: Group, Assignment, Submission, Drive, Notification, Trigger, LINE, Browser/LIFF.
 - Next evidence step: run read-only `SNC_GetSyntheticFixtureManifest_TEST()` and inspect the exact generated synthetic IDs before planning the next integration stage. Do not rerun fixture creation.
+
+
+## Fixture Manifest Logging Helper — 23 Nov 2026
+- Added `SNC_LogSyntheticFixtureManifest_TEST()` to `backend/tests/SNC_SyntheticFixtureRunner_TEST.gs`.
+- The helper calls the existing read-only manifest getter, logs the returned JSON, and returns it. It performs no spreadsheet writes, external calls, or cleanup.
+- Owner should copy the latest runner source into Apps Script, save, then execute `SNC_LogSyntheticFixtureManifest_TEST()` to expose the stored manifest in the execution log.
+- Source commit: `4fbc0792455fd99e3799060617e2043df320dfe0`.
