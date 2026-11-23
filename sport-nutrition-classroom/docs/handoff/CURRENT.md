@@ -692,3 +692,30 @@ Function: `SNC_GroupContinuationTerminalReconciliation_READONLY_TEST()`, version
 - AuditLogs remain PRESERVE_ALL; core fixture remains excluded.
 - Cleanup remains NOT STARTED; no deletion utility exists.
 - A final dry-run and separate explicit cleanup authorization remain required after PG-09 runtime evidence is reviewed.
+
+
+## Exact-ID Cleanup Preview v1.2 and PG-09 runtime evidence — 23 Nov 2026
+
+### Owner-provided PG-09 scan result
+- Function: `SNC_PG09ReferenceScan_READONLY_TEST()`, version 1.0.0.
+- Overall result: **PASS**, 6 PASS, 0 BLOCKED; evidence level `READ_ONLY_ALL_SHEET_EXACT_ID_REFERENCE_SCAN`.
+- Exact TEST identity, manifest cross-check, exact 4/3/7 allowlist, all-tab schema coverage, target-row counts and no-dependency checks all passed.
+- All 23 current Spreadsheet tabs were enumerated and readable.
+- Exact target rows: Assignments 4, Groups 3, GroupMembers 7; unexpected references: 0.
+- AuditLogs: 19 matches classified `PRESERVE_AUDITLOG`; current AuditLogs count 68; disposition `PRESERVE_ALL`.
+- Dependency-related sheets (Submissions, SubmissionFiles, Grades, GradeHistory, GradeReviewRequests and NotificationLogs) were readable and had zero data rows at scan time.
+- Scan was read-only: writesExpected=0, externalCallsExpected=0. Owner-provided runtime evidence; no independent GAS execution access.
+
+### Preview v1.2
+- Added `docs/SNC_SYNTHETIC_FIXTURE_CLEANUP_PREVIEW_v1.2_2026-11-23.md` on `development`.
+- Carries forward the exact 14-ID allowlist and exclusions from v1.1; updates PG-09 with the 23-tab scan evidence and requires an immediate pre-deletion repeat scan.
+- All 68 AuditLogs, Core Fixture, Script Properties/manifests, triggers, deployments, LINE bindings, Drive files and all non-allowlisted rows remain excluded and preserved.
+- Proposed exact-ID order remains GroupMembers → Groups → Assignments, with fail-closed checks and post-operation reconciliation.
+
+### Safety state
+- PG-09 point-in-time scan gate: **PASS**.
+- Preview review: pending owner review.
+- Explicit cleanup authorization: **NOT GRANTED**.
+- Cleanup utility: **NOT IMPLEMENTED**.
+- Cleanup status: **NOT STARTED**. No rows/files/properties/triggers/deployments were changed by this work package.
+- Do not run any cleanup function. A separate explicit authorization and a fresh final read-only dry-run are required before any deletion.
