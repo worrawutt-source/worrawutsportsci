@@ -94,3 +94,45 @@ Share the complete sanitized log outputs. Do not paste the full raw manifest or 
 - Do not change Assignment/Group/GroupMember/AuditLog rows, delete data, or run cleanup.
 - No GAS source changes, deployment, trigger, Drive, LINE, or external calls were made in this checkpoint.
 - After the three read-only outputs are reviewed, prepare a formal exact-ID reconciliation and a narrowly scoped ASG-13 patch/regression proposal for owner approval. Do not modify application code before approval.
+
+
+## Owner-provided read-only diagnostics — 23 Nov 2026, 13:39–13:40
+
+The owner executed the three requested read-only functions individually in GAS. Evidence below is copied from the supplied logs.
+
+### Manifest summary
+- `coreStatus=CORE_FIXTURE_CREATED`
+- `status=IN_PROGRESS`; `stopReason=null`
+- `caseCount=28`; `pass=27`; `fail=1`; `notRun=0`
+- `postFailureNewIdCounts`: Assignments=0, Groups=0, GroupMembers=0, AuditLogs=0 (these are zero because no post-failure ID snapshot is stored; do not interpret this as proof no writes occurred after the last capture).
+- `notificationStubbed=false`; `notificationStubRestored=true`.
+
+### Case details
+- ASG-01 through ASG-12C and ASG-NOTIFY-STUB passed.
+- ASG-13 failed: expected `CONFLICT`, actual `SUCCESS`.
+- GRP-01 through GRP-06B passed. GRP-06A and GRP-06B each returned `CONFLICT` with detail `You already belong to a group in this offering.`.
+- The case list ends at GRP-06B. No GRP-07 or later case was recorded.
+- Manifest contains four Assignment IDs and three Group IDs.
+- Last write capture remains GRP-05 with new ID counts Groups=3, GroupMembers=6, AuditLogs=16.
+
+### Read-only reconciliation
+- Assignments: actual new IDs=4, manifest IDs=4, all manifest IDs exist, unexpected=0.
+- Groups: actual new IDs=3, manifest IDs=3, all manifest IDs exist, unexpected=0.
+- GroupMembers: actual new IDs=6, manifest IDs=6, all manifest IDs exist, unexpected=0.
+- AuditLogs: actual new row count=16. This helper reports a count only; it does not verify exact AuditLog IDs/events against a manifest.
+- Manifest remains IN_PROGRESS; caseCount=28; no post-failure IDs or post-batch IDs; reconciliation field remains null.
+
+### Interpretation and remaining uncertainty
+- The supplied read-only evidence confirms no unexpected Assignment, Group, or GroupMember primary IDs relative to the pre-batch baseline and the current manifest.
+- It does **not** prove AuditLog event completeness, that no mutation occurred after the last captured write, or that the batch's completion/stop state was correctly persisted.
+- Both expected negative membership checks passed, so their API outcomes are not the apparent reason for the stop. However, the logs do not include the original Runner execution's exception, timeout, or duration. Root cause for the interruption remains **NOT DETERMINED**.
+- Do not infer that `postFailureNewIdCounts=0` means the runner stopped before any writes; the recorded Group and Assignment writes already exist and are reconciled to their manifest IDs.
+
+### Next step
+1. Obtain the Apps Script Executions record for the original persistent Runner invocation, including start/end/duration and any exception or timeout message. If available, share only the error/termination detail; no identifiers or raw manifest needed.
+2. Do not rerun the original Runner.
+3. Prepare a separate read-only AuditLog verification using the exact expected action/entity pairs from the existing manifest and source behavior; do not mutate rows.
+4. Prepare an owner-reviewable ASG-13 patch and narrow regression plan. No application source changes until the owner approves.
+5. After diagnosis, create a continuation runner that resumes only unexecuted cases from verified state and cannot replay GRP-01..GRP-06 or Assignment creates. Do not implement/run this without review and approval.
+
+No persistent test, data mutation, cleanup, code patch, deployment, trigger, Drive, or LINE action was performed during this diagnostic turn.
