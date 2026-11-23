@@ -63,9 +63,17 @@ function SNC_GroupContinuationStateDiagnostic_READONLY_TEST() {
       : 'TEST environment or active Spreadsheet identity mismatch.');
     if (!env.ok) return sncGCD_finish_(result);
 
+    // The core fixture and Assignment/Group extension are separate layers
+    // in the same Script Properties manifest. Resolve each through its own
+    // read-only getter; do not expect core fields inside assignmentGroup.
+    var core = SNC_GetSyntheticFixtureManifest_TEST();
     var mr = SNC_GetAssignmentGroupManifest_TEST();
     var m = mr && mr.success ? mr.assignmentGroup : null;
-    var coreOk = Boolean(mr && mr.success &&
+    var coreOk = Boolean(core && core.success !== false &&
+      core.status === 'CORE_FIXTURE_CREATED' &&
+      core.offeringId && Array.isArray(core.userIds) &&
+      core.userIds.length === 6 &&
+      mr && mr.success &&
       mr.coreStatus === 'CORE_FIXTURE_CREATED' &&
       m && m.status === 'IN_PROGRESS' &&
       m.preBatchIds && m.assignments && m.groups &&
@@ -109,7 +117,8 @@ function SNC_GroupContinuationStateDiagnostic_READONLY_TEST() {
 
     // Resolve the required fixture identities from manifest only.
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var users = Array.isArray(m.userIds) ? m.userIds.map(String) : [];
+    var users = Array.isArray(core.userIds) ? core.userIds.map(String) : [];
+    var offeringId = String(core.offeringId || '');
     var assignmentMap = m.assignments || {};
     var assignmentIds = Object.keys(assignmentMap).map(function(k) {
       return String(assignmentMap[k]);
@@ -137,7 +146,7 @@ function SNC_GroupContinuationStateDiagnostic_READONLY_TEST() {
     if (!fixtureShapeOk) return sncGCD_finish_(result);
 
     var offeringRows = oneRow(sncAGR_rows_TEST_(ss, 'CourseOfferings'),
-      'OfferingID', m.offeringId);
+      'OfferingID', offeringId);
     var userRows = sncAGR_rows_TEST_(ss, 'Users');
     var enrollmentRows = sncAGR_rows_TEST_(ss, 'Enrollments');
     var coreEntitiesOk = offeringRows.length === 1 &&
@@ -149,7 +158,7 @@ function SNC_GroupContinuationStateDiagnostic_READONLY_TEST() {
       users.every(function(uid) {
         return enrollmentRows.filter(function(e) {
           return String(e.UserID) === uid &&
-            String(e.OfferingID) === String(m.offeringId) &&
+            String(e.OfferingID) === String(offeringId) &&
             String(e.Status).toUpperCase() === 'ACTIVE';
         }).length === 1;
       });
@@ -220,7 +229,7 @@ function SNC_GroupContinuationStateDiagnostic_READONLY_TEST() {
       return found.length === 1 &&
         String(found[0].Status).toUpperCase() === 'ACTIVE' &&
         !found[0].MembershipLockedAt &&
-        String(found[0].OfferingID) === String(m.offeringId);
+        String(found[0].OfferingID) === String(offeringId);
     }) && sameSet(groupDelta, groupIds);
     check('GROUPS-01', groupRowsOk,
       groupRowsOk ? 'All three manifest Groups resolve exactly once, are ACTIVE, unlocked and in the fixture offering.'
