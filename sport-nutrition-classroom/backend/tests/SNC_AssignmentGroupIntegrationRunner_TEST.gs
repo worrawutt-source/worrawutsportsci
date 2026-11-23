@@ -216,7 +216,8 @@ function SNC_RunAssignmentGroupIntegration_TEST(confirmation){
       groupMembers:delta.GroupMembers.length===expectedM.length&&expectedM.every(function(id){return delta.GroupMembers.indexOf(id)>=0;})
     };
     m.assignmentGroup.reconciliation=recon;m.assignmentGroup.completedAt=new Date().toISOString();
-    m.assignmentGroup.status=Object.keys(recon).every(function(k){return recon[k];})?'COMPLETE':'COMPLETE_WITH_RECONCILIATION_FAILURE';
+    var caseFailures=m.assignmentGroup.cases.some(function(v){return v.status==='FAIL';});
+    m.assignmentGroup.status=!Object.keys(recon).every(function(k){return recon[k];})?'COMPLETE_WITH_RECONCILIATION_FAILURE':(caseFailures?'COMPLETE_WITH_FAILURES':'COMPLETE');
     m.assignmentGroup.notificationStubbed=false;save();
     var summary={status:m.assignmentGroup.status,evidenceLevel:m.assignmentGroup.evidenceLevel,caseCount:m.assignmentGroup.cases.length,pass:m.assignmentGroup.cases.filter(function(c){return c.status==='PASS';}).length,fail:m.assignmentGroup.cases.filter(function(c){return c.status==='FAIL';}).length,assignmentCount:expectedA.length,groupCount:expectedG.length,groupMemberCount:expectedM.length,reconciliation:recon,notificationStubRestored:Boolean(m.assignmentGroup.notificationStubRestored),cleanupStatus:m.assignmentGroup.cleanupStatus};
     Logger.log('SNC_ASSIGNMENT_GROUP_RESULT='+JSON.stringify(summary));return {summary:summary,manifest:m};
@@ -231,7 +232,11 @@ function SNC_RunAssignmentGroupIntegration_TEST(confirmation){
     }
     Logger.log('SNC_ASSIGNMENT_GROUP_STOPPED='+JSON.stringify({status:'STOPPED_REQUIRES_RECONCILIATION',reason:String(e&&e.message||e).slice(0,220),manifestSaved:Boolean(m)}));throw e;
   }finally{
-    if(notifyStubActive){try{notifyAssignmentOpened_=notifyOriginal;}catch(restoreError){}}
+    if(notifyStubActive){
+      try{notifyAssignmentOpened_=notifyOriginal;notifyStubActive=false;
+        if(m&&m.assignmentGroup){m.assignmentGroup.notificationStubbed=false;m.assignmentGroup.notificationStubRestored=true;sncAGR_save_TEST_(m);}
+      }catch(restoreError){console.error('ASSIGNMENT_NOTIFICATION_STUB_RESTORE_FAILED');}
+    }
     lock.releaseLock();
   }
 }
