@@ -881,3 +881,22 @@ Proceed only with the established workflow: **inspect current source → prepare
 
 ### New-chat resume instruction
 Start by reading this `CURRENT.md` on branch `development`, then inspect the latest Submission-related source files and approved design documents. The immediate task is to **prepare the Submission Integration test plan for review only**. Do not start implementation or run tests before owner approval.
+
+## Submission Integration — test plan prepared for owner review — 24 Nov 2026
+
+- Re-inspected current GitHub `development` source before planning. Current blobs:
+  - `SubmissionManagement.gs`: `ef4b86678e8c1feeea425ba578501846129a229c`
+  - `FileManagement.gs`: `86cd29160dd00207c9a575ce801da09e643911cb`
+  - `GroupManagement.gs`: `9dc280d88bcee8e346d028082cae725fe2d88ee8`
+  - `AssignmentManagement.gs`: `460c7a0eb244fa5a85239d0e2f531404d58601d8`
+  - `Code.gs`: `7c9928f7ae269287d1537dec6256dce13783d26d`
+  - `GradingManagement.gs`: `12bd34c5dd857250c7d6ccd76e28b5da7f4507f8`
+  - `NotificationManagement.gs`: `875b60d90f4599ee0f9bdf0f60dcea31e215de7b`
+- Reviewed approved DOC-01 v1.0 and DOC-02 v1.1 from the supplied DOCS v1.3 package, approved DOCS v1.3 CR-001 amendment, SNC-WG-001, existing synthetic fixture plan, and Assignment/Group integration design. Pending DOC-03..DOC-08 drafts were not used to override approved requirements.
+- Created `docs/SUBMISSION_INTEGRATION_TEST_PLAN_v1.0_DRAFT_2026-11-24.md` on `development`; commit `c7a147b5949943ac565304a9a45c415fa2f7a6dd`.
+- Plan proposes WP-SUB-0 read-only readiness; WP-SUB-1 handler-level Submission Integration (Individual/Group, member limits, leader authorization, per-group lock, revision chain, idempotency, late status, URL attachments, audit, notification stub and controlled rollback); WP-SUB-2 separately gated Drive upload/access; WP-SUB-3 separately gated deployed TEST API/LIFF/Browser E2E.
+- The plan explicitly preserves the six synthetic Core Fixture users/enrollments/offering and AuditLogs; does not recreate the 14 removed target rows; requires new fixtures through business handlers and exact-ID manifest; no direct Sheet fixture writes.
+- Owner decisions requested: WP-SUB-1 scope and exact fixture boundary, URL-only attachment scope, controlled in-memory failure injection, mandatory notification stub/zero external calls, and separate cleanup approval.
+- **Current status: PLAN DRAFTED — OWNER REVIEW/APPROVAL PENDING.** No runner/test code created, no GAS functions executed, no fixtures created, no Spreadsheet/Drive/LINE/trigger/deployment/migration/cleanup actions performed.
+- Next action: owner reviews the plan and responds with approval/amendments. Only after approval may the implementation work package begin. The Assistant must re-fetch current source and verify TEST GAS synchronization before implementation.
+
