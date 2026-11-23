@@ -124,6 +124,7 @@ function SNC_CreateSyntheticCoreFixtures_TEST(confirmation) {
       actorType:'EXISTING_SYSTEM_ADMIN_CONTEXT',
       courseId:null,semesterId:null,offeringId:null,importJobId:null,
       studentIds:SNC_SFR_CONFIG_TEST.STUDENTS.map(function(x){return x.studentId;}),
+      baselineIds:sncSFR_captureBaselineIds_TEST_(ss),
       userIds:[],enrollmentIds:[],
       stages:[],
       cleanupStatus:'NOT STARTED'
@@ -214,6 +215,7 @@ function SNC_CreateSyntheticCoreFixtures_TEST(confirmation) {
       try {
         var m=JSON.parse(raw);
         m.status='STOPPED_REQUIRES_RECONCILIATION';
+        m.reconciledIds=sncSFR_captureNewIds_TEST_(SpreadsheetApp.getActiveSpreadsheet(),m.baselineIds||{});
         m.stopReason=String(e&&e.message||e).slice(0,240);
         m.stoppedAt=new Date().toISOString();
         sncSFR_saveManifest_TEST_(m);
@@ -267,4 +269,32 @@ function sncSFR_saveManifest_TEST_(manifest) {
     SNC_SFR_CONFIG_TEST.MANIFEST_PROPERTY,
     JSON.stringify(manifest)
   );
+}
+
+/** Capture baseline primary keys before the first application-handler write. */
+function sncSFR_captureBaselineIds_TEST_(ss) {
+  var map={Courses:['CourseID'],Semesters:['SemesterID'],CourseOfferings:['OfferingID'],
+    Users:['UserID'],Enrollments:['EnrollmentID'],ImportJobs:['ImportJobID']};
+  var out={};
+  Object.keys(map).forEach(function(name){
+    var rows=rowsAsObjects_(ss.getSheetByName(name)),key=map[name][0];
+    out[name]=rows.map(function(r){return String(r[key]||'');}).filter(Boolean);
+  });
+  return out;
+}
+
+/**
+ * On an interrupted/failed handler, capture exact newly appearing IDs for manual
+ * reconciliation. This does not delete or modify any record.
+ */
+function sncSFR_captureNewIds_TEST_(ss,baseline) {
+  var map={Courses:'CourseID',Semesters:'SemesterID',CourseOfferings:'OfferingID',
+    Users:'UserID',Enrollments:'EnrollmentID',ImportJobs:'ImportJobID'};
+  var out={};
+  Object.keys(map).forEach(function(name){
+    var prior=baseline[name]||[];
+    out[name]=rowsAsObjects_(ss.getSheetByName(name)).map(function(r){return String(r[map[name]]||'');})
+      .filter(function(id){return id&&prior.indexOf(id)===-1;});
+  });
+  return out;
 }
