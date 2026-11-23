@@ -797,3 +797,18 @@ Owner supplied the complete GAS Execution Log for `SNC_FinalCleanupDryRun_READON
 - This abort occurred at the initial confirmation-phrase guard, before TEST identity checks, fresh dry-run, or any mutation.
 - No recovery is required. A new invocation may be attempted only with the exact phrase embedded in the utility: `EXECUTE SNC CLEANUP EXACT 14 ROWS TEST 2026-11-23`.
 - Do not change the allowlist or utility. If the next execution returns anything other than a complete verified result, stop and provide the full log for reconciliation.
+
+
+## Post-cleanup read-only verification prepared — 24 Nov 2026
+
+- Owner supplied the GAS Execution Log for `SNC_ExecuteApprovedCleanup_TEST` v1.0.0.
+- The log reports `status=COMPLETE`: exactly 7 GroupMembers, 3 Groups and 4 Assignments deleted (14 total); AuditLogs remained 68 rows with `fullGridUnchanged=true`; non-target rows in all three target tables were preserved; Core Fixture was preserved.
+- The same Execution Log contains a subsequent `ABORTED_CONFIRMATION_REQUIRED` record with empty deletion arrays and `deletionPerformed=false`. This is a separate unsuccessful invocation after the completed run and does not undo the earlier COMPLETE result.
+- Added `backend/tests/SNC_PostCleanupVerification_READONLY_TEST.gs` v1.0.0.
+  - Commit: `e51272a60123a2c3ec0642b3cde272348a5db1be`.
+  - Function: `SNC_PostCleanupVerification_READONLY_TEST()`.
+  - Verifies exact TEST identity, all 23 tabs, absence of all 14 approved IDs outside AuditLogs, zero remaining Group/GroupMember rows, preserved manifests/core Users/Enrollments/CourseOffering, and AuditLogs 68 unique IDs (49 baseline + 19 post-baseline) with expected event matrix/entity links.
+  - Read-only only: writesExpected=0, externalCallsExpected=0; no cleanup, deletion, mutation, handlers, Drive, LINE, UrlFetch, triggers or deployment.
+- Added `sport-nutrition-classroom/docs/SNC_POST_CLEANUP_VERIFICATION_READONLY_v1.0.0_2026-11-24.md` with design, safety constraints, evidence boundary and owner run instructions.
+- **Runtime status: PENDING OWNER GAS EXECUTION.** No runtime PASS is claimed. Owner should add only the new verifier file to the existing TEST GAS project and run only `SNC_PostCleanupVerification_READONLY_TEST()`; share the complete `SNC_POST_CLEANUP_VERIFICATION=` log.
+- Do not rerun cleanup or restart Integration Test until the read-only post-cleanup verification returns PASS and its evidence is reviewed.
