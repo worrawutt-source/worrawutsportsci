@@ -510,3 +510,35 @@ Static review is not GAS runtime verification. The new preflight and continuatio
 - Independent terminal row/AuditLog reconciliation: NOT RUN.
 - Assignment & Group overall historical status: `COMPLETE_WITH_HISTORICAL_FAILURE`; retain ASG-13 historical FAIL.
 - Cleanup: NOT STARTED.
+
+
+## Terminal reconciliation follow-up — AuditLog actor-check false block and corrected diagnostic — 23 Nov 2026
+
+### Owner-provided runtime evidence
+Function: `SNC_GroupContinuationTerminalReconciliation_READONLY_TEST()`, version 1.0.0.
+- Overall: `REQUIRES_REVIEW`; 9 PASS, 1 BLOCKED.
+- Passed: TEST identity, manifests, nine continuation cases, historical ASG-13 preservation, fixture IDs, terminal Group/GroupMember state, primary IDs, Submission absence, AuditLogs schema.
+- AuditLog counts: current 68; post-baseline delta 19.
+- `AUDIT-DELTA-01` was BLOCKED. No data mutation was performed by this read-only diagnostic.
+
+### Source-level diagnosis
+The v1.0.0 diagnostic applied one actor constraint to every `GROUP_MEMBER_JOINED` event, requiring all join events to have the GRP-12 rejoining student's ActorUserID. Inspection of the original Assignment/Group Runner shows the earlier GRP-04 joins were performed by different student actors. Therefore, the actor assertion was over-restrictive and can produce a false BLOCKED even when the events are correct. This is a diagnostic logic defect; it is not evidence that AuditLogs are corrupt.
+- Expected event matrix remains 19 total: original 16 plus `GROUP_REPRESENTATIVE_SELECTED` (1), `GROUP_MEMBER_LEFT` (1), and the additional `GROUP_MEMBER_JOINED` (1).
+- Corrected actor validation: require all Group delta events to have RequestIDs; require the representative-selection and leave events to be by the GRP-12 actor; among four Group join events, require exactly one by that actor (the GRP-12 rejoin), while allowing the three earlier joins to retain their own actors.
+- No assumption is made about unverified actor identities for the three earlier joins beyond preserving their distinct recorded values.
+
+### Corrected diagnostic source
+- File: `backend/tests/SNC_GroupContinuationTerminalReconciliation_READONLY_TEST.gs`
+- Version: 1.0.1
+- Commit: bff6dc3241766c4137df5f63c70eefed00b03560
+- URL: https://github.com/worrawutt-source/worrawutsportsci/blob/development/sport-nutrition-classroom/backend/tests/SNC_GroupContinuationTerminalReconciliation_READONLY_TEST.gs
+- This changes only the read-only audit actor assertion. It does not change expected event counts, application handlers, Sheet data, manifests, or any persistent test state.
+
+### Next owner action
+Replace the existing v1.0.0 diagnostic source in TEST GAS with v1.0.1 (do not add a duplicate file/function), then run only `SNC_GroupContinuationTerminalReconciliation_READONLY_TEST()`. Share the full sanitized result. Do not run persistent runners or Cleanup. Cleanup remains NOT STARTED.
+
+### Status
+- Terminal reconciliation v1.0.0: RUNTIME REQUIRES_REVIEW due to over-restrictive diagnostic actor check.
+- v1.0.1: source correction committed; GAS runtime NOT RUN.
+- Application data: no changes from this diagnostic correction.
+- Cleanup: NOT STARTED.
