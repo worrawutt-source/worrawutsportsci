@@ -216,10 +216,14 @@ function SNC_FinalCleanupDryRun_READONLY_TEST() {
     });
     var eventsOk=Object.keys(expectedEvents).every(function(k){return (eventCounts[k]||0)===expectedEvents[k];})&&
       Object.keys(eventCounts).every(function(k){return Object.prototype.hasOwnProperty.call(expectedEvents,k);});
-    var auditOk=baseAudit.length===49&&auditIds.length===68&&auditDelta.length===19&&duplicateAuditIds.length===0&&
-      sameSet(auditIds,baseAudit.concat(auditDelta))&&eventsOk;
+    var baselineAuditPresent=baseAudit.length===49&&baseAudit.every(function(id){return auditIds.indexOf(id)>=0;});
+    var candidateAuditEntitiesOk=audit.rows.filter(function(r){return baseAudit.indexOf(norm(r.AuditID))<0;}).every(function(r){
+      return (norm(r.EntityType)==='Assignment'&&cfgA.indexOf(norm(r.EntityID))>=0)||
+        (norm(r.EntityType)==='Group'&&cfgG.indexOf(norm(r.EntityID))>=0);
+    });
+    var auditOk=baselineAuditPresent&&auditIds.length===68&&auditDelta.length===19&&duplicateAuditIds.length===0&&eventsOk&&candidateAuditEntitiesOk;
     check('PG-10-AUDIT-PRESERVATION',auditOk,
-      'Fresh AuditLogs snapshot: baseline IDs='+baseAudit.length+', current unique IDs='+auditIds.length+', post-baseline IDs='+auditDelta.length+', expected event matrix='+eventsOk+'. Preserve all rows; no audit mutation is performed.');
+      'Fresh AuditLogs snapshot: baseline IDs='+baseAudit.length+', baseline all present='+baselineAuditPresent+', current unique IDs='+auditIds.length+', post-baseline IDs='+auditDelta.length+', event matrix='+eventsOk+', candidate entity links='+candidateAuditEntitiesOk+'. Preserve all rows; no audit mutation is performed.');
 
     var baselineIds=a.preBatchIds;
     var baselineOk=baselineIds&&Array.isArray(baselineIds.Assignments)&&Array.isArray(baselineIds.Groups)&&Array.isArray(baselineIds.GroupMembers)&&
