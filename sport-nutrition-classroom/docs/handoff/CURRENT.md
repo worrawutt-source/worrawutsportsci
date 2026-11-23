@@ -758,3 +758,13 @@ The original creation function accepts a confirmation argument, but the Apps Scr
 - Fixture creation remains **NOT RUN** until the owner runs the wrapper and supplies the sanitized execution result.
 - If the wrapper stops with an error, do not rerun it; first inspect `SNC_GetSyntheticFixtureManifest_TEST()` and reconcile exact IDs.
 
+
+
+## Synthetic Core Fixture Creation — 23 Nov 2026
+- Owner-executed `SNC_SyntheticFixturePreflight_TEST()`: READY; 6/6 checks PASS; read-only; zero writes and external calls expected.
+- Owner-executed `SNC_CreateSyntheticCoreFixtures_CONFIRMED_TEST()`: execution completed successfully.
+- Result: `CORE_FIXTURE_CREATED`; evidence level `HANDLER_LEVEL_INTEGRATION`.
+- Created: 1 Course, 1 Semester, 1 CourseOffering, 6 synthetic Students, 6 Enrollments, and 1 ImportJob. Fixture manifest stored in Script Properties.
+- Cleanup status: NOT STARTED. No automatic rollback or cleanup was run.
+- Not tested in this run: Group, Assignment, Submission, Drive, Notification, Trigger, LINE, Browser/LIFF.
+- Next evidence step: run read-only `SNC_GetSyntheticFixtureManifest_TEST()` and inspect the exact generated synthetic IDs before planning the next integration stage. Do not rerun fixture creation.
