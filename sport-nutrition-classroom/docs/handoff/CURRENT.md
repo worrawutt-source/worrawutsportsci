@@ -744,3 +744,5 @@ Function: `SNC_GroupContinuationTerminalReconciliation_READONLY_TEST()`, version
 - Owner must add only the utility file to TEST GAS and run only `SNC_FinalCleanupDryRun_READONLY_TEST()`; return the complete `SNC_FINAL_CLEANUP_DRY_RUN=` log line.
 - Current gate: **OWNER RUNTIME RESULT PENDING**. Even after PASS, separate explicit cleanup execution authorization is required.
 - Cleanup implementation: **NOT CREATED**. Cleanup status: **NOT STARTED**. No rows modified or deleted.
+
+- Final static review refinement: membership flag comparison uses the same non-empty truthiness semantics as the existing inventory/reconciliation utilities (including date-backed LeftAt values). Latest utility blob SHA: `86625749e759cbadaedc303433d32a4e075ac44e`.
