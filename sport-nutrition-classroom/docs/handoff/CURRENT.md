@@ -652,3 +652,35 @@ After the owner confirms the helper copy/save, run `SNC_IntegrationTestRunner_TE
 - Database-backed Functional Integration Tests: **NOT RUN**.
 - Real LINE LIFF valid-token test: **NOT RUN**.
 - No application data, Drive resources, Script Properties, triggers, deployment settings, or LINE messages were changed by this synchronization.
+
+## Integration Test Runner v1.1.0 — owner execution evidence — 23 November 2026
+
+The owner executed `SNC_IntegrationTestRunner_TEST()` in the GAS TEST project. The supplied log shows Execution started/completed without runtime exception.
+
+- Mode: `READ_ONLY_TEST_GUARD_AND_STATIC_DISPATCH_INSPECTION`.
+- `writesExpected=0`; `externalCallsExpected=0`.
+- Environment: TEST; Spreadsheet `SportNutritionApp`; ID suffix `dYeWFk`.
+- ENV-01: PASS — TEST environment and active spreadsheet identity verified.
+- STATIC-01: PASS — `doPost` dispatcher source available.
+- STATIC-02: PASS — static route detector self-test passed.
+- INT-02 Group Management: route and handler present; **NOT RUN**.
+- INT-03 Group Authorization: route and handler present; **NOT RUN**.
+- INT-04 Submission / Revision / Idempotency: route and handler present; **NOT RUN**.
+- INT-05 File Upload / Attach / Access / Rollback: route and handler present; **NOT RUN**.
+- INT-06 Grading / Grade Review: route and handler present; **NOT RUN**.
+- INT-07 Notifications / Audit: route and handler present; **NOT RUN**.
+- INT-01 Users / Roles / Enrollment: **NOT RUN**, synthetic fixture required.
+- INT-08 Browser / LIFF E2E / Failure Recovery: **BLOCKED**, deployed browser/LIFF E2E and recovery evidence required.
+- Summary: PASS=3, FAIL=0, BLOCKED=1, NOT RUN=7; overallStatus=BLOCKED.
+
+### Interpretation and next step
+
+This execution verifies the TEST environment guard and static dispatcher/handler presence only. It is not database-backed integration evidence and does not convert INT-01..INT-07 to PASS. The read-only runner completed as designed.
+
+Proceed to a source-level review of the approved synthetic fixture creation path and actor authorization. Do not run legacy fixture/test functions or write directly to application sheets as a shortcut. Before any persistent write, produce a controlled execution procedure that checks exact TEST spreadsheet identity, confirms all reserved IDs are unused, captures exact created primary keys, and supports exact-ID rollback/cleanup. Keep file-upload tests separate until Drive folder and per-file sharing safeguards are reconfirmed. Keep notification actions and trigger functions out of this batch; the current no-token suppression is a caveat, not a durable notification stub.
+
+- Integration Runner execution: **PASS — read-only checks only**.
+- Static routes/handlers: **PRESENT — NOT RUN**.
+- Synthetic fixture creation: **NOT RUN**.
+- Database-backed integration tests: **NOT RUN**.
+- Browser/LIFF E2E: **BLOCKED / NOT RUN**.
