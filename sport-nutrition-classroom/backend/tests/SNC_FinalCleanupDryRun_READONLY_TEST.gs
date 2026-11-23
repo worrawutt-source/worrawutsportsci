@@ -88,7 +88,7 @@ function SNC_FinalCleanupDryRun_READONLY_TEST() {
     var found=rows.filter(function(r){return String(r[key]||'')===String(id);});
     return found.length===1?found[0]:null;
   }
-  function bool(v){return String(v||'').trim().toUpperCase()==='TRUE'||String(v||'').trim()==='1';}
+  function bool(v){var x=String(v===undefined||v===null?'':v).trim().toUpperCase();return x!==''&&x!=='FALSE'&&x!=='0';}
   function norm(v){return String(v===undefined||v===null?'':v).trim();}
   try {
     var props=PropertiesService.getScriptProperties();
