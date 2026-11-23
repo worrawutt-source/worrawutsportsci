@@ -775,3 +775,14 @@ The original creation function accepts a confirmation argument, but the Apps Scr
 - The helper calls the existing read-only manifest getter, logs the returned JSON, and returns it. It performs no spreadsheet writes, external calls, or cleanup.
 - Owner should copy the latest runner source into Apps Script, save, then execute `SNC_LogSyntheticFixtureManifest_TEST()` to expose the stored manifest in the execution log.
 - Source commit: `4fbc0792455fd99e3799060617e2043df320dfe0`.
+
+
+## Synthetic Core Fixture Manifest Verified — 23 Nov 2026
+- Owner executed `SNC_LogSyntheticFixtureManifest_TEST()`; execution completed and emitted the stored manifest.
+- Manifest confirms environment TEST, spreadsheet suffix `dYeWFk`, status `CORE_FIXTURE_CREATED`, evidence level `HANDLER_LEVEL_INTEGRATION`.
+- Stage reconciliation: PASS for Course creation, Semester creation, CourseOffering creation, Students import/enrollment (6), and fixture ID reconciliation (6 Users, 6 Enrollments).
+- Exact generated Course, Semester, CourseOffering, ImportJob, Student, User, and Enrollment identifiers are recorded in the TEST Script Properties manifest. Do not copy existing baseline identifiers or full identifier lists into shared documentation.
+- Baseline ID snapshots are present for Courses, Semesters, CourseOfferings, Users, Enrollments, and ImportJobs; existing records are to be preserved.
+- Cleanup remains NOT STARTED. Do not rerun core fixture creation and do not perform broad cleanup.
+- This confirms fixture creation and ID reconciliation only; it does not establish end-to-end API/browser/LIFF integration or pass Group, Assignment, Submission, Drive, Notification, Trigger, or LINE tests.
+- Next: use the stored exact manifest IDs to design/execute the next approved integration stage with narrowly scoped checks; first inspect current handlers and dependencies. Keep all existing baseline records unchanged.
