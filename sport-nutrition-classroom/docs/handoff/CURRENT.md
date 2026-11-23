@@ -136,3 +136,38 @@ The owner executed the three requested read-only functions individually in GAS. 
 5. After diagnosis, create a continuation runner that resumes only unexecuted cases from verified state and cannot replay GRP-01..GRP-06 or Assignment creates. Do not implement/run this without review and approval.
 
 No persistent test, data mutation, cleanup, code patch, deployment, trigger, Drive, or LINE action was performed during this diagnostic turn.
+
+
+## Owner-approved ASG-13 source correction — 23 Nov 2026
+
+### Approval and implementation
+- Owner approved the narrowly scoped CLOSED Assignment edit guard.
+- Updated `backend/AssignmentManagement.gs` on `development`:
+  - Immediately after Assignment lookup and offering authorization, reject `Status=CLOSED` (case-insensitive) with `CONFLICT`.
+  - Guard runs before sheet mutation and AuditLog append.
+  - No change was made to DRAFT, OPEN, or any other status behavior.
+- Added `backend/tests/SNC_AssignmentClosedEditRegression_TEST.gs`:
+  - Function: `SNC_TestClosedAssignmentEditGuard_READONLY_TEST()`.
+  - Uses the existing manifest's Individual Assignment, requires it to already be CLOSED, and attempts a synthetic title update.
+  - Verifies expected `CONFLICT`, unchanged Assignment row, and unchanged AuditLogs primary-key set.
+  - No fixture creation, cleanup, external calls, or intended writes.
+
+### GitHub commits
+- Assignment handler fix commit: `5c9dbce6e916ba28c0431279b92284e322dbdb35`.
+- Regression test addition commit: `c95873684d246ae84dc0dc2666ba9e6969033806`.
+- Current handler blob SHA: `460c7a0eb244fa5a85239d0e2f531404d58601d8`.
+- Current regression test blob SHA: `0dbc216894acb93c6fea11c90d4a46487daf73fb`.
+- Both changes are on `development`; no change to `main`.
+
+### Verification boundary
+- GitHub source was re-fetched after both commits and the guard/test contents were inspected.
+- Static source verification only. The owner has not yet copied the updated files into GAS or run the regression function.
+- Do not report ASG-13 as runtime PASS until the regression log is supplied.
+- No GAS execution, Spreadsheet mutation, deployment, cleanup, trigger, Drive, or LINE operation was performed.
+
+### Next safe actions
+1. Owner copies the updated `AssignmentManagement.gs` and new regression test file into the TEST GAS project.
+2. Run only `SNC_TestClosedAssignmentEditGuard_READONLY_TEST()`; do not rerun the original persistent Assignment/Group Runner.
+3. Share the complete sanitized log. Expected result: `success=true`, `actualErrorCode=CONFLICT`, `assignmentUnchanged=true`, `auditLogIdsUnchanged=true`.
+4. Continue with read-only exact AuditLog reconciliation and design a continuation mechanism for GRP-07 onward. The continuation must validate the existing manifest and exact current IDs before any write, and must never replay GRP-01 through GRP-06 or Assignment creation.
+5. Assignment & Group remains **INCOMPLETE** until the focused regression, remaining Group cases, exact AuditLog reconciliation, and terminal manifest reconciliation are all evidenced. Cleanup remains NOT STARTED.
