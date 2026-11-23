@@ -693,7 +693,8 @@ Created `sport-nutrition-classroom/backend/tests/SNC_SyntheticFixtureRunner_TEST
 - Source commit: `f1e57d15dcdd6894578183aefae0a5d5f3cbf3d4`.
 - Exact-ID recovery-capture hardening commit: `08caf08f95160259bc514fbb03ffec06297c4db9`.
 - Locking correction commit: `212109856a046d553538135120395174c895b5bd` (uses DocumentLock for the runner; application handlers retain their own ScriptLock).
-- Current file blob SHA: `b7580c356fbd0256cbd6c2d288bd2ca7fe9a2b63`.
+- Apps Script editor entry-point wrapper commit: `c4b61d5433baffe2e73e45e8c6a175dc641cec78` (`SNC_CreateSyntheticCoreFixtures_CONFIRMED_TEST()` supplies the exact confirmation phrase because the Apps Script Run control does not pass function arguments).
+- Current file blob SHA: `ac82b8ad56fab07237ed5401ef8fe9e4fa1f4c1e`.
 - Source: https://github.com/worrawutt-source/worrawutsportsci/blob/development/sport-nutrition-classroom/backend/tests/SNC_SyntheticFixtureRunner_TEST.gs
 
 ### Scope of this first runner batch
@@ -731,3 +732,29 @@ The file is limited to creating the synthetic core needed to start INT-01:
 Copy only this new file into the existing GAS TEST project as a new script file named `SNC_SyntheticFixtureRunner_TEST.gs`. Do not replace any existing module. After saving, run `SNC_SyntheticFixturePreflight_TEST()` only and provide the complete sanitized log. Do not run the creation function until the preflight output is reviewed. Do not run setup/migration, legacy fixture functions, file upload, notification, trigger, or cleanup functions.
 
 No GAS project, spreadsheet, Drive resource, Script Properties, trigger, deployment, or LINE configuration was changed by creating this GitHub source file.
+
+## Synthetic fixture Preflight — owner execution evidence — 23 November 2026
+
+The owner executed `SNC_SyntheticFixturePreflight_TEST()` in the GAS TEST project. The supplied execution log shows Execution started/completed without runtime exception.
+
+- Runner: `SNC_SyntheticFixtureRunner_TEST` v0.1.0.
+- Mode: `READ_ONLY_FIXTURE_PREFLIGHT`; `writesExpected=0`; `externalCallsExpected=0`.
+- TEST environment and active spreadsheet identity: **PASS**; `SportNutritionApp`, ID suffix `dYeWFk`.
+- Prior fixture manifest absent: **PASS**.
+- All six reserved synthetic StudentIDs unused: **PASS**.
+- Reserved synthetic CourseCode unused: **PASS**.
+- Reserved synthetic semester key unused: **PASS**.
+- Exactly one active existing SYSTEM_ADMIN actor available: **PASS** (identifier not logged).
+- Summary: **6 PASS, 0 BLOCKED; status READY**.
+- No fixture creation or application data write occurred during Preflight.
+
+### Apps Script editor invocation adjustment
+
+The original creation function accepts a confirmation argument, but the Apps Script editor Run control does not provide function arguments. Added `SNC_CreateSyntheticCoreFixtures_CONFIRMED_TEST()` as an explicit editor entry point. It calls the guarded creation function with the exact confirmation phrase already embedded in the source. This wrapper does not expand the approved fixture scope.
+
+- Wrapper commit: `c4b61d5433baffe2e73e45e8c6a175dc641cec78`.
+- Updated file blob SHA: `ac82b8ad56fab07237ed5401ef8fe9e4fa1f4c1e`.
+- The updated file must be copied into GAS before the wrapper appears in the function list.
+- Fixture creation remains **NOT RUN** until the owner runs the wrapper and supplies the sanitized execution result.
+- If the wrapper stops with an error, do not rerun it; first inspect `SNC_GetSyntheticFixtureManifest_TEST()` and reconcile exact IDs.
+
