@@ -208,3 +208,31 @@ Structured result:
 4. Keep cleanup, broad deletion, migration, deployment, triggers, Drive, and LINE operations out of scope absent separate approval.
 
 This checkpoint records the owner-supplied runtime log. No additional GAS execution or data mutation was performed during the documentation update.
+## Read-only AuditLog reconciliation utility added — 23 Nov 2026
+
+New file on development:
+- Path: sport-nutrition-classroom/backend/tests/SNC_AuditLogReconciliation_READONLY_TEST.gs
+- Commit: 751ec30f3a53ca1a3d31fb5a39893bec24651ceb
+- URL: https://github.com/worrawutt-source/worrawutsportsci/blob/development/sport-nutrition-classroom/backend/tests/SNC_AuditLogReconciliation_READONLY_TEST.gs
+
+Function: SNC_AuditLogReconciliation_READONLY_TEST()
+
+Read-only behavior:
+- Verifies TEST environment through the existing sncAGR_env_TEST_() guard.
+- Reads the existing Assignment/Group manifest and requires the AuditLog ID capture at GRP-05.
+- Verifies the AuditLogs schema and reads AuditID, Action, EntityType, EntityID, and CreatedAt.
+- Compares captured IDs against current AuditLogs and against the pre-batch baseline; reports missing and untracked IDs.
+- Checks duplicate IDs, expected Action/EntityType counts, and EntityID membership in the Assignment/Group manifest.
+- Does not write Sheets, Script Properties, or files; does not call external services or triggers.
+
+Expected event matrix encoded in the utility:
+- ASSIGNMENT_CREATED / Assignment: 4
+- ASSIGNMENT_UPDATED / Assignment: 2
+- ASSIGNMENT_OPENED / Assignment: 2
+- ASSIGNMENT_CLOSED / Assignment: 2
+- GROUP_CREATED / Group: 3
+- GROUP_MEMBER_JOINED / Group: 3
+
+Next action: owner copies this single new test file into the TEST GAS project and runs only SNC_AuditLogReconciliation_READONLY_TEST(). Share the complete sanitized log. Do not rerun the original persistent Assignment/Group Runner. Runtime status remains NOT RUN until owner supplies the execution result.
+
+Note: The utility requires the GRP-05 capture and does not assert that no events could exist outside the captured time window beyond the comparison against IDs added since preBatchIds. It is a read-only reconciliation aid, not a completion marker for the Assignment/Group batch.
