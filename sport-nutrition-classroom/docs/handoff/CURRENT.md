@@ -117,8 +117,7 @@ The owner executed the three requested read-only functions individually in GAS. 
 
 ### Read-only reconciliation
 - Assignments: actual new IDs=4, manifest IDs=4, all manifest IDs exist, unexpected=0.
-- Groups: actual new IDs=3, manifest IDs=3, all manifest IDs exist, unexpected=0.
-- GroupMembers: actual new IDs=6, manifest IDs=6, all manifest IDs exist, unexpected=0.
+- Groups: actual new IDs=3, manifest IDs=3, all manifest IDs exist, unexpected=0.- GroupMembers: actual new IDs=6, manifest IDs=6, all manifest IDs exist, unexpected=0.
 - AuditLogs: actual new row count=16. This helper reports a count only; it does not verify exact AuditLog IDs/events against a manifest.
 - Manifest remains IN_PROGRESS; caseCount=28; no post-failure IDs or post-batch IDs; reconciliation field remains null.
 
@@ -237,7 +236,6 @@ Next action: owner copies this single new test file into the TEST GAS project an
 
 Note: The utility requires the GRP-05 capture and does not assert that no events could exist outside the captured time window beyond the comparison against IDs added since preBatchIds. It is a read-only reconciliation aid, not a completion marker for the Assignment/Group batch.
 ## Owner-run AuditLog ID and event reconciliation — runtime PASS — 23 Nov 2026
-
 ### Execution result supplied by owner
 Function: SNC_AuditLogReconciliation_READONLY_TEST()
 Execution: started 2:01:44 PM; completed 2:01:46 PM.
@@ -357,8 +355,7 @@ Latest file was re-fetched from GitHub `development`. Static checks:
 - Diagnostic source: IMPLEMENTED ON DEVELOPMENT; STATIC REVIEW PASS.
 - Diagnostic GAS runtime: NOT RUN.
 - Group continuation: NOT IMPLEMENTED / NOT RUN.
-- Assignment & Group stage: INCOMPLETE pending diagnostic, continuation and terminal reconciliation.
-- Cleanup: NOT STARTED.
+- Assignment & Group stage: INCOMPLETE pending diagnostic, continuation and terminal reconciliation.- Cleanup: NOT STARTED.
 
 
 ## Group continuation diagnostic manifest-resolution correction — 23 Nov 2026
@@ -477,8 +474,7 @@ Static review is not GAS runtime verification. The new preflight and continuatio
   - continuationCaseCount: 9
   - pass: 9; recovered: 0; fail: 0
   - historicalASG13: `FAIL_PRESERVED`
-  - terminalReconciliation: PASS
-  - cleanupStatus: `NOT STARTED`
+  - terminalReconciliation: PASS  - cleanupStatus: `NOT STARTED`
 - This is owner-supplied runtime evidence. No independent access to the GAS execution was available.
 
 ### Assessment
@@ -598,7 +594,6 @@ Function: `SNC_GroupContinuationTerminalReconciliation_READONLY_TEST()`, version
 - Version 1.0.0; function `SNC_ExactIdInventory_READONLY_TEST()`.
 - Commit: `52cf7e662ef4fd86615ebf1ea28d64c8f1c9f08b`.
 - Current blob SHA after fetch: `abcdd2a46080e9e5b53529c95f2e3c257ba034c4`.
-
 ### Static review
 - Exact TEST environment and Spreadsheet identity guard: PASS.
 - Reads the existing core and Assignment/Group manifests; does not create or alter them.
@@ -717,8 +712,7 @@ Function: `SNC_GroupContinuationTerminalReconciliation_READONLY_TEST()`, version
 - Preview review: pending owner review.
 - Explicit cleanup authorization: **NOT GRANTED**.
 - Cleanup utility: **NOT IMPLEMENTED**.
-- Cleanup status: **NOT STARTED**. No rows/files/properties/triggers/deployments were changed by this work package.
-- Do not run any cleanup function. A separate explicit authorization and a fresh final read-only dry-run are required before any deletion.
+- Cleanup status: **NOT STARTED**. No rows/files/properties/triggers/deployments were changed by this work package.- Do not run any cleanup function. A separate explicit authorization and a fresh final read-only dry-run are required before any deletion.
 
 
 ## Owner approval — exact 14-row cleanup scope — 23 Nov 2026
@@ -838,5 +832,52 @@ Owner supplied the GAS Execution Log from 06:27:28–06:27:44.
 - Current persisted TEST state satisfies the read-only post-cleanup verification criteria for the exact 14-row scope.
 - The 06:27 cleanup invocation did **not** perform deletion; it correctly refused because the target rows were already absent. This log alone does not establish which earlier operation removed them. The post-cleanup verifier establishes their current absence and preservation checks, while the earlier successful cleanup execution log (if retained) is needed to attribute the deletion operation itself.
 - The final pre-cleanup dry-run is now expected to fail its target-row-presence checks because the target rows are already absent. Do not rerun cleanup or attempt to recreate targets.
-- **Cleanup disposition: CURRENT STATE VERIFIED — POST-CLEANUP RUNTIME PASS 8/8.**
-- Next work may proceed to a separately planned Submission Integration stage, subject to its own approved test plan. Do not treat this verification as Web App E2E/UAT or Submission integration evidence.
+
+## CHAT HANDOFF — SPORT NUTRITION CLASSROOM — 24 Nov 2026
+
+### Current authoritative project position
+- Repository: `worrawutt-source/worrawutsportsci`; work branch remains `development` only. Do not modify `main` or production.
+- Approved baseline remains DOC-01 v1.0, DOC-02 v1.1, DOCS v1.3 and SNC-WG-001 v1.0.0. DOC-03..DOC-08 remain drafts/pending and must not override approved requirements.
+- Core synthetic fixture and Assignment/Group integration work have been completed to the documented scope. The continuation runner recorded 9/9 PASS; independent terminal reconciliation v1.0.1 recorded 10/10 PASS.
+- Historical ASG-13 failure from the original Assignment/Group runner remains preserved as historical evidence. The narrowly scoped CLOSED Assignment edit guard was implemented in `backend/AssignmentManagement.gs`; the owner-run focused regression returned RUNTIME PASS: expected/actual `CONFLICT`, Assignment unchanged, AuditLog IDs unchanged. Do not erase or rewrite the historical failure.
+- Group submission-lock behavior remains untested/deferred. The Assignment/Group handler-level integration evidence is not Web App E2E/UAT.
+- Exact 14-row synthetic Assignment/Group cleanup scope was approved and execution authorization was separately granted for TEST only. The exact scope was 4 Assignments, 3 Groups and 7 GroupMembers. All AuditLogs, Core Fixture, baseline/non-allowlisted rows, Drive files, Script Properties/manifests, triggers, deployments and LINE bindings are excluded and preserved.
+
+### Latest owner-supplied GAS log — 24 Nov 2026, 06:27:28–06:27:44
+- `SNC_FinalCleanupDryRun_READONLY_TEST()` v1.0.0 returned `REQUIRES_REVIEW`, 6 PASS / 2 BLOCKED, because all 14 approved target IDs were already absent (Assignments=0 target rows, Groups=0, GroupMembers=0; exact unique-row resolution failed).
+- The cleanup invocation in this log returned `ABORTED_FINAL_DRYRUN_FAILED`. Deletion arrays were empty; `cleanupAuthorized=false`; `deletionPerformed=false`. **This invocation performed no deletion. Do not rerun cleanup or recreate the target rows.**
+- `SNC_PostCleanupVerification_READONLY_TEST()` v1.0.0 returned **RUNTIME PASS, 8 PASS / 0 BLOCKED**. This is owner-supplied GAS runtime evidence for current-state verification only.
+- Verified current state: all 23 tabs readable; all 14 approved IDs absent from every non-AuditLogs tab; 20 other Assignment rows remain; Groups=0; GroupMembers=0; Submissions=0; six synthetic Core Users and six Enrollments plus the CourseOffering remain; AuditLogs=68 unique rows (49 baseline + 19 post-baseline), schema/event matrix/entity links reconcile.
+- Verifier flags: `writesExpected=0`, `externalCallsExpected=0`, `deletionPerformed=false`. Historical ASG-13 remains `FAIL_PRESERVED`; continuation status remains `COMPLETE_WITH_HISTORICAL_FAILURE`.
+- **Evidence boundary:** this latest 06:27 log proves the 14 records are absent now and that the read-only verifier passed. It does not identify which earlier operation removed them. The cleanup invocation shown in this log did not delete them. Do not claim that this specific invocation completed cleanup.
+- No evidence from this log establishes Web App E2E/UAT, Submission integration, backup restoration, or full system regression.
+
+### Relevant source files and evidence records
+- Assignment handler fix: `backend/AssignmentManagement.gs`, commit `5c9dbce6e916ba28c0431279b92284e322dbdb35`, blob `460c7a0eb244fa5a85239d0e2f531404d58601d8`.
+- Focused regression: `backend/tests/SNC_AssignmentClosedEditRegression_TEST.gs`, commit `c95873684d246ae84dc0dc2666ba9e6969033806`; owner runtime PASS.
+- Assignment/Group continuation runner: `backend/tests/SNC_GroupContinuation_GR07_12_TEST.gs`, commit `6b035995645ffa87d0333654d8d1e3e4fb4fc935`; owner runtime 9/9 PASS.
+- Terminal reconciliation: `backend/tests/SNC_GroupContinuationTerminalReconciliation_READONLY_TEST.gs`, v1.0.1, commit `bff6dc3241766c4137df5f63c70eefed00b03560`; owner runtime 10/10 PASS.
+- Final post-cleanup verifier: `backend/tests/SNC_PostCleanupVerification_READONLY_TEST.gs`, v1.0.0, commit `e51272a60123a2c3ec0642b3cde272348a5db1be`.
+- Post-cleanup verification design/evidence: `docs/SNC_POST_CLEANUP_VERIFICATION_READONLY_v1.0.0_2026-11-24.md`, commit `b07e4b9bd2ed5ce46bb88336f281338aaf7de5ae`.
+- Exact 14-row approved scope is documented in `docs/SNC_SYNTHETIC_FIXTURE_CLEANUP_PREVIEW_v1.2_2026-11-23.md`. Approval of scope and execution authorization do not change the rule that no cleanup rerun is permitted after the current targets are absent.
+- Current TEST Spreadsheet: `SportNutritionApp`, ID `1Do67tJgV-e6mPUD1DF3Rjdl5lCYiLp7ytkaMbdYeWFk`. TEST Script Properties: `SNC_ITR_ENVIRONMENT=TEST`; `SNC_ITR_TEST_SPREADSHEET_ID` set to the same ID. Never expose synthetic IDs unnecessarily or use real student data.
+
+### Next stage — Submission Integration (NOT STARTED)
+Proceed only with the established workflow: **inspect current source → prepare a test design/plan → present for owner approval → implement approved test utilities → owner executes in GAS → reconcile evidence → update this handoff**.
+1. First inspect the current `development` versions of Submission/File/Grading/Notification handlers and the existing schemas/contracts. Do not rely on stale blob SHAs; re-fetch current source before analysis.
+2. Review approved DOC-01/DOC-02/DOCS v1.3 and the current test plan. Do not infer pending DOC-03..DOC-08 requirements.
+3. Design a narrowly scoped Submission Integration test plan, including authorization, individual submission, group submission/submitter identity, duplicate/idempotency behavior, status transitions, group lock behavior, file staging/commit boundary, audit events, failure recovery and exact cleanup/reconciliation.
+4. Clearly separate handler-level tests from Web App/API E2E. Include no real Drive uploads, notifications, LINE calls, triggers, or external side effects unless separately designed and explicitly approved.
+5. Use synthetic data only. Preserve Core Fixture and all baseline records. Any new persistent fixture or cleanup scope requires a separately reviewed exact-ID plan and explicit owner approval.
+6. Do not implement or run Submission tests until the owner approves the test design and mutation scope.
+
+### Hard safety constraints carried into the new chat
+- Do not rerun the original Assignment/Group persistent runner, continuation runner, cleanup utility, or recreate the 14 deleted target records.
+- Do not run migrations, setup, triggers, LINE push, deployment, broad deletion, or mutate production/main.
+- Do not write directly to Sheets to bypass application business handlers, except an explicitly approved cleanup utility with exact-ID guards.
+- Never claim a GAS runtime result unless the owner supplies its Execution Log. Label evidence as owner-confirmed, static inspection, or owner-run runtime.
+- After each work package, update `sport-nutrition-classroom/docs/handoff/CURRENT.md` on `development`.
+- The assistant cannot execute Apps Script; the owner copies approved code into GAS and supplies sanitized Execution Logs.
+
+### New-chat resume instruction
+Start by reading this `CURRENT.md` on branch `development`, then inspect the latest Submission-related source files and approved design documents. The immediate task is to **prepare the Submission Integration test plan for review only**. Do not start implementation or run tests before owner approval.
