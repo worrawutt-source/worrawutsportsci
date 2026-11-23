@@ -184,3 +184,14 @@ Approval of the 14-row scope is not authorization to execute cleanup. After the 
 **AuditLogs and core fixture: explicitly excluded and preserved.**
 
 The next action is owner review of this preview. Any change to the 14 IDs or the scope requires a new read-only inventory and a revised preview version. The 23-tab PG-09 scan is point-in-time evidence only; it does not authorize deletion.
+
+
+## Owner execution authorization and controlled cleanup utility — 23 Nov 2026
+
+- Owner explicitly authorized: **“อนุมัติให้ดำเนินการ Cleanup ข้อมูล 14 รายการ”**.
+- Authorization is limited to the exact 14 primary IDs enumerated in §3 of this Preview v1.2 and the TEST Spreadsheet only. It does not authorize any additional record, source branch, environment, or resource.
+- PG-12 backup/recovery readiness was separately owner-confirmed as available. This is owner confirmation, not independent verification.
+- Added `backend/tests/SNC_ApprovedCleanup_EXACT14_TEST.gs` v1.0.0. The utility requires the exact phrase `EXECUTE SNC CLEANUP EXACT 14 ROWS TEST 2026-11-23`, checks the exact TEST identity, re-runs the final read-only dry-run immediately before mutation, and stops unless every dry-run check is PASS.
+- Deletion order is GroupMembers (7) → Groups (3) → Assignments (4), by exact primary ID only. It snapshots and verifies all non-target rows in those three tables and the complete AuditLogs data grid. AuditLogs, Core Fixture, all other rows, Script Properties, Drive, triggers, deployments and LINE bindings are excluded.
+- The owner must add this single utility file to the existing TEST GAS project and invoke `SNC_ExecuteApprovedCleanup_TEST('EXECUTE SNC CLEANUP EXACT 14 ROWS TEST 2026-11-23')`.
+- **Execution status: PENDING OWNER GAS EXECUTION LOG.** The assistant cannot execute the user's Apps Script runtime. No deletion has been claimed or independently observed in this work package. If the run returns `PARTIAL_STOP`, `ABORTED_*`, or an error, do not rerun; preserve the complete log and investigate exact state first.
