@@ -107,6 +107,9 @@ function handleAssignmentManagementAction_(action,actor,p,requestId){
       var aid=cmText_(p.assignmentId,100,'assignmentId',true),current=cmGet_('Assignments','AssignmentID',aid);
       if(!current)throw apiError_('NOT_FOUND','Assignment not found.');
       amCanManage_(actor,current);
+      // DOC-02: a Closed Assignment is immutable; reject before any sheet or audit mutation.
+      if(String(current.Status||'').toUpperCase()==='CLOSED')
+        throw apiError_('CONFLICT','Closed assignments cannot be edited. Reopen the assignment before making changes.');
       var sh=cmSheet_('Assignments'),headers=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0];
       var updates={};
       if(p.title!==undefined)updates.Title=cmText_(p.title,200,'title',true);
