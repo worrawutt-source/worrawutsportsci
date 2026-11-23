@@ -135,6 +135,41 @@ function SNC_GroupContinuationStateDiagnostic_READONLY_TEST() {
         : 'Fixture manifest does not have the expected entity counts or unique identifiers.');
     if (!fixtureShapeOk) return sncGCD_finish_(result);
 
+    // Validate the columns required for safe, unambiguous inspection.
+    var requiredColumns = {
+      Assignments: ['AssignmentID','OfferingID','Status'],
+      Groups: ['GroupID','OfferingID','MembershipLockedAt','Status'],
+      GroupMembers: ['GroupMemberID','GroupID','UserID','MemberRole','LeftAt','Status'],
+      Submissions: ['AssignmentID','GroupID']
+    };
+    var schemaOk = true;
+    Object.keys(requiredColumns).forEach(function(name) {
+      var sheet = ss.getSheetByName(name);
+      if (!sheet || sheet.getLastColumn() < 1) {
+        schemaOk = false;
+        return;
+      }
+      var headers = sheet.getRange(1,1,1,sheet.getLastColumn()).getDisplayValues()[0];
+      if (!requiredColumns[name].every(function(h) {
+        return headers.indexOf(h) >= 0;
+      })) schemaOk = false;
+    });
+    var auditSheet = ss.getSheetByName('AuditLogs');
+    if (!auditSheet || auditSheet.getLastColumn() < 1) {
+      schemaOk = false;
+    } else {
+      var auditHeaders = auditSheet.getRange(1,1,1,auditSheet.getLastColumn()).getDisplayValues()[0];
+      var auditPk = auditHeaders.indexOf('AuditID') >= 0 ||
+        auditHeaders.indexOf('AuditLogID') >= 0;
+      if (!auditPk || !['Action','EntityType','EntityID'].every(function(h) {
+        return auditHeaders.indexOf(h) >= 0;
+      })) schemaOk = false;
+    }
+    check('SCHEMA-01', schemaOk,
+      schemaOk ? 'Required Assignment, Group, GroupMember, Submission and AuditLog columns are present.'
+        : 'One or more required table columns are missing or unavailable.');
+    if (!schemaOk) return sncGCD_finish_(result);
+
     // Read tables using the existing read-only helpers.
     var assignmentRows = sncAGR_rows_TEST_(ss, 'Assignments');
     var groupRows = sncAGR_rows_TEST_(ss, 'Groups');
