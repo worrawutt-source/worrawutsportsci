@@ -729,3 +729,18 @@ Function: `SNC_GroupContinuationTerminalReconciliation_READONLY_TEST()`, version
 - Next gate: prepare a fresh, read-only final dry-run against the exact TEST Spreadsheet immediately before any proposed cleanup. It must revalidate TEST identity, all 14 exact IDs and unique row matches, all-sheet references (PG-09), all exclusions and AuditLog preservation.
 - **Explicit execution authorization: NOT GRANTED.**
 - **Cleanup utility: NOT IMPLEMENTED. Cleanup: NOT STARTED.** No data was deleted or modified.
+
+
+## Final cleanup dry-run utility prepared — 23 Nov 2026
+
+- Added `backend/tests/SNC_FinalCleanupDryRun_READONLY_TEST.gs` v1.0.0.
+- Added design/run record `docs/SNC_FINAL_CLEANUP_DRY_RUN_READONLY_v1.0.0_2026-11-23.md`.
+- Utility is read-only: no writes, external calls, handler calls, Drive/LINE/UrlFetch, triggers, cleanup, or deletion.
+- Exact allowlist remains 4 Assignment + 3 Group + 7 GroupMember IDs from Preview v1.2; manifest cross-check required.
+- Checks TEST identity, core/Assignment/Group/continuation manifests, preserved historical ASG-13 FAIL, all-sheet exact-token scan, exact row resolution and metadata, relationships, Submissions dependencies, AuditLogs baseline/delta/event matrix, and baseline-ID exclusion.
+- Output always forces `cleanupAuthorized=false` and `deletionPerformed=false`.
+- AuditLogs limitation explicitly reported: current 49 baseline IDs + 19 post-baseline IDs and event matrix are checked, but no prior full-row snapshot exists to prove historical cell-by-cell immutability.
+- PG-12 backup/recovery remains a separate owner prerequisite; this read-only utility does not test backup access or restore.
+- Owner must add only the utility file to TEST GAS and run only `SNC_FinalCleanupDryRun_READONLY_TEST()`; return the complete `SNC_FINAL_CLEANUP_DRY_RUN=` log line.
+- Current gate: **OWNER RUNTIME RESULT PENDING**. Even after PASS, separate explicit cleanup execution authorization is required.
+- Cleanup implementation: **NOT CREATED**. Cleanup status: **NOT STARTED**. No rows modified or deleted.
