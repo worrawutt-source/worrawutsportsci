@@ -542,3 +542,40 @@ Replace the existing v1.0.0 diagnostic source in TEST GAS with v1.0.1 (do not ad
 - v1.0.1: source correction committed; GAS runtime NOT RUN.
 - Application data: no changes from this diagnostic correction.
 - Cleanup: NOT STARTED.
+
+
+## Owner-run independent terminal reconciliation — v1.0.1 — 23 Nov 2026
+
+### Runtime evidence supplied by owner
+Function: `SNC_GroupContinuationTerminalReconciliation_READONLY_TEST()`, version 1.0.1.
+- Overall status: **PASS**, 10 PASS, 0 BLOCKED.
+- Evidence level: `READ_ONLY_TERMINAL_DATA_AND_AUDIT_RECONCILIATION`.
+- Mode: `READ_ONLY`; writesExpected=0; externalCallsExpected=0.
+- ENV-01, MANIFEST-01, CASE-LEDGER-01, HISTORY-01, FIXTURE-IDS-01, GROUP-STATE-01, PRIMARY-IDS-01, SUBMISSIONS-01, AUDIT-SCHEMA-01 and AUDIT-DELTA-01 all PASS.
+- All nine continuation cases are uniquely recorded as PASS/RECOVERED_VERIFIED.
+- Historical ASG-13 FAIL remains preserved in the original ledger.
+- Four Assignments, three Groups and exactly seven synthetic GroupMember IDs reconcile to the manifest.
+- No Submission references the synthetic Assignment/Group fixtures.
+- Exactly 19 post-baseline AuditLogs reconcile. Earlier joins retain their distinct actors; the GRP-12 rejoin is attributed to the expected student; all Group events have RequestIDs.
+- Counts: continuationCases=9; assignments=4; groups=3; groupMembersCurrent=7; syntheticGroupMemberDelta=7; auditLogsCurrent=68; auditLogDelta=19; syntheticSubmissions=0.
+- Manifest status remains `IN_PROGRESS`; continuation status is `COMPLETE_WITH_HISTORICAL_FAILURE`; cleanupStatus=`NOT STARTED`.
+
+### Assessment and evidence boundary
+- The corrected independent terminal reconciliation is **RUNTIME PASS**, based on the owner-provided GAS log.
+- The v1.0.0 AuditLog actor-check BLOCKED is retained as historical diagnostic evidence; v1.0.1 corrected the assertion and passed. Do not erase the earlier result.
+- Assignment/Group work is reconciled at the tested handler/data/AuditLog scope, with the original ASG-13 batch FAIL preserved and the separate focused CLOSED-edit regression RUNTIME PASS.
+- This is not a full deployed Web App E2E test, Submission integration, or UAT.
+- No cleanup or data mutation occurred in this read-only execution.
+
+### Next safe work
+1. Record this owner-supplied runtime evidence in the project test evidence record.
+2. Prepare and review an exact-ID cleanup plan using only the synthetic fixture manifest and verified post-baseline ID sets. The plan must list every target table and exact primary key before any deletion; preserve all non-fixture rows and all AuditLogs unless separately approved.
+3. Do not execute cleanup, delete rows/files, alter Script Properties, or change the manifest until a separate explicit owner approval is given after reviewing the exact-ID allowlist and recovery implications.
+4. After cleanup disposition is resolved, plan Submission Management integration as a separate stage. Group membership lock on first Group Submission remains untested/deferred.
+
+### Current status
+- Assignment & Group continuation: 9/9 cases PASS; independent terminal reconciliation 10/10 PASS.
+- ASG-13: historical batch FAIL preserved; focused CLOSED-edit corrective regression RUNTIME PASS.
+- Assignment/Group manifest: `IN_PROGRESS` (historical parent manifest status retained; do not rewrite solely to make it appear complete).
+- Cleanup: **NOT STARTED — separate approval required**.
+- Submission integration and Group submission-lock behavior: **NOT STARTED / DEFERRED**.
