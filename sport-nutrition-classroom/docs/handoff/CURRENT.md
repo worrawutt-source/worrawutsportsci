@@ -579,3 +579,13 @@ Function: `SNC_GroupContinuationTerminalReconciliation_READONLY_TEST()`, version
 - Assignment/Group manifest: `IN_PROGRESS` (historical parent manifest status retained; do not rewrite solely to make it appear complete).
 - Cleanup: **NOT STARTED — separate approval required**.
 - Submission integration and Group submission-lock behavior: **NOT STARTED / DEFERRED**.
+
+
+## Draft cleanup plan created — 23 Nov 2026
+
+- Added `docs/SNC_SYNTHETIC_FIXTURE_CLEANUP_PLAN_v1.0_DRAFT_2026-11-23.md` on `development`.
+- Commit: `9fa9ac6a6db6c2761935881e2582b4f84ca6b187`.
+- This is a planning document only. It contains no deletion code and does not authorize cleanup.
+- Exact primary-key IDs are intentionally not fabricated; they must be extracted from the persisted manifest and revalidated against current TEST tables in a separate read-only inventory.
+- AuditLogs are designated for preservation. Core fixture Users, Enrollments, Course, Semester and CourseOffering are not included in the cleanup scope pending the owner's decision on whether they are needed for Submission Integration.
+- Cleanup remains **NOT STARTED**. No rows, files, properties, triggers or deployments were changed.
