@@ -1,6 +1,6 @@
 /**
  * SPORT NUTRITION CLASSROOM — Group Continuation State Diagnostic
- * TEST / READ-ONLY / v1.0.0
+ * TEST / READ-ONLY / v1.0.1
  *
  * Verifies whether the existing Assignment & Group fixture is in the exact
  * pre-GRP-07 state required by GROUP_CONTINUATION_DESIGN_v1.0.
@@ -12,7 +12,7 @@
 function SNC_GroupContinuationStateDiagnostic_READONLY_TEST() {
   var result = {
     test: 'SNC_GROUP_CONTINUATION_STATE_DIAGNOSTIC',
-    version: '1.0.0',
+    version: '1.0.1',
     evidenceLevel: 'READ_ONLY_TEST_DATA_INSPECTION',
     mode: 'READ_ONLY',
     writesExpected: 0,
