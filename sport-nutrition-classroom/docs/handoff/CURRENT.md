@@ -775,3 +775,15 @@ Owner supplied the complete GAS Execution Log for `SNC_FinalCleanupDryRun_READON
 - This confirmation closes the owner-readiness response for PG-12; it does not change the 14-row allowlist or grant cleanup execution authorization.
 - Final dry-run remains PASS (15/15). Cleanup implementation remains not created; cleanup remains **NOT STARTED**; no records have been modified or deleted.
 - **Separate explicit cleanup execution authorization is still required** before any deletion code is prepared or run.
+
+
+## Owner authorization — exact 14-row TEST cleanup — 23 Nov 2026
+
+- Owner explicitly authorized cleanup of the 14 exact records in Preview v1.2. Scope is unchanged: 4 Assignments, 3 Groups, 7 GroupMembers; TEST Spreadsheet only.
+- PG-12 backup/recovery readiness: owner-confirmed available (not independently verified).
+- Added `backend/tests/SNC_ApprovedCleanup_EXACT14_TEST.gs` v1.0.0; commit: `84a7dcbd32830f1f9743b5affacc0855f32fc975`.
+- Entry point: `SNC_ExecuteApprovedCleanup_TEST('EXECUTE SNC CLEANUP EXACT 14 ROWS TEST 2026-11-23')`.
+- Utility requires exact TEST Script Properties/active Spreadsheet, re-runs `SNC_FinalCleanupDryRun_READONLY_TEST()` immediately before mutation, and requires all checks PASS.
+- Controlled exact-ID delete order: GroupMembers 7 → Groups 3 → Assignments 4. Verifies non-target rows in all three tables and compares the complete AuditLogs data grid before/after. No cascade, broad predicate, or other resource mutation.
+- Owner must add only this new utility file to the existing TEST GAS project and run the entry point above. Assistant cannot execute GAS runtime.
+- **Current status: UTILITY COMMITTED; OWNER GAS EXECUTION PENDING; CLEANUP NOT YET VERIFIED.** No deletion is claimed. If result is PARTIAL_STOP/ABORTED/error, do not rerun; share full log for reconciliation.
