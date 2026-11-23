@@ -692,7 +692,8 @@ Created `sport-nutrition-classroom/backend/tests/SNC_SyntheticFixtureRunner_TEST
 - Version: **0.1.0**.
 - Source commit: `f1e57d15dcdd6894578183aefae0a5d5f3cbf3d4`.
 - Exact-ID recovery-capture hardening commit: `08caf08f95160259bc514fbb03ffec06297c4db9`.
-- Current file blob SHA: `080cb3771c18586f835f31858a5fa2adb18f2a92`.
+- Locking correction commit: `212109856a046d553538135120395174c895b5bd` (uses DocumentLock for the runner; application handlers retain their own ScriptLock).
+- Current file blob SHA: `b7580c356fbd0256cbd6c2d288bd2ca7fe9a2b63`.
 - Source: https://github.com/worrawutt-source/worrawutsportsci/blob/development/sport-nutrition-classroom/backend/tests/SNC_SyntheticFixtureRunner_TEST.gs
 
 ### Scope of this first runner batch
