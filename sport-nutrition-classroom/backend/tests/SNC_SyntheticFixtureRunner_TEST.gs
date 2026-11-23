@@ -97,6 +97,15 @@ function SNC_SyntheticFixturePreflight_TEST() {
 }
 
 /**
+ * Manual Apps Script editor entry point for the already-approved fixture batch.
+ * Run only after reviewing SNC_SyntheticFixturePreflight_TEST() = READY.
+ * This wrapper supplies the exact confirmation phrase; it performs persistent writes.
+ */
+function SNC_CreateSyntheticCoreFixtures_CONFIRMED_TEST() {
+  return SNC_CreateSyntheticCoreFixtures_TEST('CREATE SNC TEST FIXTURES 2026-11-22');
+}
+
+/**
  * Creates only the approved core fixture. This is a persistent write operation.
  * Run SNC_SyntheticFixturePreflight_TEST() first and inspect READY before calling.
  */
