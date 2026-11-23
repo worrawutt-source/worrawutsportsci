@@ -746,3 +746,23 @@ Function: `SNC_GroupContinuationTerminalReconciliation_READONLY_TEST()`, version
 - Cleanup implementation: **NOT CREATED**. Cleanup status: **NOT STARTED**. No rows modified or deleted.
 
 - Final static review refinement: membership flag comparison uses the same non-empty truthiness semantics as the existing inventory/reconciliation utilities (including date-backed LeftAt values). Latest utility blob SHA: `86625749e759cbadaedc303433d32a4e075ac44e`.
+
+
+## Final cleanup dry-run — owner runtime PASS — 23 Nov 2026
+
+Owner supplied the complete GAS Execution Log for `SNC_FinalCleanupDryRun_READONLY_TEST()` v1.0.0.
+
+- Runtime status: **PASS**, 15 PASS / 0 BLOCKED.
+- Evidence level: `FINAL_READ_ONLY_PRE_CLEANUP_DRY_RUN`.
+- TEST identity: PASS; exact configured and active TEST Spreadsheet matched.
+- Manifests and continuation state: PASS; historical ASG-13 FAIL preserved.
+- Exact allowlist: PASS; exactly 4 Assignments, 3 Groups, 7 GroupMembers.
+- All 23 tabs readable; exact-ID/composite-reference scan found 0 unexpected references.
+- All 14 target IDs resolve exactly once; record metadata and relationships match Preview v1.2.
+- Submissions: 0 rows; no candidate references.
+- AuditLogs: 68 unique IDs; all 49 baseline IDs present; 19 post-baseline IDs present; event matrix and candidate entity links pass. Preserve all 68.
+- Core fixture: 6 synthetic users and approved CourseOffering retained.
+- Runtime flags: `writesExpected=0`, `externalCallsExpected=0`, `cleanupAuthorized=false`, `deletionPerformed=false`.
+- Limitations remain: no prior full-row AuditLogs snapshot exists to prove historical cell-by-cell immutability; PG-12 backup/recovery access is not tested by this utility and remains a separate owner prerequisite.
+- **Decision:** Final read-only dry-run passed at the time of owner execution. This does not authorize deletion. Cleanup implementation remains not created; cleanup remains **NOT STARTED**; no records were modified or deleted.
+- Next gate: owner must separately provide explicit cleanup execution authorization after reviewing the PASS result and confirming the PG-12 backup/recovery prerequisite. Until then, do not implement or execute deletion.
