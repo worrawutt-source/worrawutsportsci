@@ -308,3 +308,13 @@ function sncSFR_captureNewIds_TEST_(ss,baseline) {
   });
   return out;
 }
+
+/**
+ * Logs the stored synthetic fixture manifest for owner verification.
+ * Read-only: does not create, update, or delete spreadsheet records.
+ */
+function SNC_LogSyntheticFixtureManifest_TEST() {
+  var result = SNC_GetSyntheticFixtureManifest_TEST();
+  Logger.log('SNC_SYNTHETIC_FIXTURE_MANIFEST=' + JSON.stringify(result));
+  return result;
+}
