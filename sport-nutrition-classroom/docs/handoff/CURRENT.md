@@ -459,3 +459,8 @@ Static review is not GAS runtime verification. The new preflight and continuatio
 - If an execution is interrupted after a mutation, do not rerun blindly. Preserve the checkpoint and request read-only reconciliation before any further action.
 - Original Assignment/Group runner must never be rerun.
 - Cleanup remains NOT STARTED.
+
+
+### Additional fail-closed limitation
+- The preflight deliberately requires the original pre-GRP-07 membership composition and exact original GroupMember ID set. Therefore, if a persistent run is interrupted after GRP-09, GRP-11 or GRP-12 has changed application state, a fresh preflight will BLOCK rather than resume automatically.
+- The RequestID/state recovery checks in the runner are not a substitute for a successful resume gate. In that interruption scenario, preserve the manifest/checkpoint and obtain a separate read-only reconciliation before changing or rerunning anything. Do not claim automatic resumability.
