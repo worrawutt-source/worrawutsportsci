@@ -799,3 +799,22 @@ The original creation function accepts a confirmation argument, but the Apps Scr
 - No GAS execution, spreadsheet writes, deployment, source synchronization, notifications, LINE, Drive, trigger, migration, or cleanup was performed for this design.
 - Next step: review/implement a separate TEST-only Assignment/Group runner with read-only preflight, exact-ID manifest extension, notification stub, stop-on-error and post-run reconciliation. Execute only after runner review and explicit owner authorization.
 - Design document commit: `5054d9b4e6790122cb6752e986f4c55f89e4e52c`.
+
+
+## Assignment & Group Integration Runner — 23 Nov 2026
+- Added `backend/tests/SNC_AssignmentGroupIntegrationRunner_TEST.gs` v0.1.0 on `development`.
+- Initial runner commit: `91e3117869ce82ac59837b9c8e16013e38e73400`.
+- Hardening commit: `569b61c41e02930662abd451bdaaf61be3423678`.
+- Runner link: https://github.com/worrawutt-source/worrawutsportsci/blob/development/sport-nutrition-classroom/backend/tests/SNC_AssignmentGroupIntegrationRunner_TEST.gs
+- Design reference: `docs/ASSIGNMENT_GROUP_INTEGRATION_TEST_DESIGN_v1.0_2026-11-23.md`.
+- Uses the existing core fixture manifest only; no new Course, Semester, CourseOffering, User, or Enrollment.
+- Read-only preflight: exact TEST spreadsheet/environment; core manifest status and six user/enrollment IDs; active offering; Assignment/Group/GroupMember/AuditLog schema; no prior extension; no reserved-prefix collision; exactly one active SYSTEM_ADMIN.
+- Persistent entry point: `SNC_RunAssignmentGroupIntegration_CONFIRMED_TEST()`; exact confirmation is embedded in the editor wrapper. The parameterized function also requires the exact phrase.
+- Per handler write, captures post-minus-pre IDs and stores AssignmentID, GroupID, GroupMemberID values in the existing Script Properties manifest. Any unexpected exception stops the batch and records exact post-failure ID deltas as `STOPPED_REQUIRES_RECONCILIATION`; never rerun a stopped batch.
+- Notification callback is replaced with an in-memory stub around assignment open/close and restored in `finally`. The runner does not depend on missing LINE token as a safety boundary.
+- Tests Assignment create/validation/list/get/update/manual open-close/duplicate transitions/closed-edit guard and Group create/join/duplicate membership/enrollment gate/visibility/representative/leave/rejoin.
+- Post-test reconciliation compares exact new Assignment, Group, GroupMember primary keys against the extension manifest. AuditLog primary key is detected from supported header names.
+- Known ASG-13 requirement gap is deliberately tested: source currently appears to permit update while CLOSED. If accepted, this case is recorded FAIL; it may update only the synthetic assignment's UpdatedAt/AuditLog while retaining the same title. No source fix included.
+- Group membership lock remains excluded; it must be exercised through Submission Management in a later stage.
+- No GAS execution, source synchronization to GAS, spreadsheet write, deployment, LINE/Drive call, trigger, submission, or cleanup has been performed for this runner.
+- **Current runner status: CREATED IN GITHUB / NOT RUNTIME-VERIFIED / NOT COPIED TO GAS.** Do not run until source review and owner-side TEST GAS synchronization are completed. First copy the file, save, run only `SNC_AssignmentGroupPreflight_TEST()`, and share the sanitized result. Persistent execution remains a separate explicit step.
