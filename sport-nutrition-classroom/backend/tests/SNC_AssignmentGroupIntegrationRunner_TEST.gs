@@ -272,3 +272,148 @@ function sncAGR_ids_TEST_(ss){
   });return out;
 }
 function sncAGR_save_TEST_(m){PropertiesService.getScriptProperties().setProperty(SNC_AGR_CONFIG_TEST.MANIFEST_PROPERTY,JSON.stringify(m));}
+function SNC_LogAssignmentGroupManifestSummary_TEST() {
+  var r = SNC_GetAssignmentGroupManifest_TEST();
+
+  if (!r.success) {
+    Logger.log('SNC_MANIFEST_SUMMARY=' + JSON.stringify(r));
+    return;
+  }
+
+  var a = r.assignmentGroup;
+
+  if (!a) {
+    Logger.log('SNC_MANIFEST_SUMMARY=' + JSON.stringify({
+      success: true,
+      coreStatus: r.coreStatus,
+      assignmentGroup: null
+    }));
+    return;
+  }
+
+  var cases = Array.isArray(a.cases) ? a.cases : [];
+  var delta = a.postFailureNewIds || {};
+
+  var summary = {
+    success: true,
+    coreStatus: r.coreStatus,
+    status: a.status || null,
+    stopReason: a.stopReason || null,
+    caseCount: cases.length,
+    pass: cases.filter(function(x) {
+      return x.status === 'PASS';
+    }).length,
+    fail: cases.filter(function(x) {
+      return x.status === 'FAIL';
+    }).length,
+    notRun: cases.filter(function(x) {
+      return x.status === 'NOT_RUN';
+    }).length,
+    postFailureNewIdCounts: {
+      Assignments: (delta.Assignments || []).length,
+      Groups: (delta.Groups || []).length,
+      GroupMembers: (delta.GroupMembers || []).length,
+      AuditLogs: (delta.AuditLogs || []).length
+    },
+    notificationStubbed: a.notificationStubbed,
+    notificationStubRestored: a.notificationStubRestored
+  };
+
+  Logger.log('SNC_MANIFEST_SUMMARY=' + JSON.stringify(summary));
+}
+function SNC_LogAssignmentGroupFailureDetail_TEST() {
+  var r = SNC_GetAssignmentGroupManifest_TEST();
+  var a = r.assignmentGroup;
+
+  if (!a) {
+    Logger.log('FAILURE_DETAIL=' + JSON.stringify(r));
+    return;
+  }
+
+  Logger.log('SNC_FAILURE_DETAIL=' + JSON.stringify({
+    status: a.status,
+    stopReason: a.stopReason || null,
+    caseResults: (a.cases || []).map(function(c) {
+      return {
+        id: c.id,
+        status: c.status,
+        expected: c.expected,
+        actual: c.actual,
+        detail: c.detail
+      };
+    }),
+    assignmentManifestCount: Object.keys(a.assignments || {}).length,
+    groupManifestCount: Object.keys(a.groups || {}).length,
+    lastWriteCapture: a.lastWriteCapture ? {
+      caseId: a.lastWriteCapture.caseId,
+      newIdCounts: Object.keys(a.lastWriteCapture.newIds || {}).reduce(function(o, k) {
+        o[k] = (a.lastWriteCapture.newIds[k] || []).length;
+        return o;
+      }, {})
+    } : null,
+    hasPostFailureIds: Boolean(a.postFailureNewIds),
+    hasPostBatchIds: Boolean(a.postBatchIds),
+    reconciliation: a.reconciliation || null
+  }));
+}
+function SNC_ReconcileAssignmentGroup_READONLY_TEST() {
+  var r = SNC_GetAssignmentGroupManifest_TEST();
+  if (!r.success || !r.assignmentGroup) {
+    Logger.log('RECONCILIATION=' + JSON.stringify({
+      success: false,
+      reason: 'Manifest unavailable'
+    }));
+    return;
+  }
+
+  var a = r.assignmentGroup;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var actual = sncAGR_ids_TEST_(ss);
+  var base = a.preBatchIds || {};
+
+  var delta = {};
+  Object.keys(actual).forEach(function(k) {
+    delta[k] = actual[k].filter(function(id) {
+      return (base[k] || []).indexOf(id) < 0;
+    });
+  });
+
+  var expectedAssignments = Object.keys(a.assignments || {})
+    .map(function(k) { return a.assignments[k]; });
+
+  var expectedGroups = Object.keys(a.groups || {})
+    .map(function(k) { return a.groups[k].groupId; });
+
+  var expectedMembers = [];
+  Object.keys(a.groups || {}).forEach(function(k) {
+    expectedMembers = expectedMembers.concat(a.groups[k].memberIds || []);
+  });
+
+  function compare(actualIds, expectedIds) {
+    return {
+      actualCount: actualIds.length,
+      manifestCount: expectedIds.length,
+      allManifestIdsExist: expectedIds.every(function(id) {
+        return actualIds.indexOf(id) >= 0;
+      }),
+      unexpectedCount: actualIds.filter(function(id) {
+        return expectedIds.indexOf(id) < 0;
+      }).length
+    };
+  }
+
+  Logger.log('SNC_READONLY_RECONCILIATION=' + JSON.stringify({
+    manifestStatus: a.status,
+    caseCount: (a.cases || []).length,
+    actualNewRows: {
+      Assignments: compare(delta.Assignments || [], expectedAssignments),
+      Groups: compare(delta.Groups || [], expectedGroups),
+      GroupMembers: compare(delta.GroupMembers || [], expectedMembers),
+      AuditLogs: (delta.AuditLogs || []).length
+    },
+    lastWriteCaptureCase: a.lastWriteCapture
+      ? a.lastWriteCapture.caseId : null,
+    postFailureIdsPresent: Boolean(a.postFailureNewIds),
+    postBatchIdsPresent: Boolean(a.postBatchIds)
+  }));
+}
