@@ -787,3 +787,13 @@ Owner supplied the complete GAS Execution Log for `SNC_FinalCleanupDryRun_READON
 - Controlled exact-ID delete order: GroupMembers 7 → Groups 3 → Assignments 4. Verifies non-target rows in all three tables and compares the complete AuditLogs data grid before/after. No cascade, broad predicate, or other resource mutation.
 - Owner must add only this new utility file to the existing TEST GAS project and run the entry point above. Assistant cannot execute GAS runtime.
 - **Current status: UTILITY COMMITTED; OWNER GAS EXECUTION PENDING; CLEANUP NOT YET VERIFIED.** No deletion is claimed. If result is PARTIAL_STOP/ABORTED/error, do not rerun; share full log for reconciliation.
+
+
+## Owner GAS cleanup invocation — confirmation guard aborted safely — 24 Nov 2026
+
+- Owner supplied Execution Log for `SNC_ExecuteApprovedCleanup_TEST` v1.0.0, Preview v1.2.
+- Runtime result: `ABORTED_CONFIRMATION_REQUIRED`; reason: `Exact execution phrase did not match.`
+- No deletion occurred: GroupMembers/Groups/Assignments arrays all empty; `cleanupAuthorized=false`; `deletionPerformed=false`.
+- This abort occurred at the initial confirmation-phrase guard, before TEST identity checks, fresh dry-run, or any mutation.
+- No recovery is required. A new invocation may be attempted only with the exact phrase embedded in the utility: `EXECUTE SNC CLEANUP EXACT 14 ROWS TEST 2026-11-23`.
+- Do not change the allowlist or utility. If the next execution returns anything other than a complete verified result, stop and provide the full log for reconciliation.
