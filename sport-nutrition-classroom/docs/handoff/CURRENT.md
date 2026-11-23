@@ -589,3 +589,34 @@ Function: `SNC_GroupContinuationTerminalReconciliation_READONLY_TEST()`, version
 - Exact primary-key IDs are intentionally not fabricated; they must be extracted from the persisted manifest and revalidated against current TEST tables in a separate read-only inventory.
 - AuditLogs are designated for preservation. Core fixture Users, Enrollments, Course, Semester and CourseOffering are not included in the cleanup scope pending the owner's decision on whether they are needed for Submission Integration.
 - Cleanup remains **NOT STARTED**. No rows, files, properties, triggers or deployments were changed.
+
+
+## Exact-ID inventory utility prepared — read-only — 23 Nov 2026
+
+### Source artifact
+- Added `backend/tests/SNC_ExactIdInventory_READONLY_TEST.gs` on `development`.
+- Version 1.0.0; function `SNC_ExactIdInventory_READONLY_TEST()`.
+- Commit: `52cf7e662ef4fd86615ebf1ea28d64c8f1c9f08b`.
+- Current blob SHA after fetch: `abcdd2a46080e9e5b53529c95f2e3c257ba034c4`.
+
+### Static review
+- Exact TEST environment and Spreadsheet identity guard: PASS.
+- Reads the existing core and Assignment/Group manifests; does not create or alter them.
+- Compares current post-baseline Assignment, Group and GroupMember primary IDs against the exact manifest ID sets (expected 4/3/7).
+- Resolves each manifest ID to exactly one current row and reports its exact primary ID plus limited synthetic record metadata.
+- Checks Assignment/Group OfferingID relationships, GroupMember-to-Group references, reserved synthetic prefix on Assignment titles/Group names, and Submission references.
+- Confirms the 19 post-baseline AuditLog IDs remain present and labels AuditLogs `PRESERVE_ALL`.
+- Static checks passed: version, TEST guard, manifest getters, exact ID set comparison, dependency checks, AuditLog preservation, absence of write/delete/handler APIs, and structured exact inventory logging.
+- No GAS runtime execution has occurred yet. Static review is not runtime evidence.
+
+### Owner action — read-only only
+1. Add this single file to the existing TEST GAS project. Do not replace existing runners or add duplicate copies.
+2. Run only `SNC_ExactIdInventory_READONLY_TEST()`.
+3. Share the complete `SNC_EXACT_ID_INVENTORY` log. It contains synthetic IDs only; redact any unexpected personal or non-synthetic values if present.
+4. Do not run any cleanup, deletion, persistent test runner, migration, trigger, Drive, LINE, or deployment function.
+
+### Safety / interpretation
+- The inventory function is read-only by design: no Spreadsheet/Script Properties writes, no application handlers, no external calls, and no deletion.
+- It will return `REQUIRES_REVIEW` if any ID set, row resolution, relationship, Submission dependency, synthetic prefix, or AuditLog count differs from the reconciled state.
+- A PASS inventory is a proposed candidate list for owner review only; it does not authorize deletion.
+- Cleanup remains **NOT STARTED**. The core fixture is not included in this Assignment/Group inventory.
