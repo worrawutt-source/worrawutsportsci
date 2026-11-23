@@ -812,3 +812,31 @@ Owner supplied the complete GAS Execution Log for `SNC_FinalCleanupDryRun_READON
 - Added `sport-nutrition-classroom/docs/SNC_POST_CLEANUP_VERIFICATION_READONLY_v1.0.0_2026-11-24.md` with design, safety constraints, evidence boundary and owner run instructions.
 - **Runtime status: PENDING OWNER GAS EXECUTION.** No runtime PASS is claimed. Owner should add only the new verifier file to the existing TEST GAS project and run only `SNC_PostCleanupVerification_READONLY_TEST()`; share the complete `SNC_POST_CLEANUP_VERIFICATION=` log.
 - Do not rerun cleanup or restart Integration Test until the read-only post-cleanup verification returns PASS and its evidence is reviewed.
+
+
+## Owner runtime — post-cleanup verification PASS — 24 Nov 2026
+
+Owner supplied the GAS Execution Log from 06:27:28–06:27:44.
+
+### Evidence from this execution
+- `SNC_FinalCleanupDryRun_READONLY_TEST()` v1.0.0 returned `REQUIRES_REVIEW` (6 PASS / 2 BLOCKED):
+  - `PG-09-TARGET-ROWS` observed Assignments=0, Groups=0, GroupMembers=0 for the 14 allowlisted target records.
+  - `PG-05-UNIQUE-ROWS` was BLOCKED because the 14 exact IDs no longer resolve to one row each.
+- The subsequent `SNC_ExecuteApprovedCleanup_TEST()` invocation stopped safely with `ABORTED_FINAL_DRYRUN_FAILED`; its deletion arrays were empty, `cleanupAuthorized=false`, and `deletionPerformed=false`. **No deletion occurred during this invocation.**
+- `SNC_PostCleanupVerification_READONLY_TEST()` v1.0.0 returned **RUNTIME PASS, 8 PASS / 0 BLOCKED**:
+  - Exact TEST identity and all 23 tabs passed.
+  - All 14 approved IDs absent from every non-AuditLogs tab.
+  - No allowlisted Assignment/Group/GroupMember IDs remain; Groups=0 rows and GroupMembers=0 rows.
+  - Assignments sheet has 20 rows remaining; none of the four allowlisted Assignment IDs remains.
+  - Core fixture preserved: six synthetic Users, six Enrollments, and one exact CourseOffering.
+  - AuditLogs: 68 unique rows; all 49 baseline IDs and 19 post-baseline events present; schema, event matrix and entity links pass.
+  - Submissions rows=0.
+  - `writesExpected=0`, `externalCallsExpected=0`, `deletionPerformed=false` for the verifier.
+- Historical ASG-13 remains `FAIL_PRESERVED`; continuation marker remains `COMPLETE_WITH_HISTORICAL_FAILURE`.
+
+### Interpretation and disposition
+- Current persisted TEST state satisfies the read-only post-cleanup verification criteria for the exact 14-row scope.
+- The 06:27 cleanup invocation did **not** perform deletion; it correctly refused because the target rows were already absent. This log alone does not establish which earlier operation removed them. The post-cleanup verifier establishes their current absence and preservation checks, while the earlier successful cleanup execution log (if retained) is needed to attribute the deletion operation itself.
+- The final pre-cleanup dry-run is now expected to fail its target-row-presence checks because the target rows are already absent. Do not rerun cleanup or attempt to recreate targets.
+- **Cleanup disposition: CURRENT STATE VERIFIED — POST-CLEANUP RUNTIME PASS 8/8.**
+- Next work may proceed to a separately planned Submission Integration stage, subject to its own approved test plan. Do not treat this verification as Web App E2E/UAT or Submission integration evidence.
