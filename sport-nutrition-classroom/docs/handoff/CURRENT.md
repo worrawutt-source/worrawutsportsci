@@ -171,3 +171,40 @@ No persistent test, data mutation, cleanup, code patch, deployment, trigger, Dri
 3. Share the complete sanitized log. Expected result: `success=true`, `actualErrorCode=CONFLICT`, `assignmentUnchanged=true`, `auditLogIdsUnchanged=true`.
 4. Continue with read-only exact AuditLog reconciliation and design a continuation mechanism for GRP-07 onward. The continuation must validate the existing manifest and exact current IDs before any write, and must never replay GRP-01 through GRP-06 or Assignment creation.
 5. Assignment & Group remains **INCOMPLETE** until the focused regression, remaining Group cases, exact AuditLog reconciliation, and terminal manifest reconciliation are all evidenced. Cleanup remains NOT STARTED.
+
+## Owner-run ASG-13 closed-assignment regression — runtime evidence — 23 Nov 2026
+
+### Execution result supplied by owner
+The owner copied the approved AssignmentManagement.gs fix and regression test into the TEST GAS project and ran only:
+- SNC_TestClosedAssignmentEditGuard_READONLY_TEST()
+
+Execution log:
+- Started: 1:54:14 PM
+- Regression result logged: 1:54:26 PM
+- Completed: 1:54:23 PM (the supplied log timestamps are not chronologically ordered; preserve as reported and do not infer execution duration)
+
+Structured result:
+- success=true
+- evidenceLevel=HANDLER_LEVEL_READ_ONLY_REGRESSION
+- test=CLOSED_ASSIGNMENT_EDIT_REJECTED_WITHOUT_MUTATION
+- expectedErrorCode=CONFLICT
+- actualErrorCode=CONFLICT
+- assignmentUnchanged=true
+- auditLogIdsUnchanged=true
+- writesExpected=0
+- externalCallsExpected=0
+
+### Assessment
+- ASG-13 focused regression: RUNTIME PASS, based on the owner-provided GAS execution log.
+- This verifies the CLOSED Assignment edit guard rejects the update with CONFLICT and, for this test invocation, the Assignment row and AuditLog primary-key set remain unchanged.
+- Evidence scope is handler-level regression; it is not a full API/deployment E2E test and does not validate other Assignment statuses.
+- The earlier Assignment & Group batch remains INCOMPLETE: manifest still needs exact AuditLog reconciliation, verified continuation for GRP-07 onward, remaining Group cases, and terminal manifest reconciliation.
+- The original persistent Runner must not be rerun. No cleanup has been performed.
+
+### Next safe work
+1. Perform read-only exact AuditLog reconciliation against the existing manifest and expected action/entity pairs.
+2. Review the Apps Script Executions record for the original Runner if available; the interruption cause remains NOT DETERMINED.
+3. Prepare a continuation design that starts only from verified unexecuted cases and cannot replay completed Assignment/Group writes. Obtain owner approval before implementing any new continuation code or expanding test scope.
+4. Keep cleanup, broad deletion, migration, deployment, triggers, Drive, and LINE operations out of scope absent separate approval.
+
+This checkpoint records the owner-supplied runtime log. No additional GAS execution or data mutation was performed during the documentation update.
