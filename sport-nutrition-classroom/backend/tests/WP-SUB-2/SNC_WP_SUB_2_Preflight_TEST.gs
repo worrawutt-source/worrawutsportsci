@@ -212,11 +212,11 @@ function SNC_WP_SUB_2_Preflight_READONLY_TEST() {
         }
       });
 
-      if (!missingSheets.length && !malformedSheets.length) {
-        pass('PF-15', 'พบ Sheet ที่จำเป็นและ Header ไม่ว่าง/ไม่ซ้ำ');
-      } else {
-        fail('PF-15', 'Schema ไม่ครบหรือ Header ผิดรูปแบบ: missingSheets=' +
+      if (missingSheets.length || malformedSheets.length) {
+        fail('PF-15', 'Sheet/Header มีข้อผิดพลาด: missingSheets=' +
           missingSheets.length + ', malformedSheets=' + malformedSheets.length);
+      } else {
+        blocked('PF-15', 'พบ Sheet และ Header เบื้องต้น แต่ยังไม่มี approved required-header manifest สำหรับยืนยัน Schema ครบถ้วน');
       }
     }
   } catch (e) {
@@ -234,7 +234,7 @@ function SNC_WP_SUB_2_Preflight_READONLY_TEST() {
         var sh = active.getSheetByName(name);
         counts[name] = sh ? Math.max(0, sh.getLastRow() - 1) : null;
       });
-      evidence.baselineCapturedReadOnly = true;
+      evidence.baselineCapturedReadOnly = false;
       blocked('PF-16', 'อ่านจำนวนแถวได้แบบชั่วคราว แต่ยังไม่มี exact-ID/Drive inventory baseline');
       evidence.transientRowCounts = counts;
     } else {
