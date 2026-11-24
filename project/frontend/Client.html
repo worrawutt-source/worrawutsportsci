@@ -1019,12 +1019,43 @@ async function renderSystemSettings(){
 }
 
 async function renderAdvisorGroups(){
- const a=$('sectionText');a.textContent='กำลังโหลดกลุ่มที่ได้รับมอบหมาย...';
+ const a=$('sectionText');
+ a.textContent='กำลังโหลดกลุ่มที่ได้รับมอบหมาย...';
  try{
-  const report=await callApi('apiGetAssessmentReport',sessionToken);a.textContent='';
-  if(!report.length){a.textContent='ยังไม่มีกลุ่มที่ได้รับมอบหมาย';return;}
-  for(const g of report){const box=el('div',{className:'notice'});box.append(el('h3',{},g.groupName),el('p',{},'หัวข้อวิจัย: '+(g.topicTh||'ยังไม่กำหนด')),el('p',{},'สมาชิก '+g.members.length+' คน'));g.members.forEach(m=>box.append(el('p',{},m.studentId+' · '+m.studentName)));const ethics=await callApi('apiGetGroupEthicsSummary',sessionToken,g.groupId);if(ethics)box.append(el('h4',{},'สรุปแผนจริยธรรม (อ่านอย่างเดียว)'),el('p',{},'แผน: '+({DURING_COURSE:'ยื่นระหว่างรายวิชา',AFTER_COURSE:'ยื่นหลังรายวิชา',NOT_APPLICABLE:'ไม่เกี่ยวข้อง',UNDECIDED:'ยังไม่กำหนด'}[ethics.ETHICS_PLAN]||'—')+' · สถานะ: '+(ethics.SUBMISSION_STATUS||'—')+' · ผล REC: '+(ethics.REC_APPROVAL_STATUS||'—')),el('p',{},'ห้ามเริ่มเก็บข้อมูลจากมนุษย์ก่อนการรับรอง REC ที่เกี่ยวข้อง'));a.append(box)}
- }catch(e){a.textContent='โหลดกลุ่มที่ได้รับมอบหมายไม่สำเร็จ: '+e.message;}
+  const groups=await callApi('apiGetAdvisorAssignedGroups',sessionToken);
+  a.textContent='';
+  if(!Array.isArray(groups)||groups.length===0){
+   a.append(el('div',{className:'notice'},'ยังไม่พบกลุ่มวิจัยที่มีสถานะการแต่งตั้งอาจารย์ที่ปรึกษาเป็น APPROVED สำหรับบัญชีนี้ กรุณาให้ Admin ตรวจสอบรายการแต่งตั้งและสถานะกลุ่ม'));
+   return;
+  }
+  for(const g of groups){
+   const box=el('div',{className:'notice'});
+   box.append(
+    el('h3',{},g.groupName||'ไม่ระบุชื่อกลุ่ม'),
+    el('p',{},'หัวข้อวิจัย: '+(g.topicTh||'ยังไม่กำหนด')),
+    el('p',{},'สมาชิก '+(Array.isArray(g.members)?g.members.length:0)+' คน')
+   );
+   (Array.isArray(g.members)?g.members:[]).forEach(m=>{
+    box.append(el('p',{},(m.studentId||'ไม่ระบุรหัส')+' · '+(m.name||'ไม่พบชื่อในทะเบียน')));
+   });
+   try{
+    const ethics=await callApi('apiGetGroupEthicsSummary',sessionToken,g.groupId);
+    if(ethics){
+     box.append(
+      el('h4',{},'สรุปแผนจริยธรรม (อ่านอย่างเดียว)'),
+      el('p',{},'แผน: '+({DURING_COURSE:'ยื่นระหว่างรายวิชา',AFTER_COURSE:'ยื่นหลังรายวิชา',NOT_APPLICABLE:'ไม่เกี่ยวข้อง',UNDECIDED:'ยังไม่กำหนด'}[ethics.ETHICS_PLAN]||'—')+' · สถานะ: '+(ethics.SUBMISSION_STATUS||'—')+' · ผล REC: '+(ethics.REC_APPROVAL_STATUS||'—')),
+      el('p',{},'ห้ามเริ่มเก็บข้อมูลจากมนุษย์ก่อนการรับรอง REC ที่เกี่ยวข้อง')
+     );
+    }
+   }catch(ethicsError){
+    console.warn('โหลดสรุปแผนจริยธรรมไม่สำเร็จ',ethicsError);
+    box.append(el('p',{},'ไม่สามารถโหลดสรุปแผนจริยธรรมได้ในขณะนี้'));
+   }
+   a.append(box);
+  }
+ }catch(e){
+  a.textContent='โหลดกลุ่มที่ได้รับมอบหมายไม่สำเร็จ: '+e.message;
+ }
 }
 
 async function renderStudentWorkspace(){
