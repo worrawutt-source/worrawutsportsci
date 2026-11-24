@@ -1104,3 +1104,33 @@ Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migrat
 - WP-SUB-1 remains formally CLOSED; preserve all of its TEST records and evidence.
 - WP-SUB-3 remains separately gated.
 - Approval of the Test Plan document alone does not authorize persistent execution, Drive mutations, permission changes or cleanup. Those require separate explicit approval of exact scope.
+
+
+## WP-SUB-2 GitHub documentation structure created — 24 Nov 2026
+
+### Owner-provided TEST Drive setup
+- Owner supplied a screenshot showing the dedicated `SNC_TEST_SUBMISSION_FILES` folder under `ProjectLine`, with subfolders:
+  - `01_VALID_FILES`
+  - `02_INVALID_FILES`
+  - `03_UPLOADED_TEST_FILES`
+  - `04_ROLLBACK_TEST`
+- This is recorded as owner-provided setup evidence only. Folder ownership, effective inherited permissions, exact Script Property mapping, and GAS runtime access have not been independently verified.
+
+### GitHub structure created on `development`
+- `sport-nutrition-classroom/docs/WP-SUB-2/README.md`
+  - Documentation, sanitized logs, reconciliation reports, and closure evidence area.
+  - Existing Test Plan remains at `docs/WP-SUB-2_TEST_PLAN_v1.0.0_2026-11-24.md`.
+- `sport-nutrition-classroom/backend/tests/WP-SUB-2/README.md`
+  - Reserved location for future Preflight, Runner, and read-only reconciliation utilities.
+- Commits:
+  - Documentation README: `1a77afc351eeaca2a18f9e96b32610585a6d0747`.
+  - Test utilities placeholder: `e56e5292bb1aa3abcde2dfd278f8b5fe2d8c4c9d`.
+
+### Safety boundary
+- Only GitHub README files/directories were created. No application source, test Runner, Preflight utility, or reconciliation code was implemented.
+- No GAS execution, Drive upload, file creation, permission change, cleanup, migration, trigger, deployment, LINE/UrlFetch, or external call was performed.
+- WP-SUB-2 implementation and mutation scope remain separately gated. Before implementation, re-fetch all relevant source and verify the TEST Drive folder configuration and effective permissions.
+- WP-SUB-1 remains formally CLOSED; preserve all existing records and evidence. WP-SUB-3 remains separately gated.
+
+### Current status
+**WP-SUB-2 GitHub folder structure: CREATED. Test utilities: NOT IMPLEMENTED. Drive folder: owner-created; configuration and access NOT VERIFIED.**
