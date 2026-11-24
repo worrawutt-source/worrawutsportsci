@@ -919,3 +919,30 @@ Start by reading this `CURRENT.md` on branch `development`, then inspect the lat
 - **Current status: WP-SUB-0 SOURCE PREPARED — OWNER SOURCE-SYNC CONFIRMATION AND READ-ONLY GAS PREFLIGHT PENDING.** No Submission handler, fixture creation, Drive upload, LINE, trigger, migration, deployment or cleanup was run.
 - Next step: owner syncs the preflight file into TEST GAS and confirms the listed backend source files match the expected development versions; then runs only `SNC_SubmissionIntegrationPreflight_READONLY_TEST()` and shares the complete sanitized Execution Log. If READY, prepare WP-SUB-1 persistent runner; if BLOCKED, resolve only the reported readiness issue before any mutation.
 
+
+
+## WP-SUB-0 runtime READY and WP-SUB-1 runner prepared — 24 Nov 2026
+
+### Owner confirmation and WP-SUB-0 evidence
+- Owner confirmed all five TEST GAS backend source files match the expected development blob SHAs recorded in the approved Submission Integration plan.
+- Owner supplied the Execution Log for SNC_SubmissionIntegrationPreflight_READONLY_TEST(): status READY, 12 PASS / 0 BLOCKED; writesExpected=0; externalCallsExpected=0.
+- Checks passed: exact TEST identity, Core Fixture manifest, no prior Submission Integration manifest, all required schemas, active Offering, six active Users and Enrollments, existing active SYSTEM_ADMIN, required handlers, reserved prefix unused, no existing Core Fixture Submissions, and unique AuditLog IDs.
+- Baseline counts: Users 24; Enrollments 6; Assignments 20; Groups 0; GroupMembers 0; Submissions 0; SubmissionFiles 0; IdempotencyKeys 0; AuditLogs 68.
+- WP-SUB-0 status: OWNER-RUN RUNTIME READY — 12/12 PASS.
+
+### WP-SUB-1 implementation source
+- Added backend/tests/SNC_SubmissionIntegrationRunner_TEST.gs v0.1.0.
+- Latest blob SHA: 0cafb19469b753a3a34abc0916846246e5b17fc8.
+- Commit chain includes initial runner commit 6547a77b1d4a3407fd886faa804c442279b557bd and subsequent hardening; final runner SHA above.
+- Added docs/SNC_SUBMISSION_INTEGRATION_RUNNER_v0.1.0_2026-11-24.md; commit c14e47cc00ba611d165fa7046bbe15d6c8ff1f65.
+- Updated approved plan with WP-SUB-0 owner runtime evidence and WP-SUB-1 implementation checkpoint; plan commit 26a27d3a886ab3655179660e72d341139183a904.
+- Static inspection: SUB-01..SUB-26 present; exact TEST guard, persistent manifest, immediate fixture ID capture, notification stub/restore, controlled in-memory Audit append failure injection, and terminal reconciliation present. No direct Sheet mutation, DriveApp/UrlFetch/network, trigger, deployment, cleanup or broad deletion calls.
+- Runner fixture scope: existing six synthetic Core users/offering/enrollments only; creates Alpha(2), Beta(3), Solo(1) and the approved Individual/Group Assignment test set via application handlers. URL metadata only; no binary upload.
+- Read-only runner preflight: SNC_SubmissionIntegrationRunnerPreflight_TEST().
+- Persistent runner: SNC_RunSubmissionIntegration_CONFIRMED_TEST('RUN SNC SUBMISSION INTEGRATION WP-SUB-1 2026-11-24').
+- Read-only manifest summary: SNC_SubmissionIntegrationManifestSummary_READONLY_TEST().
+- Exact confirmation phrase: RUN SNC SUBMISSION INTEGRATION WP-SUB-1 2026-11-24.
+- Manifest key: SNC_SUBMISSION_INTEGRATION_MANIFEST_TEST.
+- **Current status: WP-SUB-1 SOURCE PREPARED — STATIC REVIEW COMPLETE — OWNER GAS PREFLIGHT PENDING.** Runner has not been copied into GAS or executed. No WP-SUB-1 runtime result is claimed.
+- Owner next action: add only the runner file to TEST GAS; run SNC_SubmissionIntegrationRunnerPreflight_TEST(); share the full sanitized log. Proceed to persistent run only if READY. Execute persistent runner once only. If interrupted or stopped, do not rerun; share logs and reconcile manifest first.
+- WP-SUB-2 Drive upload/access, WP-SUB-3 deployed API/LIFF/Browser E2E, and cleanup remain outside this authorization. No cleanup is authorized.
