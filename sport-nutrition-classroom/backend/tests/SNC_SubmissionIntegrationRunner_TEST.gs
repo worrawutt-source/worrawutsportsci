@@ -395,10 +395,10 @@ function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
     // SUB-18: same key with changed payload returns CONFLICT without mutation.
     snsiCase_(manifest,'SUB-18',function(){
       var payload={assignmentId:manifest.fixtures.assignments.Individual,driveUrls:[]},rid=snsiReq_('SUB18_CONFLICT');
-      var first=handleSubmissionManagementAction_('submission.create',u[2],payload,rid);
+      var first=handleSubmissionManagementAction_('submission.create',u[3],payload,rid);
       manifest.created.Submissions.push(String(first.submission.SubmissionID));snsiSave_(manifest);
       var n=snsiRows_('Submissions').length;
-      var r=snsiExpectError_(function(){handleSubmissionManagementAction_('submission.create',u[2],
+      var r=snsiExpectError_(function(){handleSubmissionManagementAction_('submission.create',u[3],
         {assignmentId:manifest.fixtures.assignments.Individual,driveUrls:['https://docs.google.com/document/d/CHANGED']},rid);},'CONFLICT');
       return {pass:r.pass&&snsiRows_('Submissions').length===n,actual:r.actual,expected:r.expected};
     });
