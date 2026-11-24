@@ -115,7 +115,7 @@ const FRONTEND_CONFIG = Object.freeze({
   COMMIT_SHA: '793f7d11892166dd43a394c7ea88a38c61e6df9f',
   BASE_PATH: 'project/frontend/',
   CACHE_SECONDS: 21600,
-  CACHE_CHUNK_SIZE: 80000
+  CACHE_CHUNK_SIZE: 20000
 });
 
 function renderFrontend_(magicSessionToken) {
