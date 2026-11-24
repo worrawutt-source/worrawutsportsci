@@ -497,7 +497,7 @@ function apiGetAdvisorWorkspaceSummary(token){
       openTasks:tasks.length
     },
     groups:groupSummaries,pendingReports,pendingTopics,
-    assessmentWindowA4:assessmentSettings_().WINDOW_A4||'CLOSED'
+    assessmentWindowA4:assessmentSettingsFresh_().WINDOW_A4||'CLOSED'
   });
 }
 
@@ -1605,7 +1605,7 @@ function apiAdminSetAssessmentWindow(token,type,isOpen){
 }
 function apiAdvisorSaveA4(token,payload){
   const ctx=requireSession_(token,[ROLE.ADMIN,ROLE.ADVISOR]);assertGradeEditable_(); payload=payload||{}; const groupId=String(payload.groupId||''); assertGroupAccess_(ctx,groupId);
-  if(ctx.user.ROLE_ID===ROLE.ADVISOR && assessmentSettings_().WINDOW_A4!=='OPEN') throw new Error('Admin ยังไม่ได้เปิดช่วงประเมิน A4');
+  if(ctx.user.ROLE_ID===ROLE.ADVISOR && assessmentSettingsFresh_().WINDOW_A4!=='OPEN') throw new Error('Admin ยังไม่ได้เปิดช่วงประเมิน A4');
   const groupScore=Number(payload.groupScore); if(!Number.isFinite(groupScore)||groupScore<0||groupScore>10) throw new Error('คะแนน A4 ระดับกลุ่มต้องอยู่ระหว่าง 0–10');
   const members=readObjects_('GROUP_MEMBERS').filter(m=>m.GROUP_ID===groupId&&m.STATUS==='ACTIVE'); const individual=payload.individualScores||{};
   const validated=members.map(m=>{const v=Number(individual[String(m.STUDENT_ID)]);if(!Number.isFinite(v)||v<0||v>10)throw new Error('กรุณากรอกคะแนน A4 รายบุคคล 0–10 ให้ครบ: '+m.STUDENT_ID);return {studentId:m.STUDENT_ID,score:v};});
@@ -2359,6 +2359,7 @@ function assertGroupAccess_(ctx,groupId){
   return true;
 }
 function assessmentSettings_(){const o={WINDOW_A4:'CLOSED',WINDOW_A5:'CLOSED'};readObjects_('ASSESSMENT_SETTINGS').forEach(r=>o[r.SETTING_KEY]=r.SETTING_VALUE);return o;}
+function assessmentSettingsFresh_(){const o={WINDOW_A4:'CLOSED',WINDOW_A5:'CLOSED'};readObjectsFresh_('ASSESSMENT_SETTINGS').forEach(r=>o[r.SETTING_KEY]=r.SETTING_VALUE);return o;}
 function setAssessmentSetting_(key,value,actor){const sh=sheet_('ASSESSMENT_SETTINGS'),r=readObjects_('ASSESSMENT_SETTINGS').find(x=>x.SETTING_KEY===key);if(r){sh.getRange(r._row,2).setValue(value);sh.getRange(r._row,3).setValue(new Date());sh.getRange(r._row,4).setValue(actor);}else appendObject_('ASSESSMENT_SETTINGS',{SETTING_KEY:key,SETTING_VALUE:value,UPDATED_AT:new Date(),UPDATED_BY:actor});}
 function upsertGroupScore_(groupId,values,actor){const sh=sheet_('GROUP_SCORES'),r=readObjects_('GROUP_SCORES').find(x=>x.GROUP_ID===groupId);if(r){Object.keys(values).forEach(k=>sh.getRange(r._row,SCHEMA.GROUP_SCORES.indexOf(k)+1).setValue(values[k]));sh.getRange(r._row,7).setValue(new Date());sh.getRange(r._row,8).setValue(actor);}else{const o={GROUP_ID:groupId,A1_SCORE:'',A2_SCORE:'',A3_SCORE:'',A4_GROUP_SCORE:'',A4_ADVISOR_USER_ID:'',UPDATED_AT:new Date(),UPDATED_BY:actor};Object.assign(o,values);appendObject_('GROUP_SCORES',o);}}
 function upsertIndividualScore_(studentId,groupId,values,actor){const sh=sheet_('INDIVIDUAL_SCORES'),r=readObjects_('INDIVIDUAL_SCORES').find(x=>String(x.STUDENT_ID)===String(studentId));if(r){Object.keys(values).forEach(k=>sh.getRange(r._row,SCHEMA.INDIVIDUAL_SCORES.indexOf(k)+1).setValue(values[k]));sh.getRange(r._row,7).setValue(new Date());sh.getRange(r._row,8).setValue(actor);}else{const o={STUDENT_ID:studentId,GROUP_ID:groupId,A4_INDIVIDUAL_SCORE:'',A5_SCORE:'',A6_SCORE:'',ADMIN_NOTE:'',UPDATED_AT:new Date(),UPDATED_BY:actor};Object.assign(o,values);appendObject_('INDIVIDUAL_SCORES',o);}}
