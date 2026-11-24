@@ -1720,15 +1720,15 @@ function apiGetStudentResearchData(token,requestedGroupId){
     if(!m)return {group:null,topics:[],files:[],progress:[],feedback:[],milestones:studentMilestonePlan_()};
     groupId=m.GROUP_ID;
   } else if(ctx.user.ROLE_ID===ROLE.ADVISOR){
-    const assigned=readObjects_('ADVISOR_ASSIGNMENTS').filter(x=>x.ADVISOR_USER_ID===ctx.user.USER_ID&&x.STATUS==='APPROVED');
-    groupId=String(requestedGroupId|| (assigned.length?assigned[0].GROUP_ID:''));
+    const assigned=getAdvisorAssignedGroups_(ctx.user.USER_ID);
+    groupId=String(requestedGroupId|| (assigned.length?assigned[0].groupId:''));
     if(!groupId)return {group:null,topics:[],files:[],progress:[],feedback:[],milestones:studentMilestonePlan_()};
   } else {
     groupId=String(requestedGroupId||'');
   }
   if(!groupId) throw new Error('กรุณาระบุกลุ่มผ่านพื้นที่ทำงานหรือรายการกลุ่มที่ได้รับมอบหมาย');
   assertGroupAccess_(ctx,groupId);
-  const group=readObjects_('RESEARCH_GROUPS').find(x=>x.GROUP_ID===groupId&&x.STATUS==='ACTIVE');
+  const group=readObjectsFresh_('RESEARCH_GROUPS').find(x=>String(x.GROUP_ID)===String(groupId)&&String(x.STATUS||'').trim().toUpperCase()==='ACTIVE');
   const groupExtensions=readObjectsFresh_('GROUP_DEADLINE_EXTENSIONS');
   const progressWeeks=progressWeekSettings_().map(w=>{const ext=groupExtensions.filter(x=>String(x.GROUP_ID)===String(groupId)&&Number(x.WEEK_NO)===Number(w.week)&&x.STATUS==='APPROVED').sort((a,b)=>new Date(b.APPROVED_AT)-new Date(a.APPROVED_AT))[0];return {...w,effectiveDueDate:ext?formatDateOnly_(ext.NEW_DUE_DATE):w.dueDate};});
   const activeGroupMembers=readObjectsFresh_('GROUP_MEMBERS').filter(m=>String(m.GROUP_ID)===String(groupId)&&m.STATUS==='ACTIVE');
