@@ -2350,3 +2350,12 @@ function logSystem_(action,targetType,targetId,details,actorUserId){
     });
   } catch(e) { console.error('Audit log failure: '+e.message); }
 }
+
+/**
+ * Temporary manual runner for advisor invitation diagnostics.
+ * Paste the token value from the advisorInvite URL when running.
+ * Remove this helper after the diagnostic is complete.
+ */
+function runAdvisorInviteDiagnostic() {
+  return diagnoseAdvisorInvitationToken('วาง TOKEN จากลิงก์อีเมลตรงนี้');
+}
