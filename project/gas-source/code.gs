@@ -449,7 +449,7 @@ function advisorWorkspaceSummary_(advisorUserId){
   const feedback=readObjectsFresh_('ADVISOR_FEEDBACK').filter(r=>ids.has(String(r.GROUP_ID||''))&&String(r.STATUS||'ACTIVE').toUpperCase()==='ACTIVE');
   const pendingReports=reports.filter(r=>['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').toUpperCase()));
   const pendingTopics=topics.filter(r=>String(r.REVIEW_STATUS||'').toUpperCase()==='PENDING');
-  return {groups,metrics:{assignedGroups:groups.length,pendingReports:pendingReports.length,pendingTopics:pendingTopics.length,meetingsRecorded:meetings.length,feedbackProvided:feedback.length}};
+  return {groups,metrics:{assignedGroups:groups.length,pendingReports:pendingReports.length,pendingTopics:pendingTopics.length,meetingsRecorded:new Set(meetings.map(r=>String(r.GROUP_ID)+'|'+String(r.MEETING_NO))).size,feedbackProvided:feedback.length}};
 }
 
 /** Advisor workspace summary: one server round-trip for dashboard and group monitoring. */
