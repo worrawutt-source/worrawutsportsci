@@ -189,10 +189,11 @@ function getFrontendAsset_(filename) {
 }
 
 /**
- * Backward-compatible entry point. Database setup is implemented in setup.gs.
+ * Legacy initialization entry point intentionally disabled.
+ * Database setup must not overwrite existing course data or role records.
  */
 function initializeTestDatabase() {
-  return setupTestDatabase();
+  throw new Error('การ initialize ฐานข้อมูลถูกปิดเพื่อป้องกันข้อมูลเดิม กรุณาตรวจสอบ Script Properties DB_ID และใช้ฐานข้อมูล TEST ที่มีอยู่');
 }
 
 /**
@@ -1993,7 +1994,7 @@ function upsertIndividualScore_(studentId,groupId,values,actor){const sh=sheet_(
 
 function requireDatabase_() {
   const id=PropertiesService.getScriptProperties().getProperty('DB_ID');
-  if (!id) throw new Error('Database is not initialized. Run initializeTestDatabase() first.');
+  if (!id) throw new Error('ไม่พบ Script Property DB_ID กรุณาตรวจสอบการเชื่อมต่อฐานข้อมูล TEST เดิม โดยห้ามเรียกใช้ setup เพื่อสร้างฐานข้อมูลใหม่');
   return id;
 }
 let _databaseCache = null;
@@ -2130,7 +2131,7 @@ function bytesToHex_(bytes){
 }
 function hashPasswordBytes_(password,salt){
   const pepper=PropertiesService.getScriptProperties().getProperty('APP_SECRET');
-  if(!pepper) throw new Error('APP_SECRET is missing. Re-run database initialization.');
+  if(!pepper) throw new Error('ไม่พบ APP_SECRET กรุณากู้คืนค่าเดิมจากการตั้งค่าที่ปลอดภัย ห้ามสร้างค่าใหม่ เพราะจะทำให้ตรวจสอบรหัสผ่านเดิมไม่ได้');
   let value=Utilities.computeHmacSha256Signature(salt+'|'+password,pepper);
   for(let i=1;i<APP.PASSWORD_ITERATIONS;i++){
     value=Utilities.computeHmacSha256Signature(Utilities.base64Encode(value),pepper);
