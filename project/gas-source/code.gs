@@ -1658,16 +1658,22 @@ function apiAdminSaveCoreScores(token,payload){
 }
 function apiGetAssessmentReport(token){
   const ctx=requireSession_(token,null); const role=ctx.user.ROLE_ID;
-  const allGroups=readObjects_('RESEARCH_GROUPS'), allMembers=readObjects_('GROUP_MEMBERS'), assignments=readObjects_('ADVISOR_ASSIGNMENTS');
-  let groups=allGroups.filter(g=>g.STATUS==='ACTIVE');
-  if(role===ROLE.ADVISOR){const ids=assignments.filter(a=>a.ADVISOR_USER_ID===ctx.user.USER_ID&&a.STATUS==='APPROVED').map(a=>a.GROUP_ID);groups=groups.filter(g=>ids.includes(g.GROUP_ID));}
+  const allGroups=readObjectsFresh_('RESEARCH_GROUPS'), allMembers=readObjectsFresh_('GROUP_MEMBERS'), assignments=readObjectsFresh_('ADVISOR_ASSIGNMENTS');
+  let groups=allGroups.filter(g=>String(g.STATUS||'').trim().toUpperCase()==='ACTIVE');
+  if(role===ROLE.ADVISOR){
+    const ids=new Set(getAdvisorAssignedGroups_(ctx.user.USER_ID).map(g=>String(g.groupId)));
+    groups=groups.filter(g=>ids.has(String(g.GROUP_ID)));
+  }
   let studentMember=null;
-  if(role===ROLE.STUDENT){studentMember=allMembers.find(x=>(x.USER_ID===ctx.user.USER_ID||String(x.STUDENT_ID)===String(ctx.user.STUDENT_ID))&&x.STATUS==='ACTIVE');groups=groups.filter(g=>studentMember&&g.GROUP_ID===studentMember.GROUP_ID);}
-  const gs=readObjects_('GROUP_SCORES'), individual=readObjects_('INDIVIDUAL_SCORES'), meetings=readObjects_('MEETING_RECORDS'), peers=readObjects_('PEER_ASSESSMENTS'), students=readObjects_('STUDENTS'), users=readObjects_('SYS_USERS');
+  if(role===ROLE.STUDENT){
+    studentMember=allMembers.find(x=>(String(x.USER_ID||'')===String(ctx.user.USER_ID||'')||String(x.STUDENT_ID||'')===String(ctx.user.STUDENT_ID||''))&&String(x.STATUS||'').trim().toUpperCase()==='ACTIVE');
+    groups=groups.filter(g=>studentMember&&String(g.GROUP_ID)===String(studentMember.GROUP_ID));
+  }
+  const gs=readObjectsFresh_('GROUP_SCORES'), individual=readObjectsFresh_('INDIVIDUAL_SCORES'), meetings=readObjectsFresh_('MEETING_RECORDS'), peers=readObjectsFresh_('PEER_ASSESSMENTS'), students=readObjectsFresh_('STUDENTS'), users=readObjectsFresh_('SYS_USERS');
   const releaseStatus=gradeReleaseStatus_(),studentCanSeeScores=role!=='STUDENT'||releaseStatus==='RELEASED';
   return sanitizeForClient_(groups.map(g=>{
-    const ms=allMembers.filter(m=>m.GROUP_ID===g.GROUP_ID&&m.STATUS==='ACTIVE');
-    const assignment=assignments.find(x=>x.GROUP_ID===g.GROUP_ID&&x.STATUS==='APPROVED');
+    const ms=allMembers.filter(m=>String(m.GROUP_ID)===String(g.GROUP_ID)&&String(m.STATUS||'').trim().toUpperCase()==='ACTIVE');
+    const assignment=assignments.find(x=>String(x.GROUP_ID)===String(g.GROUP_ID)&&String(x.STATUS||'').trim().toUpperCase()==='APPROVED');
     const advisor=assignment&&users.find(x=>x.USER_ID===assignment.ADVISOR_USER_ID);
     const groupScore=studentCanSeeScores?(gs.find(x=>x.GROUP_ID===g.GROUP_ID)||{}):{};
     let outputMembers=ms;
