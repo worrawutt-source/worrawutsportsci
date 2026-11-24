@@ -1188,3 +1188,43 @@ Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migrat
 
 ### สถานะปัจจุบัน
 **เอกสารภาษาไทยสำหรับเจ้าของโครงการ: จัดทำแล้ว — Preflight/Runner Specification รอพิจารณา — ยังไม่เริ่มพัฒนาเครื่องมือ**
+
+
+## WP-SUB-2 G0/G1 approval and Read-only Preflight implementation — 25 Nov 2026
+
+### Owner approval
+- Owner explicitly approved G0 and G1: use Thai `WP-SUB-2_PREFLIGHT_RUNNER_SPEC_v1.0.0_2026-11-24_TH.md` as the governing specification and implement **only** the Read-only Preflight on `development`.
+- This approval does not authorize Preflight GAS execution (G2), Runner implementation (G4), persistent execution (G6/G7), Drive mutation, permission changes, or cleanup.
+
+### Source synchronization before implementation
+- Latest repository commit observed before implementation: `acfc95b8cbf4e71797b60deeb86bbaac6f705a86`.
+- Re-fetched on `development` before implementation:
+  - Thai Preflight/Runner Specification: `156243eaa24c36c1a3572766d8144852f4fe50e8`
+  - `backend/FileManagement.gs`: `86cd29160dd00207c9a575ce801da09e643911cb`
+  - `backend/SubmissionManagement.gs`: `ef4b86678e8c1feeea425ba578501846129a229c`
+  - `backend/NotificationManagement.gs`: `875b60d90f4599ee0f9bdf0f60dcea31e215de7b`
+  - `backend/Code.gs`: `7c9928f7ae269287d1537dec6256dce13783d26d`
+  - Existing WP-SUB-2 test README: `3921fe2a0192814c9c53251b31acd02cee2df34f`
+- The initially guessed `backend/CoreManagement.gs` path returned NOT_FOUND and was not used.
+
+### Implementation
+- Added `backend/tests/WP-SUB-2/SNC_WP_SUB_2_Preflight_TEST.gs`.
+- Entry point: `SNC_WP_SUB_2_Preflight_READONLY_TEST()`.
+- Implementation commit: `2eda76fa2597a54e8c666eac2df23201548f9678`.
+- The utility checks the 20 Preflight items, reads the approved folder configuration, inspects the supplied Drive folder and child-folder names, checks required Sheet presence/header integrity, and reads transient row counts.
+- The utility does not write Sheets, Drive, Script Properties, Cache, Manifest, or NotificationLogs; does not create/share/trash files; does not install/call triggers; and does not call LINE, UrlFetch, email, or external services.
+- It deliberately reports BLOCKED where the available runtime cannot prove a requirement, including source blob/GAS synchronization, TEST environment identity, WP-SUB-1 exact-ID isolation, effective inherited ACL, approved actor/fixture/Assignment mapping, Manifest storage, concurrency, and file disposition. Folder `PRIVATE` status is not treated as proof of effective ACL.
+- Updated `backend/tests/WP-SUB-2/README.md` to record implementation and runtime status. README commit: `c5a0417eb22614326e31e115931c74f2f173879c`.
+
+### Verification boundary
+- GitHub source creation and documentation update completed on `development`.
+- No GAS code was executed by the assistant. The Preflight has **not** been synced into the owner's TEST GAS project and has no runtime PASS/READY evidence.
+- No Drive upload/file creation, permission change, Sheet write, Script Property write, Manifest write, cleanup, migration, trigger, deployment, LINE/UrlFetch, or external network call was performed.
+- Static review of the source confirms the implemented entry point contains read-only inspection operations only. Runtime behavior remains to be verified by the owner in GAS.
+- WP-SUB-1 remains formally CLOSED; preserve all existing data and evidence.
+
+### Next authorized gate
+1. Owner syncs only `SNC_WP_SUB_2_Preflight_TEST.gs` into the existing TEST GAS project, after confirming the current application source is the approved TEST copy.
+2. Owner runs only `SNC_WP_SUB_2_Preflight_READONLY_TEST()` and supplies the complete sanitized Execution Log.
+3. Review every PASS/FAIL/BLOCKED item. Do not proceed to Runner development until the Preflight result and remaining owner decisions are reconciled and separately approved.
+4. Do not rerun any persistent Runner and do not perform cleanup.
