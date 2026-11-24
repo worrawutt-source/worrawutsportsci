@@ -215,3 +215,35 @@ Commits ใน Branch:
 - `4fc3f6ac6af0704c659205efbb5b989def197ef7` — Implement RW-01 workflow validation, review locking and notifications
 - `8ccde33e452bcc190fa6d8a64fc7b48e3b8d48a1` — Keep RW-01 notifications within pre-existing TEST tables
 
+
+
+## 12. Session Lifecycle Hotfix — Implementation
+
+สถานะ ณ 24 พฤศจิกายน 2026: **แก้ไข Source Code ใน Branch แยกจาก main แล้ว; รอ Runtime Test/UAT บน TEST**
+
+- Branch: `feature/rw-01-research-topic`
+- ขอบเขตไฟล์: `project/frontend/Client.html`, `project/gas-source/code.gs`
+- Frontend immutable SHA ที่ Backend pin: `93f23210fd48fcac2ebc665b4babdf3df1b1ecd6`
+- Commit ล่าสุดของ Backend: `10bb37e516172c34526516abe9ba26880d628cb7`
+
+รายการแก้ไข:
+1. เพิ่ม Session expiry timer ฝั่ง Client โดยอ้างอิง `expiresAt` ที่ Backend ส่งกลับ เพื่อเปลี่ยนจาก Workspace ไปหน้า Login เมื่อ Session หมดอายุ
+2. เพิ่มการตรวจจับข้อผิดพลาด Session หมดอายุ/ถูกยกเลิก/บัญชีถูกระงับที่จุดกลาง `callApi()` เพื่อไม่ให้แต่ละ Module แสดง Error ค้างใน Workspace
+3. เมื่อ Session ใช้ไม่ได้ ให้ล้าง Token และเวลา Expiry จาก LocalStorage/SessionStorage และแสดงหน้า Login พร้อมข้อความแจ้งเหตุผล
+4. เมื่อ Refresh หน้าเว็บ ให้ใช้ Token เดิมตรวจสอบกับ `apiGetDashboard()`; หากยังใช้ได้ให้เปิด Workspace โดยตรง
+5. หากการตรวจสอบ Session ล้มเหลวจากปัญหาเครือข่ายหรือ Server ชั่วคราว จะไม่ลบ Token โดยอัตโนมัติ เพื่อให้ผู้ใช้ Refresh แล้วลองคืน Session ใหม่ได้
+6. Backend เพิ่ม `expiresAt` ในผลลัพธ์ `apiGetDashboard()` โดยอ่านจาก Session ที่ผ่านการตรวจสอบแล้ว
+7. คงระยะเวลา Session เดิม 4 ชั่วโมง และไม่เปลี่ยน Schema/Workflow/Password Hash
+
+ข้อจำกัดและความปลอดภัย:
+- เป็นการแก้ไข Source Code เท่านั้น ยังไม่ได้ Deploy ไปยัง Web App TEST
+- ยังไม่ได้ทดสอบกับ Google Apps Script Runtime หรือ Browser จริง
+- การยกเลิก Session โดย Admin ระหว่างที่ผู้ใช้ไม่ได้ทำรายการใด ๆ จะถูกตรวจพบเมื่อมี API request ถัดไป; ไม่ได้เพิ่ม polling/heartbeat เพื่อหลีกเลี่ยงการเพิ่มภาระการเรียก API
+- ไม่เปลี่ยนแปลง Google Sheets, Script Properties, Database ID หรือ Production Deployment
+- ยังไม่ถือว่าผ่าน Runtime Test/UAT
+
+ผลตรวจเบื้องต้น:
+- ตรวจสอบจุดเรียกคืน Session จาก LocalStorage และการเรียก `apiGetDashboard()` แล้ว
+- ตรวจสอบว่า Backend ส่ง `expiresAt` และ Frontend pin ไปยัง immutable SHA ใหม่แล้ว
+- Runtime/Browser test: **PENDING**
+
