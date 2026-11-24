@@ -293,3 +293,13 @@ Backend commit:
 - Commit แก้ไขล่าสุด: `1f675b15bbbe4881a920c0c614f0b12d1a582a0a`
 - ผลตรวจ: บรรทัด COMMIT_SHA เหลือ comma ปิด property เพียงตัวเดียว
 - ข้อจำกัด: ยังไม่ได้รัน Apps Script deployment/runtime; ต้องวาง/ดึง Code.gs ล่าสุดและทดสอบ Syntax ใน Apps Script Editor ก่อน Deploy TEST
+
+
+## 14. Styles.html Stray CSS Text Hotfix
+
+- ตรวจพบจากภาพผู้ใช้ว่า CSS ของ Metric Cards ถูกวางอยู่นอก `</style>` ทำให้ Browser แสดง CSS เป็นข้อความด้านบน Workspace
+- ย้าย CSS เข้าไปภายใน `<style>` และลบข้อความ CSS ที่ตกค้างหลัง closing tag
+- Backend Frontend pin ปรับเป็น immutable commit `baa3d151e337c16d260ef19810147e21387cffa9`
+- Commit Backend pin: `96ef79176a2e2d757d48f51c63d4b641b88c3924`
+- ตรวจสอบ Source: ไม่มีข้อความหลัง `</style>` และ Metric CSS อยู่ก่อน closing tag
+- Runtime/UI test หลัง Deploy: PENDING
