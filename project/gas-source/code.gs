@@ -401,6 +401,46 @@ function apiLogout(token) {
   return {ok:true};
 }
 
+/**
+ * Returns active research groups assigned to the authenticated advisor.
+ * Uses fresh reads and normalized IDs/status values so the advisor dashboard
+ * and assigned-group list are based on the same source of truth.
+ */
+function getAdvisorAssignedGroups_(advisorUserId){
+  const targetUserId=String(advisorUserId||'').trim();
+  if(!targetUserId)return [];
+  const assignments=readObjectsFresh_('ADVISOR_ASSIGNMENTS')
+    .filter(a=>String(a.ADVISOR_USER_ID||'').trim()===targetUserId&&String(a.STATUS||'').trim().toUpperCase()==='APPROVED');
+  const groupIds=[...new Set(assignments.map(a=>String(a.GROUP_ID||'').trim()).filter(Boolean))];
+  if(!groupIds.length)return [];
+  const groups=readObjectsFresh_('RESEARCH_GROUPS')
+    .filter(g=>groupIds.includes(String(g.GROUP_ID||'').trim())&&String(g.STATUS||'').trim().toUpperCase()==='ACTIVE');
+  const members=readObjectsFresh_('GROUP_MEMBERS');
+  const students=readObjectsFresh_('STUDENTS');
+  return groups.map(group=>{
+    const groupId=String(group.GROUP_ID||'').trim();
+    const groupMembers=members.filter(m=>String(m.GROUP_ID||'').trim()===groupId&&String(m.STATUS||'').trim().toUpperCase()==='ACTIVE');
+    return {
+      groupId,
+      groupName:String(group.GROUP_NAME||'ไม่ระบุชื่อกลุ่ม'),
+      topicTh:String(group.TOPIC_TITLE_TH||''),
+      topicEn:String(group.TOPIC_TITLE_EN||''),
+      members:groupMembers.map(m=>{
+        const studentId=normalizeStudentId_(m.STUDENT_ID);
+        const student=students.find(x=>normalizeStudentId_(x.STUDENT_ID)===studentId)||{};
+        const fullName=String(student.FULL_NAME||[student.TITLE,student.FIRST_NAME,student.LAST_NAME].filter(Boolean).join(' ')).trim();
+        return {studentId,name:fullName||'ไม่พบชื่อในทะเบียน'};
+      })
+    };
+  });
+}
+
+/** Advisor-only: list groups with an approved assignment to the current advisor. */
+function apiGetAdvisorAssignedGroups(token){
+  const ctx=requireSession_(token,[ROLE.ADVISOR]);
+  return sanitizeForClient_(getAdvisorAssignedGroups_(ctx.user.USER_ID));
+}
+
 /** Dashboard bootstrap: all authorization is performed on the server. */
 function apiGetDashboard(token) {
   const ctx = requireSession_(token, null, true);
@@ -416,7 +456,7 @@ function apiGetDashboard(token) {
     base.metrics = {users:readObjects_('SYS_USERS').length, sessions:readObjects_('SYS_SESSIONS').filter(s=>!s.REVOKED_AT && new Date(s.EXPIRES_AT)>new Date()).length, roster:readObjects_('STUDENTS').length};
     base.menu = ['ภาพรวมระบบ','จัดการกลุ่มวิจัย','กำหนดอาจารย์ที่ปรึกษา','บันทึกการเข้าพบ','จัดการรายงานความก้าวหน้า','จัดการงานกลุ่ม','ติดตามจริยธรรม','สัญญาณเตือนความเสี่ยง','ประเมินผล A1–A6','บัญชีผู้ใช้','นำเข้ารายชื่อนักศึกษา','บันทึกระบบ','การตั้งค่าระบบ'];
     } else if (role === ROLE.ADVISOR) {
-    const advisorGroupIds=readObjectsFresh_('ADVISOR_ASSIGNMENTS').filter(a=>a.ADVISOR_USER_ID===ctx.user.USER_ID&&a.STATUS==='APPROVED').map(a=>String(a.GROUP_ID));const advisorReports=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>advisorGroupIds.includes(String(r.GROUP_ID))&&['SUBMITTED','RESUBMITTED','APPROVED','REVISION_REQUIRED'].includes(String(r.STATUS)));const feedback=readObjectsFresh_('ADVISOR_FEEDBACK').filter(f=>advisorGroupIds.includes(String(f.GROUP_ID))&&String(f.STATUS||'ACTIVE')==='ACTIVE');const meetings=readObjectsFresh_('MEETING_RECORDS').filter(m=>advisorGroupIds.includes(String(m.GROUP_ID)));base.metrics = {assignedGroups:advisorGroupIds.length, reportsAvailable:advisorReports.length, feedbackProvided:feedback.length, meetings:meetings.length};
+    const advisorGroups=getAdvisorAssignedGroups_(ctx.user.USER_ID);const advisorGroupIds=advisorGroups.map(g=>g.groupId);const advisorReports=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>advisorGroupIds.includes(String(r.GROUP_ID))&&['SUBMITTED','RESUBMITTED','APPROVED','REVISION_REQUIRED'].includes(String(r.STATUS||'').toUpperCase()));const feedback=readObjectsFresh_('ADVISOR_FEEDBACK').filter(f=>advisorGroupIds.includes(String(f.GROUP_ID))&&String(f.STATUS||'ACTIVE').toUpperCase()==='ACTIVE');const meetings=readObjectsFresh_('MEETING_RECORDS').filter(m=>advisorGroupIds.includes(String(m.GROUP_ID)));base.metrics = {assignedGroups:advisorGroups.length, reportsAvailable:advisorReports.length, feedbackProvided:feedback.length, meetings:meetings.length};
     base.menu = ['ภาพรวมการให้คำปรึกษา','กลุ่มที่ได้รับมอบหมาย','บันทึกการพบอาจารย์','ประเมิน A4'];
   } else if (role === ROLE.STUDENT) {
     // Derive dashboard group status from the active membership relationship.
