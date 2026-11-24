@@ -94,15 +94,25 @@ function doPost(e){
   if(p.advisorInviteToken){
     let result;
     const inviteToken=normalizeAdvisorInviteToken_(p.advisorInviteToken);
-    try{result=respondAdvisorInvitation_(inviteToken,String(p.advisorDecision||''),String(p.advisorPassword||''),String(p.advisorConfirmPassword||''));}
-    catch(err){return HtmlService.createHtmlOutput('<meta name="viewport" content="width=device-width, initial-scale=1"><main style="font-family:Arial,sans-serif;max-width:620px;margin:40px auto;padding:24px"><h2>ยังดำเนินการไม่สำเร็จ</h2><p>'+escapeHtml_(err.message||String(err))+'</p><p><a href="'+ScriptApp.getService().getUrl()+'?advisorInvite='+encodeURIComponent(String(p.advisorInviteToken))+'">กลับไปแก้ไขข้อมูล</a></p></main>');}
-    return HtmlService.createHtmlOutput('<meta name="viewport" content="width=device-width, initial-scale=1"><main style="font-family:Arial,sans-serif;max-width:620px;margin:40px auto;padding:24px;border:1px solid #ddd;border-radius:12px"><h2>'+escapeHtml_(result.message)+'</h2><p>ท่านสามารถปิดหน้านี้ได้</p></main>');
+    try{
+      result=respondAdvisorInvitation_(inviteToken,String(p.advisorDecision||''),String(p.advisorPassword||''),String(p.advisorConfirmPassword||''));
+    }catch(err){
+      const errorHtml='<meta name="viewport" content="width=device-width, initial-scale=1"><main style="font-family:Arial,sans-serif;max-width:620px;margin:40px auto;padding:24px"><h2>ยังดำเนินการไม่สำเร็จ</h2><p>'+escapeHtml_(err.message||String(err))+'</p><p><a href="'+ScriptApp.getService().getUrl()+'?advisorInvite='+encodeURIComponent(inviteToken)+'">กลับไปแก้ไขข้อมูล</a></p></main>';
+      return HtmlService.createHtmlOutput(errorHtml)
+        .setTitle('ดำเนินการคำเชิญ')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    }
+    const successHtml='<meta name="viewport" content="width=device-width, initial-scale=1"><main style="font-family:Arial,sans-serif;max-width:620px;margin:40px auto;padding:24px;border:1px solid #ddd;border-radius:12px"><h2>'+escapeHtml_(result.message)+'</h2><p>ท่านสามารถปิดหน้านี้ได้</p></main>';
+    return HtmlService.createHtmlOutput(successHtml)
+      .setTitle('ผลการตอบรับคำเชิญ')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
   if(p.advisorMagicToken){
     const token=consumeAdvisorMagicLink_(String(p.advisorMagicToken));
     return renderFrontend_(token);
   }
-  return HtmlService.createHtmlOutput('คำขอไม่ถูกต้อง');
+  return HtmlService.createHtmlOutput('คำขอไม่ถูกต้อง')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 /**
