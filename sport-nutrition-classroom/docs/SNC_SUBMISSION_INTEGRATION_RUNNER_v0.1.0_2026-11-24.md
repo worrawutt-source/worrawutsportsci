@@ -7,17 +7,17 @@
 - Governing plan: SUBMISSION_INTEGRATION_TEST_PLAN_v1.0_DRAFT_2026-11-24.md (owner-approved)
 - Runner: backend/tests/SNC_SubmissionIntegrationRunner_TEST.gs
 - Runner version: 0.1.0
-- Runner blob SHA: 837c893e8bfeb3fe835f35e93766e33add0addc8
+- Runner blob SHA: 6fd1d994e36b6d16b9019e9e9c0cf9be87a632b7
 
 ## 1. Entry points
 
 1. Read-only preflight: SNC_SubmissionIntegrationRunnerPreflight_TEST()
 2. Persistent run (one time only):
-   SNC_RunSubmissionIntegration_CONFIRMED_TEST('RUN SNC SUBMISSION INTEGRATION WP-SUB-1 2026-11-24')
+   SNC_RunSubmissionIntegration_CONFIRMED_TEST()
 3. Read-only manifest summary:
    SNC_SubmissionIntegrationManifestSummary_READONLY_TEST()
 
-Do not call the persistent entry point until the read-only runner preflight returns READY. The exact confirmation phrase is mandatory.
+Do not call the persistent entry point until the read-only runner preflight returns READY. The approved confirmation phrase is bound inside the zero-argument Editor entry point because the GAS Editor Run action cannot pass function arguments. The owner must run only after a fresh READY preflight.
 
 ## 2. Fixture boundary
 
@@ -75,7 +75,7 @@ This record is static source evidence only. No JavaScript/GAS runtime execution 
 1. Add only backend/tests/SNC_SubmissionIntegrationRunner_TEST.gs to the existing TEST Apps Script project.
 2. Run SNC_SubmissionIntegrationRunnerPreflight_TEST(). Re-run this read-only preflight after syncing the latest runner revision.
 3. Share the complete sanitized Execution Log. Proceed only if status=READY.
-4. Run the persistent entry point exactly once using the phrase in Section 1.
+4. Run the zero-argument persistent entry point exactly once from the GAS Editor. The wrapper binds the previously approved exact confirmation phrase internally; the explicit Run action is the owner execution gate.
 5. Share the complete sanitized Execution Log, including any stop/error output.
 6. Do not rerun if execution is interrupted, returns STOPPED_REQUIRES_RECONCILIATION, or does not complete normally. Do not perform cleanup.
 
