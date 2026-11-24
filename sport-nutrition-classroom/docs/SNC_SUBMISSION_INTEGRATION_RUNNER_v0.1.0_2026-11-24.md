@@ -7,7 +7,7 @@
 - Governing plan: SUBMISSION_INTEGRATION_TEST_PLAN_v1.0_DRAFT_2026-11-24.md (owner-approved)
 - Runner: backend/tests/SNC_SubmissionIntegrationRunner_TEST.gs
 - Runner version: 0.1.0
-- Runner blob SHA: 0cafb19469b753a3a34abc0916846246e5b17fc8
+- Runner blob SHA: a8e9864f88b18c368a689432535096c902dff583
 
 ## 1. Entry points
 
@@ -51,7 +51,7 @@ The runner records SUB-01 through SUB-26:
 - Exact TEST Script Properties and active Spreadsheet ID guard.
 - Existing SYSTEM_ADMIN actor resolved from active UserRoles; no fake administrator.
 - Uses business handlers for Group, Assignment and Submission mutations.
-- Mandatory notifySubmissionReceived_ in-memory stub, restored in finally.
+- Mandatory in-memory stubs for both notifyAssignmentOpened_ and notifySubmissionReceived_, installed before the first Assignment is opened and restored in finally. This prevents LINE calls and NotificationLogs writes during Assignment opening and Submission creation.
 - No DriveApp, UrlFetchApp, LINE push, NotificationLogs, triggers, deployment, setup, migration, or cleanup.
 - URL metadata uses synthetic Drive/Docs URLs only; no URL is fetched.
 - No deletion or cleanup authorization is included.
@@ -64,7 +64,7 @@ Static inspection of the committed runner confirmed:
 - All 26 case identifiers are present.
 - Exact TEST guard and confirmation phrase are present.
 - Persistent manifest and immediate fixture ID capture are present.
-- Notification stub and restoration are present.
+- Both Assignment-open and Submission-received notification stubs and restoration are present.
 - Controlled Audit append failure injection is present.
 - No direct Sheet write API, Drive/network call, broad deletion API, or cleanup routine is present.
 
@@ -73,7 +73,7 @@ This record is static source evidence only. No JavaScript/GAS runtime execution 
 ## 6. Owner execution sequence
 
 1. Add only backend/tests/SNC_SubmissionIntegrationRunner_TEST.gs to the existing TEST Apps Script project.
-2. Run SNC_SubmissionIntegrationRunnerPreflight_TEST().
+2. Run SNC_SubmissionIntegrationRunnerPreflight_TEST(). Re-run this read-only preflight after syncing the latest runner revision.
 3. Share the complete sanitized Execution Log. Proceed only if status=READY.
 4. Run the persistent entry point exactly once using the phrase in Section 1.
 5. Share the complete sanitized Execution Log, including any stop/error output.
