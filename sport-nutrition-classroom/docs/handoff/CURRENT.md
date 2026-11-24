@@ -1069,3 +1069,38 @@ Start by reading this `CURRENT.md` on branch `development`, then inspect the lat
 
 ### Working rule
 Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migration, deployment, trigger, or Drive operation merely because this checkpoint has been recorded. Resume from this exact state in the next session.
+
+
+## WP-SUB-2 Test Plan v1.0.0 drafted — 24 Nov 2026
+
+### Document created
+- Added `docs/WP-SUB-2_TEST_PLAN_v1.0.0_2026-11-24.md` on `development`.
+- Commit: `f193bc3349073240d2e59efd4083e2427fe35be9`.
+- Status: **DRAFT FOR OWNER REVIEW — NOT APPROVED FOR IMPLEMENTATION**.
+- The plan covers TEST-only Drive binary upload, 4 MiB validation, MIME/signature checks, staged-file lifecycle, Individual/Group attachment, application and effective Drive ACL checks, controlled failure/rollback cases, exact-ID reconciliation, manifest/logging requirements, and file-retention/cleanup boundaries.
+
+### Source versions inspected for the plan
+- `backend/FileManagement.gs`: `86cd29160dd00207c9a575ce801da09e643911cb`.
+- `backend/SubmissionManagement.gs`: `ef4b86678e8c1feeea425ba578501846129a229c`.
+- `backend/NotificationManagement.gs`: `875b60d90f4599ee0f9bdf0f60dcea31e215de7b`.
+- These are the exact source blobs inspected when drafting the plan. Re-fetch current `development` source before any implementation.
+
+### Owner decisions still required
+- Exact dedicated TEST Drive folder ID, folder ownership/location, effective inherited permissions, and confirmation of the `SNC_SUBMISSION_FOLDER_ID` configuration.
+- GAS execution identity and mapping of existing synthetic Core Fixture actors to uploader, group leader/member, former member, assigned instructor and unauthorized actor.
+- Valid distinct synthetic email identities and approval for temporary Viewer grants.
+- Exact eligible Individual/Group Assignment targets, approved binary fixture set, failure injection points, and file disposition.
+- Explicit approval for development of the Preflight/Runner and read-only reconciliation utilities.
+
+### Important source risks recorded
+- A PRIVATE folder check alone does not prove effective file-level ACL safety.
+- The upload handler attempts uploader Viewer grant only if a matching User/email is found; it does not explicitly fail when that record/email is missing. Treat as a review item; no code correction was made.
+- Permission and multi-resource rollback are compensating operations; any uncertain rollback must stop and be reconciled.
+- Submission creation can invoke LINE notification behavior; WP-SUB-2 must stub and restore notification hooks before any relevant handler call and prove zero real external calls.
+
+### Current gate
+- **WP-SUB-2 TEST PLAN: DRAFTED — OWNER REVIEW REQUIRED.**
+- No WP-SUB-2 implementation, Runner, Preflight, GAS execution, Drive upload, file creation, permission change, cleanup, migration, trigger, deployment, LINE call or external network call was performed.
+- WP-SUB-1 remains formally CLOSED; preserve all of its TEST records and evidence.
+- WP-SUB-3 remains separately gated.
+- Approval of the Test Plan document alone does not authorize persistent execution, Drive mutations, permission changes or cleanup. Those require separate explicit approval of exact scope.
