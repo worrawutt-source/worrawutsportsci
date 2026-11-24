@@ -375,3 +375,9 @@ Backend commit:
 - ยังไม่ได้รัน Google Apps Script Runtime, Browser automation หรือ UAT กับ TEST deployment
 
 **ข้อจำกัด:** การตรวจสอบสิทธิ์และข้อมูลจาก Source Code ผ่านการปรับแล้ว แต่ต้องทดสอบด้วยบัญชี Advisor ที่มี Assignment APPROVED จริง เพื่อยืนยันผลจาก TEST Database และการทำงานของ Drive PDF permissions ก่อนปิดงาน
+
+
+### Advisor Workspace deployment pin follow-up
+- Backend Frontend pin updated to immutable snapshot `9fd19148fed090fe06547a1935cd7664382d77b1`, which contains the latest Advisor `Client.html` and corrected `Styles.html`.
+- Latest Backend correction commit: `16b71af4a8b31a2f06f79e209c2233b024ce4ff6`.
+- Verified line 130 after save: `COMMIT_SHA: '9fd19148fed090fe06547a1935cd7664382d77b1',` (single trailing comma; no duplicate comma).
