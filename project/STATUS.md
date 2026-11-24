@@ -325,3 +325,53 @@ Backend commit:
 - ตรวจสอบไฟล์หลังบันทึกจาก GitHub ซ้ำแล้ว: line 130 เป็น `COMMIT_SHA: '71230f41bd056d08c698533b02b18cb46cd7d632',` และไม่พบ `,,` ในบรรทัดดังกล่าว
 - Correction commit: `89f1ffd183039c8e7fd41592bcb7c2a3747d98a7`
 - Runtime compile / deployment: ยังไม่ทดสอบ
+
+
+## 16. Advisor Workspace Menu Alignment — Implementation
+
+สถานะ: **Source implementation completed on feature branch; TEST runtime/UAT pending**
+
+ขอบเขตที่ดำเนินการตามการอนุมัติของผู้ใช้: ปรับหน้าที่และการทำงานให้สอดคล้องกับเมนู Advisor ทั้ง 4 เมนู โดยไม่เปลี่ยน Schema, คะแนนที่อนุมัติ, Role model หรือ Workflow การแต่งตั้ง
+
+### 1) ภาพรวมการให้คำปรึกษา (Advisor Dashboard)
+- เพิ่ม Backend helper `advisorWorkspaceSummary_()` และ API `apiGetAdvisorWorkspaceSummary()`
+- แสดงจำนวนกลุ่มที่ได้รับมอบหมาย, รายงานความก้าวหน้าที่รอตรวจ, หัวข้อวิจัยที่รอพิจารณา และจำนวนครั้งการพบอาจารย์ที่บันทึกแล้ว
+- แสดงรายการหัวข้อ/รายงานที่ต้องดำเนินการ และภาพรวมสถานะรายกลุ่ม
+- เพิ่มทางลัดไปยังกลุ่มที่ได้รับมอบหมาย, บันทึกการพบอาจารย์ และประเมิน A4
+- แยกความล้มเหลวของ Notification panel ออกจากการโหลด Dashboard
+
+### 2) กลุ่มที่ได้รับมอบหมาย (Assigned Groups)
+- เปลี่ยนการแสดงผลให้ใช้ข้อมูลสรุปชุดเดียวจาก API Advisor Workspace
+- แสดงหัวข้อวิจัย สมาชิก รายงานที่รอตรวจ จำนวนเอกสาร จำนวนครั้งการพบ และงานคงค้าง
+- เพิ่มการเปิดดูรายละเอียดแบบ On-demand: ประวัติหัวข้อวิจัย, รายงานความก้าวหน้า, เอกสารโครงร่าง และข้อเสนอแนะ
+- แสดงสรุปแผนจริยธรรมแบบอ่านอย่างเดียว พร้อมข้อความชัดเจนว่าความเห็นชอบของอาจารย์ไม่ใช่ REC Approval
+
+### 3) บันทึกการพบอาจารย์ (Supervision Records)
+- คงโครงสร้างเดิมที่รองรับ Advisor: ตรวจสอบ PDF ที่นักศึกษาส่ง, ยืนยัน/ส่งกลับแก้ไข และบันทึกการเข้าร่วมรายบุคคล
+- แก้การตรวจสอบสิทธิ์กลุ่มให้ใช้ข้อมูลสดจากฐานข้อมูล (Fresh Read) และตรวจสอบ Assignment APPROVED
+- ไม่เพิ่มตารางนัดหมายหรือบังคับการพบรายสัปดาห์
+
+### 4) ประเมิน A4 (Advisor Assessment)
+- ปรับการดึงรายชื่อกลุ่ม/สมาชิก/คะแนนให้ใช้ Fresh Read
+- ใช้กลุ่มจาก Approved Advisor Assignments ชุดเดียวกับ Dashboard
+- ปรับการตรวจสอบสิทธิ์ใน `assertGroupAccess_()` ให้ใช้ Fresh Read และ Normalize GROUP_ID, USER_ID, STATUS
+- แสดงสถานะช่วงประเมิน A4; ปิดการแก้ไขเมื่อ Admin ยังไม่เปิด WINDOW_A4
+- คงโครงสร้างข้อมูลและ validation คะแนนเดิม ไม่เปลี่ยนสัดส่วนคะแนน
+
+### Files changed
+- `project/gas-source/code.gs`
+- `project/frontend/Client.html`
+
+### New files
+- **ไม่มีการสร้างไฟล์ใหม่** เพราะฟังก์ชันที่อนุมัติสามารถเพิ่มใน Backend/Frontend เดิมได้ การเพิ่มไฟล์ HTML ใหม่จะเพิ่มขั้นตอน include, asset pinning และ deployment โดยไม่ได้ลดจำนวนรอบเรียก API หรือทำให้ Runtime เร็วขึ้นอย่างมีนัยสำคัญ
+
+### Static verification
+- ตรวจสอบว่า API `apiGetAdvisorWorkspaceSummary` มีอยู่ใน Backend
+- ตรวจสอบ Dashboard ใช้ตัวนับจาก Advisor Workspace Summary
+- ตรวจสอบ Advisor Assessment ใช้ Fresh Read
+- ตรวจสอบ `assertGroupAccess_()` ใช้ Fresh Read สำหรับ Group, Assignment และ Membership
+- ตรวจสอบ Frontend มี render functions สำหรับ Advisor Dashboard, Assigned Groups และ A4
+- เมนู Supervision ยังคงใช้ `renderMeetingAttendance()` ที่มี flow Advisor อยู่แล้ว
+- ยังไม่ได้รัน Google Apps Script Runtime, Browser automation หรือ UAT กับ TEST deployment
+
+**ข้อจำกัด:** การตรวจสอบสิทธิ์และข้อมูลจาก Source Code ผ่านการปรับแล้ว แต่ต้องทดสอบด้วยบัญชี Advisor ที่มี Assignment APPROVED จริง เพื่อยืนยันผลจาก TEST Database และการทำงานของ Drive PDF permissions ก่อนปิดงาน
