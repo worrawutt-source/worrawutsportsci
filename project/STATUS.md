@@ -179,3 +179,39 @@ Repository หลัก: [worrawutt-source/worrawutsportsci](https://github.com/
 หากเป็น AI หรือผู้พัฒนารายใหม่ ให้เริ่มด้วยคำสั่งนี้:
 
 > อ่าน `project/STATUS.md`, `project/README.md` และ `project/gas-source/README.md` ก่อนดำเนินงาน ตรวจสอบ Source Code ปัจจุบันจาก branch `main` และยึดสถานะ/ข้อกำหนดในเอกสารเป็น Baseline ห้ามแก้ไขโค้ด ฐานข้อมูล Script Properties หรือ Deployment ก่อนวิเคราะห์ปัญหาและเสนอแผนเพื่อรออนุมัติ หากพบความไม่สอดคล้องระหว่างเอกสารกับ Source Code ให้รายงานความแตกต่างก่อน ห้ามเดาหรือปรับแก้เอง
+
+## 11. Phase 2 — RW-01 Research Topic (Implementation Branch)
+
+สถานะ ณ 24 พฤศจิกายน 2026: **พัฒนา Source Code ตาม Implementation Plan RW-01 v1.0 ใน Branch แยกแล้ว; รอ Runtime Test และ UAT บน TEST**
+
+- Branch: `feature/rw-01-research-topic`
+- Baseline: `main` ณ commit `acfc95b8cbf4e71797b60deeb86bbaac6f705a86`
+- Files changed: `project/gas-source/code.gs`, `project/frontend/Client.html`
+- Frontend immutable SHA ที่ Backend pin: `0eb0e8db1f45e737d56c3ac7ad1cada889a4a4e4`
+- Schema: ใช้ `RESEARCH_TOPIC_DRAFTS` และ `RESEARCH_TOPIC_VERSIONS` เดิม ไม่มีการเพิ่มตารางหรือคอลัมน์
+- Database/Deployment: ไม่มีการเชื่อมต่อหรือเปลี่ยนแปลงฐานข้อมูลจริง, ไม่มีการรัน Migration/Setup, ไม่มีการติดตั้ง Trigger และไม่มีการ Deploy
+
+ขอบเขตการปรับปรุง:
+1. โหลดข้อมูลฉบับล่าสุดที่มีสถานะ `REVISION_REQUIRED` กลับมาเป็นข้อมูลตั้งต้นสำหรับการแก้ไข โดยไม่แก้ไขข้อมูล Version เดิม
+2. ป้องกันการส่งซ้ำเมื่อฉบับล่าสุดอยู่ระหว่างพิจารณา เห็นชอบ หรือไม่เห็นชอบ
+3. อนุญาตให้ส่ง Version ใหม่เมื่อฉบับล่าสุดได้รับผล `REVISION_REQUIRED` เท่านั้น
+4. ป้องกัน Advisor Review ซ้ำ/พร้อมกันด้วย ScriptLock และตรวจสถานะ `PENDING` ก่อนบันทึก
+5. กำหนดให้มีข้อเสนอแนะอย่างน้อย 5 ตัวอักษรเมื่อเลือก `REVISION_REQUIRED` หรือ `REJECTED`
+6. บันทึกการเห็นชอบของอาจารย์ที่ปรึกษาเป็น `STATUS=ADVISOR_APPROVED` และ `REVIEW_STATUS=APPROVED`; ไม่ใช่ Course Coordinator Approval หรือ REC Approval
+7. เชื่อมการแจ้งเตือนเข้ากับชีต `NOTIFICATIONS` และ `NOTIFICATION_QUEUE` ที่มีอยู่แล้ว โดยไม่สร้างชีตหรือรัน Migration อัตโนมัติ
+8. ปรับ Student/Advisor UI ให้เห็นข้อมูลฉบับเต็มและประวัติ Version รวมถึงข้อเสนอแนะ
+
+ผลตรวจ Source Code:
+- Backend function names ซ้ำ: ไม่พบ
+- Frontend API calls ที่ไม่มี Backend API รองรับ: ไม่พบ (ตรวจพบ 71 ชื่อ API ที่เรียกผ่าน `callApi()`)
+- Schema ของตาราง RW-01: คงเดิม
+- Backend Frontend pin: ตรงกับ Frontend commit SHA
+- เทียบกับ `main`: เปลี่ยนเฉพาะ 2 ไฟล์ข้างต้นในรอบ Implementation นี้
+
+ข้อจำกัดของผลทดสอบ: ผลข้างต้นเป็น Static Source Inspection เท่านั้น ยังไม่ได้ Compile/Execute ใน Google Apps Script Runtime และยังไม่ได้ทดสอบกับ TEST Database/Deployment จริง จึงยังไม่ถือว่า RW-01 ผ่าน Runtime Test หรือ UAT และยังไม่อนุญาตให้ Deploy Production
+
+Commits ใน Branch:
+- `0eb0e8db1f45e737d56c3ac7ad1cada889a4a4e4` — Implement RW-01 student revision and advisor review UI
+- `4fc3f6ac6af0704c659205efbb5b989def197ef7` — Implement RW-01 workflow validation, review locking and notifications
+- `8ccde33e452bcc190fa6d8a64fc7b48e3b8d48a1` — Keep RW-01 notifications within pre-existing TEST tables
+
