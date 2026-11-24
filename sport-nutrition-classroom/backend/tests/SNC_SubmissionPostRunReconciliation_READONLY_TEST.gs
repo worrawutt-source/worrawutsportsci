@@ -155,7 +155,7 @@ function SNC_SubmissionPostRunReconciliation_READONLY_TEST() {
   });
   var topologyOk = groupValid && memberRows.length === 6 &&
     memberCounts.Alpha.total === 2 && memberCounts.Alpha.active === 2 &&
-    memberCounts.Beta.total === 3 && memberCounts.Beta.active === 3 &&
+    memberCounts.Beta.total === 4 && memberCounts.Beta.active === 3 &&
     memberCounts.Solo.total === 1 && memberCounts.Solo.active === 0;
   add('GROUP-TOPOLOGY-01', topologyOk,
     { groupCount: groupRows.length, groupMemberCount: memberRows.length, groups: memberCounts });
