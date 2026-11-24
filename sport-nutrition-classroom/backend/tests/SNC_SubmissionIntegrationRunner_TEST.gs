@@ -108,6 +108,7 @@ function snsiOpenAssignment_(admin,offeringId,title,type,max,deadline,tag,onCrea
     submissionType:type,maxGroupMembers:max
   },tag+'_CREATE');
   var id=String(a.AssignmentID);
+  if(onCreated)onCreated(id);
   var opened=snsiCall_(handleAssignmentManagementAction_,'assignment.open',admin,{assignmentId:id},tag+'_OPEN');
   if(String(opened.Status)!=='OPEN')throw new Error('ASSIGNMENT_OPEN_FAILED_'+tag);
   return id;
@@ -121,8 +122,15 @@ function snsiPastDeadline_(){
 function snsiGroup_(offeringId,creator,members,name,tag,onCreated,onMember){
   var g=snsiCall_(handleGroupManagementAction_,'group.create',creator,{offeringId:offeringId,groupName:name},tag+'_CREATE');
   var gid=String(g.groupId);
+  if(onCreated)onCreated(gid);
+  function captureMember(uid){
+    var row=snsiRows_('GroupMembers').filter(function(x){return String(x.GroupID)===gid&&String(x.UserID)===String(uid)&&String(x.Status).toUpperCase()==='ACTIVE';}).slice(-1)[0];
+    if(onMember&&row)onMember(String(row.GroupMemberID));
+  }
+  captureMember(creator.userId);
   members.forEach(function(uid,i){
     snsiCall_(handleGroupManagementAction_,'group.join',snsiActor_(uid),{groupId:gid},tag+'_JOIN_'+i);
+    captureMember(uid);
   });
   return gid;
 }
@@ -387,9 +395,9 @@ function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
     // SUB-18: same key with changed payload returns CONFLICT without mutation.
     snsiCase_(manifest,'SUB-18',function(){
       var payload={assignmentId:manifest.fixtures.assignments.Individual,driveUrls:[]},rid=snsiReq_('SUB18_CONFLICT');
-      handleSubmissionManagementAction_('submission.create',u[3],payload,rid);
+      handleSubmissionManagementAction_('submission.create',u[2],payload,rid);
       var n=snsiRows_('Submissions').length;
-      var r=snsiExpectError_(function(){handleSubmissionManagementAction_('submission.create',u[3],
+      var r=snsiExpectError_(function(){handleSubmissionManagementAction_('submission.create',u[2],
         {assignmentId:manifest.fixtures.assignments.Individual,driveUrls:['https://docs.google.com/document/d/CHANGED']},rid);},'CONFLICT');
       return {pass:r.pass&&snsiRows_('Submissions').length===n,actual:r.actual,expected:r.expected};
     });
