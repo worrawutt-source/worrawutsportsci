@@ -214,15 +214,24 @@ Please review and approve or amend these bounded decisions before implementation
   - Scope remained read-only; writesExpected=0 and externalCallsExpected=0.
 - WP-SUB-0 is therefore OWNER-RUN RUNTIME READY — 12/12 PASS.
 - Prepared backend/tests/SNC_SubmissionIntegrationRunner_TEST.gs v0.1.0 on development.
-  - Latest blob SHA: 0cafb19469b753a3a34abc0916846246e5b17fc8.
-  - Includes SUB-01..SUB-26 case checkpoints, exact TEST guard, persistent manifest, immediate generated-ID capture, notification hook stub/restore, controlled in-memory Audit append failure injection, and terminal reconciliation.
+  - Latest blob SHA: a8e9864f88b18c368a689432535096c902dff583.
+  - Includes SUB-01..SUB-26 case checkpoints, exact TEST guard, persistent manifest, immediate generated-ID capture, both notifyAssignmentOpened_ and notifySubmissionReceived_ in-memory hook stubs installed before any Assignment is opened and restored, controlled in-memory Audit append failure injection, and terminal reconciliation.
   - Uses only existing Core Fixture users/offering/enrollments and creates synthetic Groups/Assignments via application handlers.
   - Does not write directly to business sheets; does not call DriveApp, UrlFetchApp, triggers, LINE, deployment, migration or cleanup.
   - Exact persistent entry phrase: RUN SNC SUBMISSION INTEGRATION WP-SUB-1 2026-11-24.
   - Read-only runner preflight: SNC_SubmissionIntegrationRunnerPreflight_TEST().
   - Persistent runner: SNC_RunSubmissionIntegration_CONFIRMED_TEST('RUN SNC SUBMISSION INTEGRATION WP-SUB-1 2026-11-24').
   - Read-only manifest summary: SNC_SubmissionIntegrationManifestSummary_READONLY_TEST().
-- Static source inspection confirms all 26 case IDs are present, safety guard and confirmation phrase are present, manifest checkpointing is present, notification hook restoration is implemented, and no direct Sheet mutation, Drive/network call, broad delete, or cleanup function is present.
+- Static source inspection confirms all 26 case IDs are present, safety guard and confirmation phrase are present, manifest checkpointing is present, both notification hook restorations are implemented before any Assignment open side effect, and no direct Sheet mutation, Drive/network call, broad delete, or cleanup function is present.
 - Important evidence boundary: this is STATIC INSPECTION ONLY. The runner has not been copied into GAS and has not been executed. No WP-SUB-1 runtime result is claimed.
-- Owner must add only this new runner file to the existing TEST GAS project, run the read-only runner preflight first, and share its complete sanitized log. If READY, execute the persistent runner exactly once using the phrase above. If it stops, returns anything other than a complete result, or execution is interrupted, do not rerun; share the full log and reconcile the manifest first.
+- Owner must sync the latest runner revision (blob SHA a8e9864f88b18c368a689432535096c902dff583) into the existing TEST GAS project, then run the read-only runner preflight again because the earlier READY log predates the dual-notification-stub safety fix. Share the complete sanitized log. If READY, execute the persistent runner exactly once using the phrase above. If it stops, returns anything other than a complete result, or execution is interrupted, do not rerun; share the full log and reconcile the manifest first.
 - WP-SUB-2 Drive upload/access, WP-SUB-3 deployed API/LIFF/Browser E2E, and all cleanup remain outside this authorization.
+
+
+### WP-SUB-1 additional safety correction — 24 Nov 2026
+- Source review identified that opening an Assignment calls notifyAssignmentOpened_(), which can call ntSend_() and write NotificationLogs. Stubbing only notifySubmissionReceived_ was insufficient to guarantee zero LINE/external calls and no notification side effects.
+- Updated the Runner to install in-memory stubs for both notifyAssignmentOpened_ and notifySubmissionReceived_ before creating/opening any Assignment. Both original function references are restored after the test and in the stop/error recovery path.
+- SUB-24 now verifies six Assignment-open stub invocations, at least one Submission-received stub invocation, and restoration of both original hooks.
+- Runner latest blob SHA: a8e9864f88b18c368a689432535096c902dff583.
+- The earlier Runner Preflight READY log was generated before this source correction. It remains valid evidence for that earlier revision only. Owner must sync the latest runner and rerun SNC_SubmissionIntegrationRunnerPreflight_TEST() before any persistent execution.
+- Persistent WP-SUB-1 execution remains NOT STARTED.
