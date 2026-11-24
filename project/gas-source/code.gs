@@ -77,7 +77,7 @@ function doGet(e) {
   e=e||{parameter:{}};
   const p=e.parameter||{};
   if(p.advisorInvite){
-    const token=String(p.advisorInvite),inv=findAdvisorInvitationByToken_(token);
+    const token=normalizeAdvisorInviteToken_(p.advisorInvite),inv=findAdvisorInvitationByToken_(token);
     if(!inv||inv.STATUS!=='INVITED') return HtmlService.createHtmlOutput('<meta name="viewport" content="width=device-width, initial-scale=1"><main style="font-family:Arial,sans-serif;max-width:620px;margin:40px auto;padding:24px"><h2>ลิงก์คำเชิญไม่ถูกต้อง หมดอายุ หรือถูกใช้แล้ว</h2></main>');
     const actionUrl=ScriptApp.getService().getUrl();
     const html='<meta name="viewport" content="width=device-width, initial-scale=1"><main style="font-family:Arial,sans-serif;max-width:620px;margin:32px auto;padding:28px;border:1px solid #dbe4ee;border-radius:16px;color:#193650"><h2>ยืนยันคำเชิญเป็นอาจารย์ที่ปรึกษา</h2><p>เรียน '+escapeHtml_(inv.ADVISOR_NAME)+'</p><p>อีเมล: '+escapeHtml_(inv.ADVISOR_EMAIL)+'</p><p>กลุ่มวิจัย: '+escapeHtml_(inv.GROUP_NAME||inv.GROUP_ID)+'</p><p>หากท่านตอบรับ กรุณากำหนดรหัสผ่านสำหรับใช้เข้าสู่ระบบภายหลัง โดยการแต่งตั้งยังต้องรอ Admin อนุมัติ</p><form method="post" action="'+actionUrl+'" style="display:grid;gap:12px"><input type="hidden" name="advisorInviteToken" value="'+escapeHtml_(token)+'"><input type="hidden" name="advisorDecision" value="ACCEPT"><label>ตั้งรหัสผ่าน<input name="advisorPassword" type="password" minlength="6" autocomplete="new-password" required style="display:block;width:100%;padding:12px;margin-top:6px;box-sizing:border-box"></label><label>ยืนยันรหัสผ่าน<input name="advisorConfirmPassword" type="password" minlength="6" autocomplete="new-password" required style="display:block;width:100%;padding:12px;margin-top:6px;box-sizing:border-box"></label><small>รหัสผ่านต้องมีตัวอักษร ตัวเลข และอักขระพิเศษ อย่างน้อย 6 ตัวอักษร</small><button type="submit" style="padding:13px;background:#193650;color:white;border:0;border-radius:9px">ตอบรับและตั้งรหัสผ่าน</button></form><form method="post" action="'+actionUrl+'" style="margin-top:14px"><input type="hidden" name="advisorInviteToken" value="'+escapeHtml_(token)+'"><input type="hidden" name="advisorDecision" value="DECLINE"><button type="submit" style="padding:10px 16px;border:1px solid #ccd6e0;border-radius:9px;background:white">ปฏิเสธคำเชิญ</button></form></main>';
@@ -93,7 +93,8 @@ function doPost(e){
   const p=(e&&e.parameter)||{};
   if(p.advisorInviteToken){
     let result;
-    try{result=respondAdvisorInvitation_(String(p.advisorInviteToken),String(p.advisorDecision||''),String(p.advisorPassword||''),String(p.advisorConfirmPassword||''));}
+    const inviteToken=normalizeAdvisorInviteToken_(p.advisorInviteToken);
+    try{result=respondAdvisorInvitation_(inviteToken,String(p.advisorDecision||''),String(p.advisorPassword||''),String(p.advisorConfirmPassword||''));}
     catch(err){return HtmlService.createHtmlOutput('<meta name="viewport" content="width=device-width, initial-scale=1"><main style="font-family:Arial,sans-serif;max-width:620px;margin:40px auto;padding:24px"><h2>ยังดำเนินการไม่สำเร็จ</h2><p>'+escapeHtml_(err.message||String(err))+'</p><p><a href="'+ScriptApp.getService().getUrl()+'?advisorInvite='+encodeURIComponent(String(p.advisorInviteToken))+'">กลับไปแก้ไขข้อมูล</a></p></main>');}
     return HtmlService.createHtmlOutput('<meta name="viewport" content="width=device-width, initial-scale=1"><main style="font-family:Arial,sans-serif;max-width:620px;margin:40px auto;padding:24px;border:1px solid #ddd;border-radius:12px"><h2>'+escapeHtml_(result.message)+'</h2><p>ท่านสามารถปิดหน้านี้ได้</p></main>');
   }
@@ -1010,6 +1011,15 @@ function migrateAdvisorPasswordSetupSchema(){
   ensureWorkflowSheet_('ADVISOR_INVITATIONS');
   return {ok:true,message:'ปรับโครงสร้างคำเชิญอาจารย์เพื่อรองรับการตั้งรหัสผ่านครั้งแรกแล้ว'};
 }
+/**
+ * Normalize advisor invitation tokens received through URL/form parameters.
+ * Removes only trailing escaped newline markers or whitespace accidentally
+ * appended by email clients; token contents are otherwise left unchanged.
+ */
+function normalizeAdvisorInviteToken_(value){
+  return String(value||'').replace(/(?:\\[rn]|[\\r\\n\\t\\s])+$/gi,'').trim();
+}
+
 function findAdvisorInvitationByToken_(token){
   const hash=tokenHash_(token);
   const row=readObjectsFresh_('ADVISOR_INVITATIONS').find(x=>verifyTokenHash_(token,x.TOKEN_HASH)&&['INVITED','ACCEPTED'].includes(x.STATUS)&&new Date(x.EXPIRES_AT)>new Date());
@@ -2349,26 +2359,4 @@ function logSystem_(action,targetType,targetId,details,actorUserId){
       TARGET_TYPE:targetType,TARGET_ID:targetId,DETAILS_JSON:JSON.stringify(details||{}),CREATED_AT:new Date()
     });
   } catch(e) { console.error('Audit log failure: '+e.message); }
-}
-
-/**
- * Temporary manual runner for advisor invitation diagnostics.
- * Paste the token value from the advisorInvite URL when running.
- * Remove this helper after the diagnostic is complete.
- */
-
-function runAdvisorInviteDiagnostic() {
-  const inviteUrl = 'https://script.google.com/macros/s/AKfycbwV6XL3kV9fP-8yZnPpb8L9wAutK_Ah2zReRbyfauJfebp44sasXmmLyGG1YczG5R9D/exec?advisorInvite=b54344e9-56ba-4cc6-9638-7dc406dcb070faa52d39-ed87-44be-b984-b437743bffb9\n\n';
-
-  const match = inviteUrl.match(/[?&]advisorInvite=([^&#\s]+)/);
-
-  if (!match) {
-    throw new Error('ไม่พบ advisorInvite ใน URL');
-  }
-
-  const token = decodeURIComponent(match[1]);
-  const result = diagnoseAdvisorInvitationToken(token);
-
-  Logger.log(JSON.stringify(result, null, 2));
-  return result;
 }
