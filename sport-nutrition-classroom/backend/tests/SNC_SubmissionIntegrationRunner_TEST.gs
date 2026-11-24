@@ -215,9 +215,25 @@ function SNC_SubmissionIntegrationRunnerPreflight_TEST(){
  * Persistent WP-SUB-1 entry. Run exactly once after adding this file to TEST GAS.
  * If interrupted or not COMPLETE, do not rerun; share the complete execution log.
  */
-function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
-  if(confirmationPhrase!==SNC_SUB_INT_CONFIRM_)
-    return {status:'ABORTED_CONFIRMATION_REQUIRED',writesExpected:0,deletionPerformed:false};
+function SNC_RunSubmissionIntegration_CONFIRMED_TEST(){
+  // GAS editor Run cannot supply function arguments. The owner-approved,
+  // exact confirmation phrase is bound here; pressing Run is the explicit
+  // execution action after the separate read-only preflight gate.
+  return snsiRunSubmissionIntegration_(SNC_SUB_INT_CONFIRM_);
+}
+
+function snsiRunSubmissionIntegration_(confirmationPhrase){
+  if(confirmationPhrase!==SNC_SUB_INT_CONFIRM_){
+    var blocked={status:'ABORTED_CONFIRMATION_REQUIRED',writesExpected:0,
+      externalCallsExpected:0,deletionPerformed:false};
+    console.log('SNC_SUBMISSION_INTEGRATION_ABORT='+JSON.stringify(blocked));
+    return blocked;
+  }
+  console.log('SNC_SUBMISSION_INTEGRATION_START='+JSON.stringify({
+    runner:'SNC_RunSubmissionIntegration_CONFIRMED_TEST',
+    version:SNC_SUB_INT_VERSION_,confirmation:'APPROVED_PHRASE_BOUND',
+    mode:'TEST_ONLY_HANDLER_LEVEL_INTEGRATION'
+  }));
   var lock=LockService.getDocumentLock();
   if(!lock)throw new Error('DOCUMENT_LOCK_UNAVAILABLE');
   lock.waitLock(30000);
