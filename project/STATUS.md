@@ -247,3 +247,39 @@ Commits ใน Branch:
 - ตรวจสอบว่า Backend ส่ง `expiresAt` และ Frontend pin ไปยัง immutable SHA ใหม่แล้ว
 - Runtime/Browser test: **PENDING**
 
+
+
+## 13. Advisor Assigned Groups & Dashboard Metrics Hotfix
+
+สถานะ ณ 25 พฤศจิกายน 2026: **แก้ไข Source Code ใน Branch แยกแล้ว; รอ Runtime Test/UAT บน TEST**
+
+ปัญหาที่พบจากภาพหน้าจอ:
+- Dashboard แสดงจำนวนกลุ่มที่ได้รับมอบหมายเป็น 1 แต่หน้า “กลุ่มที่ได้รับมอบหมาย” ไม่แสดงรายละเอียดกลุ่ม
+- หน้า Advisor Overview แสดงข้อความ fallback ว่าเมนูไม่มีสิทธิ์/ไม่มีข้อมูล ทั้งที่มีข้อมูลกลุ่ม
+- Metric card 4 รายการแสดง 3 รายการในแถวแรกและอีก 1 รายการตกลงแถวถัดไป ทำให้ใช้พื้นที่มากเกินจำเป็น
+
+การแก้ไข:
+1. เพิ่ม Backend API `apiGetAdvisorAssignedGroups(token)` สำหรับ Advisor โดยเฉพาะ
+2. ใช้ `readObjectsFresh_()` อ่าน `ADVISOR_ASSIGNMENTS`, `RESEARCH_GROUPS`, `GROUP_MEMBERS`, `STUDENTS` เพื่อลดปัญหาข้อมูล Cache เก่าที่อาจทำให้ตัวเลข Dashboard กับรายการกลุ่มไม่ตรงกัน
+3. Normalize User ID, Group ID และ Status ก่อนเปรียบเทียบ และเลือกเฉพาะรายการแต่งตั้งที่ APPROVED กับกลุ่ม ACTIVE
+4. ส่งชื่อสมาชิกโดยใช้ FULL_NAME หรือประกอบ TITLE/FIRST_NAME/LAST_NAME เป็น fallback
+5. เปลี่ยน Advisor group view ให้เรียก API ใหม่ และแยกข้อผิดพลาดการโหลด Ethics Summary ออกจากการแสดงรายละเอียดกลุ่ม เพื่อไม่ให้การโหลดข้อมูลย่อยทำให้กลุ่มหายทั้งรายการ
+6. ปรับ Dashboard metrics เป็น 4 คอลัมน์บนหน้าจอกว้าง และ 2 คอลัมน์บนหน้าจอขนาดเล็ก พร้อมลด padding/ขนาดตัวเลข
+7. ไม่เปลี่ยน Schema, Database, สิทธิ์, Workflow การแต่งตั้ง หรือสถานะการอนุมัติเดิม
+
+ไฟล์ที่เปลี่ยน:
+- `project/gas-source/code.gs`
+- `project/frontend/Client.html`
+- `project/frontend/Styles.html`
+
+Frontend immutable SHA ที่ Backend pin:
+- `0ebd54a8e8468f0b23e157a1236d3265bf5fac9d`
+
+Backend commit:
+- `ab8d98502c9678e18b132c04b7857578ef0021a3`
+
+ข้อจำกัด:
+- เป็น Source Code update เท่านั้น ยังไม่ได้ Deploy ไปยัง Web App TEST
+- ยังไม่ได้ทดสอบ Runtime ด้วยข้อมูลจริงของบัญชี Advisor
+- หากไม่พบกลุ่มหลัง Deploy ต้องตรวจสอบค่าจริงในแถว `ADVISOR_ASSIGNMENTS` (ADVISOR_USER_ID, GROUP_ID, STATUS) และ `RESEARCH_GROUPS` (GROUP_ID, STATUS) โดยไม่แก้ข้อมูลเอง
+- Runtime Test/UAT: **PENDING**
