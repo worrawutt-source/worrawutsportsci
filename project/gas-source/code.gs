@@ -127,7 +127,7 @@ function doPost(e){
 const FRONTEND_CONFIG = Object.freeze({
   OWNER: 'worrawutt-source',
   REPOSITORY: 'worrawutsportsci',
-  COMMIT_SHA: '0eb0e8db1f45e737d56c3ac7ad1cada889a4a4e4',
+  COMMIT_SHA: '93f23210fd48fcac2ebc665b4babdf3df1b1ecd6',
   BASE_PATH: 'project/frontend/',
   CACHE_SECONDS: 21600,
   CACHE_CHUNK_SIZE: 20000
@@ -408,6 +408,7 @@ function apiGetDashboard(token) {
   const base = {
     appName:APP.NAME, version:APP.VERSION, courseCode:APP.COURSE_CODE,
     term:APP.TERM, section:APP.SECTION,
+    expiresAt:new Date(ctx.session.EXPIRES_AT).toISOString(),
     forcePasswordChange: String(ctx.user.PASSWORD_CHANGE_REQUIRED).toUpperCase() === 'TRUE',
     user:{userId:ctx.user.USER_ID,username:ctx.user.USERNAME || ctx.user.EMAIL,email:ctx.user.EMAIL,displayName:ctx.user.DISPLAY_NAME,roleId:role}
   };
