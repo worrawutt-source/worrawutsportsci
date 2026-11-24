@@ -78,7 +78,11 @@ function doGet(e) {
   const p=e.parameter||{};
   if(p.advisorInvite){
     const token=normalizeAdvisorInviteToken_(p.advisorInvite),inv=findAdvisorInvitationByToken_(token);
-    if(!inv||inv.STATUS!=='INVITED') return HtmlService.createHtmlOutput('<meta name="viewport" content="width=device-width, initial-scale=1"><main style="font-family:Arial,sans-serif;max-width:620px;margin:40px auto;padding:24px"><h2>ลิงก์คำเชิญไม่ถูกต้อง หมดอายุ หรือถูกใช้แล้ว</h2></main>');
+    if(inv&&inv.STATUS==='ACCEPTED'){
+      const acceptedHtml='<meta name="viewport" content="width=device-width, initial-scale=1"><main style="font-family:Arial,sans-serif;max-width:620px;margin:40px auto;padding:28px;border:1px solid #dbe4ee;border-radius:16px;color:#193650"><h2>ท่านตอบรับคำเชิญเรียบร้อยแล้ว</h2><p>ระบบบันทึกการตอบรับและรหัสผ่านของท่านแล้ว</p><p>ขณะนี้อยู่ระหว่างรอ Admin อนุมัติการแต่งตั้ง</p><p>ไม่จำเป็นต้องตอบรับซ้ำ สามารถปิดหน้านี้ได้</p></main>';
+      return HtmlService.createHtmlOutput(acceptedHtml).setTitle('ตอบรับคำเชิญแล้ว').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    }
+    if(!inv||inv.STATUS!=='INVITED') return HtmlService.createHtmlOutput('<meta name="viewport" content="width=device-width, initial-scale=1"><main style="font-family:Arial,sans-serif;max-width:620px;margin:40px auto;padding:24px"><h2>ลิงก์คำเชิญไม่ถูกต้อง หมดอายุ หรือถูกใช้แล้ว</h2></main>').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
     const actionUrl=ScriptApp.getService().getUrl();
     const html='<meta name="viewport" content="width=device-width, initial-scale=1"><main style="font-family:Arial,sans-serif;max-width:620px;margin:32px auto;padding:28px;border:1px solid #dbe4ee;border-radius:16px;color:#193650"><h2>ยืนยันคำเชิญเป็นอาจารย์ที่ปรึกษา</h2><p>เรียน '+escapeHtml_(inv.ADVISOR_NAME)+'</p><p>อีเมล: '+escapeHtml_(inv.ADVISOR_EMAIL)+'</p><p>กลุ่มวิจัย: '+escapeHtml_(inv.GROUP_NAME||inv.GROUP_ID)+'</p><p>หากท่านตอบรับ กรุณากำหนดรหัสผ่านสำหรับใช้เข้าสู่ระบบภายหลัง โดยการแต่งตั้งยังต้องรอ Admin อนุมัติ</p><form method="post" action="'+actionUrl+'" style="display:grid;gap:12px"><input type="hidden" name="advisorInviteToken" value="'+escapeHtml_(token)+'"><input type="hidden" name="advisorDecision" value="ACCEPT"><label>ตั้งรหัสผ่าน<input name="advisorPassword" type="password" minlength="6" autocomplete="new-password" required style="display:block;width:100%;padding:12px;margin-top:6px;box-sizing:border-box"></label><label>ยืนยันรหัสผ่าน<input name="advisorConfirmPassword" type="password" minlength="6" autocomplete="new-password" required style="display:block;width:100%;padding:12px;margin-top:6px;box-sizing:border-box"></label><small>รหัสผ่านต้องมีตัวอักษร ตัวเลข และอักขระพิเศษ อย่างน้อย 6 ตัวอักษร</small><button type="submit" style="padding:13px;background:#193650;color:white;border:0;border-radius:9px">ตอบรับและตั้งรหัสผ่าน</button></form><form method="post" action="'+actionUrl+'" style="margin-top:14px"><input type="hidden" name="advisorInviteToken" value="'+escapeHtml_(token)+'"><input type="hidden" name="advisorDecision" value="DECLINE"><button type="submit" style="padding:10px 16px;border:1px solid #ccd6e0;border-radius:9px;background:white">ปฏิเสธคำเชิญ</button></form></main>';
     return HtmlService.createHtmlOutput(html).setTitle('ยืนยันคำเชิญอาจารย์ที่ปรึกษา').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -1115,6 +1119,7 @@ function diagnoseLatestAdvisorInvitation_(){
 function respondAdvisorInvitation_(token,decision,password,confirmPassword){
   if(!['ACCEPT','DECLINE'].includes(decision))throw new Error('คำตอบไม่ถูกต้อง');
   const row=findAdvisorInvitationByToken_(token);
+  if(row&&row.STATUS==='ACCEPTED')return {ok:true,alreadyAccepted:true,message:'คำเชิญนี้ได้รับการตอบรับแล้ว ระบบบันทึกรหัสผ่านเรียบร้อย ขณะนี้รอ Admin อนุมัติ'};
   if(!row||row.STATUS!=='INVITED')throw new Error('คำเชิญนี้ถูกใช้แล้วหรือหมดอายุ');
   let salt='',hash='';
   if(decision==='ACCEPT'){
@@ -1126,8 +1131,9 @@ function respondAdvisorInvitation_(token,decision,password,confirmPassword){
   }
   const lock=LockService.getScriptLock();lock.waitLock(60000);
   try{
-    const fresh=readObjectsFresh_('ADVISOR_INVITATIONS').find(x=>x.INVITATION_ID===row.INVITATION_ID&&x.STATUS==='INVITED'&&new Date(x.EXPIRES_AT)>new Date());
+    const fresh=readObjectsFresh_('ADVISOR_INVITATIONS').find(x=>x.INVITATION_ID===row.INVITATION_ID&&['INVITED','ACCEPTED'].includes(x.STATUS)&&new Date(x.EXPIRES_AT)>new Date());
     if(!fresh)throw new Error('คำเชิญนี้ถูกตอบไปแล้วหรือหมดอายุ');
+    if(fresh.STATUS==='ACCEPTED')return {ok:true,alreadyAccepted:true,message:'คำเชิญนี้ได้รับการตอบรับแล้ว ระบบบันทึกรหัสผ่านเรียบร้อย ขณะนี้รอ Admin อนุมัติ'};
     const sh=sheet_('ADVISOR_INVITATIONS'),headers=SCHEMA.ADVISOR_INVITATIONS;
     const set=(key,value)=>sh.getRange(fresh._row,headers.indexOf(key)+1).setValue(value);
     if(decision==='DECLINE'){
@@ -1137,9 +1143,23 @@ function respondAdvisorInvitation_(token,decision,password,confirmPassword){
     }
     set('STATUS','ACCEPTED');set('RESPONDED_AT',new Date());set('RESPONSE_NOTE','อาจารย์ตอบรับและตั้งรหัสผ่านแล้ว');
     set('PASSWORD_SALT',salt);set('PASSWORD_HASH',hash);
-    MailApp.sendEmail({to:fresh.ADVISOR_EMAIL,subject:'ยืนยันการตอบรับคำเชิญแล้ว · '+APP.NAME,body:'เรียน '+fresh.ADVISOR_NAME+'\n\nระบบได้รับการตอบรับคำเชิญและบันทึกรหัสผ่านของท่านแล้ว ขณะนี้อยู่ระหว่างรอ Admin อนุมัติการแต่งตั้ง เมื่อได้รับอนุมัติแล้ว ท่านสามารถเข้าสู่ระบบด้วยอีเมลนี้และรหัสผ่านที่ตั้งไว้'});
-    logSystem_('ADVISOR_INVITATION_ACCEPTED','GROUP',fresh.GROUP_ID,{invitationId:fresh.INVITATION_ID,email:fresh.ADVISOR_EMAIL},'EXTERNAL_ADVISOR');
-    return {ok:true,message:'ตั้งรหัสผ่านและตอบรับคำเชิญเรียบร้อยแล้ว ขณะนี้รอ Admin อนุมัติการแต่งตั้ง'};
+    SpreadsheetApp.flush();
+
+    // Email notification is best-effort: mail quota/permission errors must not
+    // turn a successfully stored acceptance into a failed browser response.
+    let emailSent=true,emailError='';
+    try{
+      MailApp.sendEmail({to:fresh.ADVISOR_EMAIL,subject:'ยืนยันการตอบรับคำเชิญแล้ว · '+APP.NAME,body:'เรียน '+fresh.ADVISOR_NAME+'\n\nระบบได้รับการตอบรับคำเชิญและบันทึกรหัสผ่านของท่านแล้ว ขณะนี้อยู่ระหว่างรอ Admin อนุมัติการแต่งตั้ง เมื่อได้รับอนุมัติแล้ว ท่านสามารถเข้าสู่ระบบด้วยอีเมลนี้และรหัสผ่านที่ตั้งไว้'});
+    }catch(mailErr){
+      emailSent=false;
+      emailError=String(mailErr&&mailErr.message||mailErr);
+    }
+    try{
+      logSystem_('ADVISOR_INVITATION_ACCEPTED','GROUP',fresh.GROUP_ID,{invitationId:fresh.INVITATION_ID,email:fresh.ADVISOR_EMAIL,confirmationEmailSent:emailSent,emailError:emailError},'EXTERNAL_ADVISOR');
+    }catch(logErr){
+      console.error('ADVISOR_INVITATION_ACCEPTED log failed: '+String(logErr&&logErr.message||logErr));
+    }
+    return {ok:true,message:'ตั้งรหัสผ่านและตอบรับคำเชิญเรียบร้อยแล้ว ขณะนี้รอ Admin อนุมัติการแต่งตั้ง'+(emailSent?'':' (ระบบบันทึกการตอบรับแล้ว แต่ส่งอีเมลยืนยันไม่สำเร็จ)')};
   }finally{lock.releaseLock();}
 }
 function apiStudentNominateAdvisor(token,advisorName,advisorEmail){
