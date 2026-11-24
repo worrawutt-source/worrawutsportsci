@@ -1809,6 +1809,23 @@ function assertStudentGroupLeader_(ctx){
     throw new Error('เฉพาะหัวหน้ากลุ่มที่ Admin กำหนดเท่านั้นที่บันทึกร่างหรือส่งหัวข้อวิจัยได้');
   return {groupId,g};
 }
+function enqueueResearchTopicNotification_(groupId,type,title,message,relatedId){
+  // Use the existing notification tables only. Never create sheets or run migrations here.
+  const ss=db_();
+  if(!ss.getSheetByName('NOTIFICATIONS')||!ss.getSheetByName('NOTIFICATION_QUEUE'))throw new Error('ไม่พบตารางแจ้งเตือนที่เตรียมไว้แล้ว กรุณาตรวจสอบ TEST schema โดยไม่รัน migration อัตโนมัติ');
+  const members=readObjectsFresh_('GROUP_MEMBERS').filter(m=>String(m.GROUP_ID)===String(groupId)&&m.STATUS==='ACTIVE');
+  const users=readObjectsFresh_('SYS_USERS'),recipientIds=[];
+  members.forEach(m=>{let userId=String(m.USER_ID||'');if(!userId){const linked=users.find(u=>u.ROLE_ID===ROLE.STUDENT&&String(u.STUDENT_ID)===String(m.STUDENT_ID)&&u.STATUS==='ACTIVE');if(linked)userId=String(linked.USER_ID);}if(userId)recipientIds.push(userId);});
+  readObjectsFresh_('ADVISOR_ASSIGNMENTS').filter(a=>String(a.GROUP_ID)===String(groupId)&&a.STATUS==='APPROVED').forEach(a=>recipientIds.push(String(a.ADVISOR_USER_ID)));
+  const existing=readObjectsFresh_('NOTIFICATIONS');
+  [...new Set(recipientIds)].forEach(userId=>{
+    const user=users.find(u=>String(u.USER_ID)===userId);if(!user)return;
+    const eventKey=[type,relatedId,user.USER_ID].join(':');
+    if(existing.some(n=>String(n.NOTIFICATION_ID)===eventKey))return;
+    appendObject_('NOTIFICATIONS',{NOTIFICATION_ID:eventKey,USER_ID:user.USER_ID,GROUP_ID:groupId,TYPE:type,TITLE:title,MESSAGE:message,RELATED_TYPE:'RESEARCH_TOPIC',RELATED_ID:relatedId,IS_READ:'FALSE',CREATED_AT:new Date(),READ_AT:''});
+    if(user.EMAIL)appendObject_('NOTIFICATION_QUEUE',{QUEUE_ID:Utilities.getUuid(),EVENT_KEY:eventKey,RECIPIENT_EMAIL:user.EMAIL,RECIPIENT_USER_ID:user.USER_ID,SUBJECT:title,BODY:message,STATUS:'PENDING',ATTEMPTS:0,NEXT_ATTEMPT_AT:new Date(),LEASE_UNTIL:'',LAST_ERROR:'',CREATED_AT:new Date(),SENT_AT:''});
+  });
+}
 function latestResearchTopicVersion_(groupId){
   return findObjectsByColumnValue_('RESEARCH_TOPIC_VERSIONS','GROUP_ID',groupId).sort((a,b)=>Number(b.VERSION_NO||0)-Number(a.VERSION_NO||0))[0]||null;
 }
@@ -1861,7 +1878,7 @@ function apiStudentSaveResearchTopic(token,payload){
     const draft=readObjectsFresh_('RESEARCH_TOPIC_DRAFTS').find(x=>String(x.GROUP_ID)===String(groupId)&&x.STATUS==='DRAFT');
     if(draft){const draftSheet=sheet_('RESEARCH_TOPIC_DRAFTS');draftSheet.getRange(draft._row,SCHEMA.RESEARCH_TOPIC_DRAFTS.indexOf('STATUS')+1).setValue('SUBMITTED');}
     logSystem_('RESEARCH_TOPIC_SUBMITTED','GROUP',groupId,{versionNo,titleTh},ctx.user.USER_ID);
-    try{enqueueGroupNotification_(groupId,'RESEARCH_TOPIC_SUBMITTED','ส่งหัวข้อวิจัยให้อาจารย์พิจารณา','กลุ่มของท่านส่งหัวข้อวิจัยเวอร์ชัน '+versionNo+' ให้อาจารย์ที่ปรึกษาพิจารณาแล้ว','RESEARCH_TOPIC',id);}
+    try{enqueueResearchTopicNotification_(groupId,'RESEARCH_TOPIC_SUBMITTED','ส่งหัวข้อวิจัยให้อาจารย์พิจารณา','กลุ่มของท่านส่งหัวข้อวิจัยเวอร์ชัน '+versionNo+' ให้อาจารย์ที่ปรึกษาพิจารณาแล้ว',id);}
     catch(notificationError){logSystem_('RESEARCH_TOPIC_NOTIFICATION_FAILED','GROUP',groupId,{versionId:id,error:String(notificationError.message||notificationError)},ctx.user.USER_ID);}
     return {ok:true,versionId:id,versionNo,message:'บันทึกหัวข้อวิจัยเวอร์ชัน '+versionNo+' และส่งให้อาจารย์พิจารณาแล้ว'};
   }finally{lock.releaseLock();}
@@ -1882,7 +1899,7 @@ function apiAdvisorReviewResearchTopic(token,versionId,decision,comment){
     logSystem_('RESEARCH_TOPIC_REVIEWED','GROUP',row.GROUP_ID,{versionId,decision,status},ctx.user.USER_ID);
     const titles={APPROVED:'อาจารย์ที่ปรึกษาเห็นชอบหัวข้อวิจัย',REVISION_REQUIRED:'อาจารย์ที่ปรึกษาให้ปรับปรุงหัวข้อวิจัย',REJECTED:'อาจารย์ที่ปรึกษาไม่เห็นชอบหัวข้อวิจัย'};
     const messages={APPROVED:'หัวข้อวิจัยเวอร์ชัน '+row.VERSION_NO+' ได้รับความเห็นชอบจากอาจารย์ที่ปรึกษาแล้ว ขั้นตอน RW-01 สิ้นสุดในระดับที่ปรึกษา',REVISION_REQUIRED:'หัวข้อวิจัยเวอร์ชัน '+row.VERSION_NO+' ต้องปรับปรุง กรุณาอ่านข้อเสนอแนะและแก้ไขเพื่อส่งเป็นเวอร์ชันใหม่',REJECTED:'หัวข้อวิจัยเวอร์ชัน '+row.VERSION_NO+' ไม่ได้รับความเห็นชอบ กรุณาติดต่อผู้รับผิดชอบรายวิชาเพื่อพิจารณาแนวทางดำเนินการ'};
-    try{enqueueGroupNotification_(row.GROUP_ID,'RESEARCH_TOPIC_'+decision,titles[decision],messages[decision],'RESEARCH_TOPIC',String(versionId)+':'+decision);}
+    try{enqueueResearchTopicNotification_(row.GROUP_ID,'RESEARCH_TOPIC_'+decision,titles[decision],messages[decision],String(versionId)+':'+decision);}
     catch(notificationError){logSystem_('RESEARCH_TOPIC_NOTIFICATION_FAILED','GROUP',row.GROUP_ID,{versionId,decision,error:String(notificationError.message||notificationError)},ctx.user.USER_ID);}
     return {ok:true,message:'บันทึกผลการพิจารณาหัวข้อวิจัยแล้ว'};
   }finally{lock.releaseLock();}
