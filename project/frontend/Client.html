@@ -967,14 +967,32 @@ async function renderStudentWorkspace(){
   box.append(el('h3',{},'สมาชิกกลุ่ม ('+g.members.length+')'));g.members.forEach(m=>box.append(el('p',{},m.studentId+' · '+m.name+(m.isMe?' (คุณ)':''))));
   if(g.isLeader&&g.leaderAssigned){
    // Group membership is finalized during the one-time grouping process.
-   // Students do not add registered members from this workspace.
-   if(!g.advisor&&!g.pendingAdvisor&&(!g.advisorInvite||['REJECTED','DECLINED','EMAIL_FAILED'].includes(g.advisorInvite.status))){
-    const advisorName=el('input',{type:'text',placeholder:'ชื่อ–นามสกุลอาจารย์ที่ปรึกษา',maxLength:150});
-    const advisorEmail=el('input',{type:'email',placeholder:'อีเมลอาจารย์ เช่น name@university.ac.th'});
-    const nom=el('button',{type:'button',className:'primary'},'ส่งคำเชิญอาจารย์ที่ปรึกษา');nom.onclick=async()=>{nom.disabled=true;try{const r=await callApi('apiStudentNominateAdvisor',sessionToken,advisorName.value,advisorEmail.value);showOperationStatus(r.message);await renderStudentWorkspace()}catch(e){showOperationStatus(e.message,true)}finally{nom.disabled=false}};
-    box.append(el('h3',{},'เสนอชื่ออาจารย์ที่ปรึกษา'),el('label',{},'ชื่อ–นามสกุลอาจารย์'),advisorName,el('label',{},'อีเมลอาจารย์'),advisorEmail,nom);
+   // Pending invitations can be resent from this panel using a fresh token.
+   if(!g.advisor&&!g.pendingAdvisor){
+    const inviteStatus=g.advisorInvite?String(g.advisorInvite.status||''):'';
+    const canResend=['INVITED','EMAIL_FAILED','DECLINED','REJECTED','EXPIRED'].includes(inviteStatus);
+    if(!g.advisorInvite||canResend){
+     const advisorName=el('input',{type:'text',placeholder:'ชื่อ–นามสกุลอาจารย์ที่ปรึกษา',maxLength:150});
+     const advisorEmail=el('input',{type:'email',placeholder:'อีเมลอาจารย์ เช่น name@university.ac.th'});
+     if(g.advisorInvite){advisorName.value=g.advisorInvite.name||'';advisorEmail.value=g.advisorInvite.email||'';}
+     const buttonLabel=inviteStatus==='INVITED'?'ส่งคำเชิญอีกครั้ง':'ส่งคำเชิญอาจารย์ที่ปรึกษา';
+     const nom=el('button',{type:'button',className:'primary'},buttonLabel);
+     nom.onclick=async()=>{
+      if(!advisorName.value.trim()||!advisorEmail.value.trim()){showOperationStatus('กรุณากรอกชื่อและอีเมลอาจารย์ให้ครบ',true);return;}
+      nom.disabled=true;
+      try{const r=await callApi('apiStudentNominateAdvisor',sessionToken,advisorName.value,advisorEmail.value);showOperationStatus(r.message);await renderStudentWorkspace();}
+      catch(e){showOperationStatus(e.message,true);}
+      finally{nom.disabled=false;}
+     };
+     box.append(el('h3',{},g.advisorInvite?'ส่งคำเชิญอาจารย์ที่ปรึกษาอีกครั้ง':'เสนอชื่ออาจารย์ที่ปรึกษา'),
+       el('label',{},'ชื่อ–นามสกุลอาจารย์'),advisorName,
+       el('label',{},'อีเมลอาจารย์'),advisorEmail,nom);
+    }else if(g.advisorInvite){
+     const statusText={ACCEPTED:'อาจารย์ตอบรับแล้ว · รอ Admin อนุมัติ',APPROVED:'Admin อนุมัติอาจารย์ที่ปรึกษาแล้ว'}[inviteStatus]||inviteStatus;
+     box.append(el('p',{className:'notice'},'อาจารย์ที่เสนอ: '+g.advisorInvite.name+' · '+g.advisorInvite.email+' · '+statusText));
+    }
    }else if(g.advisorInvite){
-    const statusText={INVITED:'ส่งคำเชิญแล้ว · รออาจารย์ตอบรับ',ACCEPTED:'อาจารย์ตอบรับแล้ว · รอ Admin อนุมัติ',APPROVED:'Admin อนุมัติอาจารย์ที่ปรึกษาแล้ว',DECLINED:'อาจารย์ปฏิเสธคำเชิญ',REJECTED:'Admin ไม่อนุมัติการแต่งตั้ง',EMAIL_FAILED:'ส่งอีเมลไม่สำเร็จ'}[g.advisorInvite.status]||g.advisorInvite.status;
+    const statusText={ACCEPTED:'อาจารย์ตอบรับแล้ว · รอ Admin อนุมัติ',APPROVED:'Admin อนุมัติอาจารย์ที่ปรึกษาแล้ว'}[g.advisorInvite.status]||g.advisorInvite.status;
     box.append(el('p',{className:'notice'},'อาจารย์ที่เสนอ: '+g.advisorInvite.name+' · '+g.advisorInvite.email+' · '+statusText));
    }
   }
