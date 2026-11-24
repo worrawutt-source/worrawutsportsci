@@ -202,3 +202,27 @@ Please review and approve or amend these bounded decisions before implementation
 - Preflight verifies exact TEST identity, Core Fixture manifest, absence of prior Submission Integration manifest, required table headers, active offering/users/enrollments, existing SYSTEM_ADMIN role, required handler/hook functions, reserved-prefix collision, absence of existing Core Fixture submissions, and unique AuditLog IDs.
 - Preflight reports expected GitHub source blob SHAs for owner comparison. It cannot independently read the GAS editor source; owner must confirm the inspected source files are synchronized before running it.
 - Current stage: **WP-SUB-0 IMPLEMENTED IN SOURCE — OWNER-RUN READ-ONLY PREFLIGHT PENDING**. No persistent fixture or Submission handler has been run.
+
+
+## 10. WP-SUB-0 owner runtime and WP-SUB-1 implementation checkpoint — 24 Nov 2026
+
+- Owner confirmed that all five backend files in TEST GAS match the expected development blob SHAs listed in Section 2.
+- Owner supplied the GAS Execution Log for SNC_SubmissionIntegrationPreflight_READONLY_TEST():
+  - status=READY, 12 PASS / 0 BLOCKED.
+  - Exact TEST identity, Core Fixture, absence of prior Submission Integration manifest, schemas, active Offering, six active Users and Enrollments, active SYSTEM_ADMIN, required handlers, reserved prefix, empty Core Fixture Submission baseline and unique AuditLog IDs all PASS.
+  - Baseline counts: Users 24, Enrollments 6, Assignments 20, Groups 0, GroupMembers 0, Submissions 0, SubmissionFiles 0, IdempotencyKeys 0, AuditLogs 68.
+  - Scope remained read-only; writesExpected=0 and externalCallsExpected=0.
+- WP-SUB-0 is therefore OWNER-RUN RUNTIME READY — 12/12 PASS.
+- Prepared backend/tests/SNC_SubmissionIntegrationRunner_TEST.gs v0.1.0 on development.
+  - Latest blob SHA: 0cafb19469b753a3a34abc0916846246e5b17fc8.
+  - Includes SUB-01..SUB-26 case checkpoints, exact TEST guard, persistent manifest, immediate generated-ID capture, notification hook stub/restore, controlled in-memory Audit append failure injection, and terminal reconciliation.
+  - Uses only existing Core Fixture users/offering/enrollments and creates synthetic Groups/Assignments via application handlers.
+  - Does not write directly to business sheets; does not call DriveApp, UrlFetchApp, triggers, LINE, deployment, migration or cleanup.
+  - Exact persistent entry phrase: RUN SNC SUBMISSION INTEGRATION WP-SUB-1 2026-11-24.
+  - Read-only runner preflight: SNC_SubmissionIntegrationRunnerPreflight_TEST().
+  - Persistent runner: SNC_RunSubmissionIntegration_CONFIRMED_TEST('RUN SNC SUBMISSION INTEGRATION WP-SUB-1 2026-11-24').
+  - Read-only manifest summary: SNC_SubmissionIntegrationManifestSummary_READONLY_TEST().
+- Static source inspection confirms all 26 case IDs are present, safety guard and confirmation phrase are present, manifest checkpointing is present, notification hook restoration is implemented, and no direct Sheet mutation, Drive/network call, broad delete, or cleanup function is present.
+- Important evidence boundary: this is STATIC INSPECTION ONLY. The runner has not been copied into GAS and has not been executed. No WP-SUB-1 runtime result is claimed.
+- Owner must add only this new runner file to the existing TEST GAS project, run the read-only runner preflight first, and share its complete sanitized log. If READY, execute the persistent runner exactly once using the phrase above. If it stops, returns anything other than a complete result, or execution is interrupted, do not rerun; share the full log and reconcile the manifest first.
+- WP-SUB-2 Drive upload/access, WP-SUB-3 deployed API/LIFF/Browser E2E, and all cleanup remain outside this authorization.
