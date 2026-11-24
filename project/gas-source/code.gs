@@ -112,7 +112,7 @@ function doPost(e){
 const FRONTEND_CONFIG = Object.freeze({
   OWNER: 'worrawutt-source',
   REPOSITORY: 'worrawutsportsci',
-  COMMIT_SHA: '2d23e249b7a81057ae121a9ec34f07abfda9f02e',
+  COMMIT_SHA: 'a1723ebb142f1dbbb6cebbcdf7a867aa8cf6c680',
   BASE_PATH: 'project/frontend/',
   CACHE_SECONDS: 21600,
   CACHE_CHUNK_SIZE: 20000
@@ -1064,7 +1064,17 @@ function apiStudentNominateAdvisor(token,advisorName,advisorEmail){
   appendObject_('ADVISOR_INVITATIONS',{INVITATION_ID:invitationId,GROUP_ID:me.GROUP_ID,ADVISOR_NAME:name,ADVISOR_EMAIL:email,STATUS:'INVITED',TOKEN_HASH:tokenHash_(tokenValue),EXPIRES_AT:expires,CREATED_AT:new Date(),CREATED_BY:ctx.user.USER_ID});
   const url=ScriptApp.getService().getUrl()+'?advisorInvite='+encodeURIComponent(tokenValue);
   const subject='คำเชิญเป็นอาจารย์ที่ปรึกษางานวิจัยนักศึกษาสาขาวิทยาศาสตร์การกีฬา';
-  const body='เรียน '+name+'\\n\\nนักศึกษาเสนอชื่อท่านเป็นอาจารย์ที่ปรึกษาของกลุ่ม '+group.GROUP_NAME+' ในรายวิชา '+APP.COURSE_CODE+' ภาคการศึกษา '+APP.TERM+'\\n\\nกรุณาเปิดลิงก์นี้เพื่อตรวจสอบคำเชิญ ตอบรับหรือปฏิเสธ และหากตอบรับให้ตั้งรหัสผ่านสำหรับเข้าใช้งานระบบ (ลิงก์มีอายุ 7 วันและใช้ได้ครั้งเดียว):\\n'+url+'\\n\\nการตอบรับยังต้องรอ Admin อนุมัติการแต่งตั้งอย่างเป็นทางการ';
+  const groupMembers=readObjectsFresh_('GROUP_MEMBERS').filter(m=>String(m.GROUP_ID)===String(me.GROUP_ID)&&m.STATUS==='ACTIVE');
+  const studentRows=readObjectsFresh_('STUDENTS');
+  const memberLines=groupMembers.map((m,i)=>{
+    const st=studentRows.find(x=>normalizeStudentId_(x.STUDENT_ID)===normalizeStudentId_(m.STUDENT_ID));
+    const fullName=st?String(st.FULL_NAME||[st.TITLE,st.FIRST_NAME,st.LAST_NAME].filter(Boolean).join(' ')).trim():'ไม่พบชื่อในทะเบียน';
+    return (i+1)+'. '+fullName+' (รหัสนักศึกษา '+String(m.STUDENT_ID||'-')+')';
+  });
+  const body='เรียน '+name+'\n\nนักศึกษาเสนอชื่อท่านเป็นอาจารย์ที่ปรึกษาของกลุ่ม '+group.GROUP_NAME+' ในรายวิชา '+APP.COURSE_CODE+' ภาคการศึกษา '+APP.TERM+
+    '\n\nรายชื่อสมาชิกกลุ่ม ('+memberLines.length+' คน)\n'+(memberLines.length?memberLines.join('\n'):'ไม่พบข้อมูลสมาชิกกลุ่ม')+
+    '\n\nกรุณาเปิดลิงก์นี้เพื่อตรวจสอบคำเชิญ ตอบรับหรือปฏิเสธ และหากตอบรับให้ตั้งรหัสผ่านสำหรับเข้าใช้งานระบบ (ลิงก์มีอายุ 7 วันและใช้ได้ครั้งเดียว):\n'+url+
+    '\n\nการตอบรับยังต้องรอ Admin อนุมัติการแต่งตั้งอย่างเป็นทางการ';
   try{MailApp.sendEmail({to:email,subject,body,name:APP.NAME});}
   catch(err){sheet_('ADVISOR_INVITATIONS').getRange(readObjectsFresh_('ADVISOR_INVITATIONS').find(x=>x.INVITATION_ID===invitationId)._row,5).setValue('EMAIL_FAILED');throw new Error('บันทึกคำเชิญแล้ว แต่ส่งอีเมลไม่สำเร็จ: '+err.message);}
   logSystem_('ADVISOR_INVITATION_SENT','GROUP',me.GROUP_ID,{invitationId,email},ctx.user.USER_ID);
