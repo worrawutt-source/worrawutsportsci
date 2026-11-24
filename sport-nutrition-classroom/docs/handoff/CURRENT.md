@@ -986,3 +986,31 @@ Start by reading this `CURRENT.md` on branch `development`, then inspect the lat
 - **Current status: EDITOR ENTRYPOINT BUG FIXED ON DEVELOPMENT — NO SUBMISSION MANIFEST EXISTS — FRESH GAS SOURCE SYNC AND READ-ONLY PREFLIGHT REQUIRED. Persistent run has not yet begun.**
 - Owner next action: sync corrected Runner blob SHA `6fd1d994e36b6d16b9019e9e9c0cf9be87a632b7` into TEST GAS; run only `SNC_SubmissionIntegrationRunnerPreflight_TEST()`; share the full log. If READY, the owner may then run the zero-argument `SNC_RunSubmissionIntegration_CONFIRMED_TEST()` exactly once. Do not append a phrase in the Run UI; the wrapper supplies the approved phrase. If any manifest appears or execution is interrupted, do not rerun; reconcile first.
 - No WP-SUB-1 business-handler test cases have been run. WP-SUB-2, WP-SUB-3 and cleanup remain separately gated.
+
+
+## WP-SUB-1 owner-run result and read-only post-run reconciliation — 24 Nov 2026
+
+### Owner runtime evidence received
+- Owner ran the persistent WP-SUB-1 runner in TEST GAS.
+- Execution output: `COMPLETE_WITH_REVIEW_ITEMS`, 26 cases, 26 PASS, 0 FAIL.
+- Recorded created counts: Groups 3; GroupMembers 7; Assignments 6; Submissions 12; SubmissionFiles 2; IdempotencyKeys 12; AuditLogs 34.
+- Both notification stubs were restored; submission stub calls 12; external calls expected 0.
+- Read-only Manifest Summary repeated the same status/counts and confirmed `cleanupStatus=NOT AUTHORIZED`.
+- A separate/interleaved Cleanup log reported a lock timeout. It also reported no deletion; it is not evidence of a WP-SUB-1 failure. Do not rerun Cleanup.
+- `COMPLETE_WITH_REVIEW_ITEMS` is the runner's generic no-failure terminal label; it does not establish that a populated review-items list exists.
+- The Manifest Summary does not expose Primary IDs or compare every baseline ID with current TEST rows; formal post-run reconciliation is therefore still pending.
+
+### Read-only reconciliation source added
+- Added `backend/tests/SNC_SubmissionPostRunReconciliation_READONLY_TEST.gs`, version 1.0.0.
+- Latest blob SHA: `be185e361947c301baa3b477d7e86682e154a0ce`.
+- Added design/owner run instructions: `docs/SNC_SUBMISSION_POSTRUN_RECONCILIATION_v1.0.0_2026-11-24.md`.
+- Reconciliation checks baseline-ID retention, exact post-baseline ID deltas against Manifest, duplicate IDs, the 68-ID AuditLog baseline, Group topology including Beta's temporary join/leave row, six Assignment relationships, Submission targets, SubmissionFile references, Submission Audit references, and notification-stub restoration.
+- Output is count/Boolean only and does not log raw synthetic IDs.
+- Read-only only: no Sheet or Script Properties writes, Drive, UrlFetch, LINE, triggers, migration, deployment, or cleanup.
+- Evidence boundary: confirms IDs and relationships, not cell-by-cell immutability of historical baseline rows.
+
+### Current status and owner action
+- **WP-SUB-1 HANDLER RUN: OWNER-REPORTED 26/26 PASS.**
+- **POST-RUN RECONCILIATION: SOURCE PREPARED — OWNER GAS RUN PENDING.**
+- Owner syncs only the reconciliation file into the existing TEST GAS project, confirms the Runner source is still the approved blob SHA, then runs `SNC_SubmissionPostRunReconciliation_READONLY_TEST()` and supplies the complete sanitized Execution Log.
+- Do not rerun the persistent Submission runner, cleanup, or make manual Sheet edits. WP-SUB-2 Drive upload/access and WP-SUB-3 deployed API/LIFF/Browser E2E remain separately gated.
