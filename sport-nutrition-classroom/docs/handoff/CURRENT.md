@@ -1228,3 +1228,12 @@ Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migrat
 2. Owner runs only `SNC_WP_SUB_2_Preflight_READONLY_TEST()` and supplies the complete sanitized Execution Log.
 3. Review every PASS/FAIL/BLOCKED item. Do not proceed to Runner development until the Preflight result and remaining owner decisions are reconciled and separately approved.
 4. Do not rerun any persistent Runner and do not perform cleanup.
+
+
+### Preflight source review refinement — 25 Nov 2026
+- Tightened evidence reporting in `SNC_WP_SUB_2_Preflight_TEST.gs`:
+  - PF-15 no longer reports PASS based only on Sheet presence and basic header integrity; it reports BLOCKED until an approved required-header manifest can verify the full schema.
+  - `baselineCapturedReadOnly` remains false because only transient row counts are inspected; exact-ID and Drive inventory baselines are not captured or persisted.
+- Refinement commit: `aaf65ad8aa09b45a476ca0d0814faf1cdf66238c`.
+- Final Preflight blob SHA: `bf9202a36ca3605973d82c0aa6ce898816973e49`.
+- Re-fetched final source and statically checked that the entry point and PF-01..PF-20 checks exist and that the source contains none of the reviewed mutation/external-call operations (`createFile`, `setTrashed`, permission grants/revocations, Sheet writes, UrlFetch, Mail, trigger creation, or Cache writes). This is static source review only, not GAS runtime verification.
