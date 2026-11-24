@@ -932,11 +932,11 @@ Start by reading this `CURRENT.md` on branch `development`, then inspect the lat
 
 ### WP-SUB-1 implementation source
 - Added backend/tests/SNC_SubmissionIntegrationRunner_TEST.gs v0.1.0.
-- Latest blob SHA: 0cafb19469b753a3a34abc0916846246e5b17fc8.
+- Latest blob SHA: a8e9864f88b18c368a689432535096c902dff583.
 - Commit chain includes initial runner commit 6547a77b1d4a3407fd886faa804c442279b557bd and subsequent hardening; final runner SHA above.
 - Added docs/SNC_SUBMISSION_INTEGRATION_RUNNER_v0.1.0_2026-11-24.md; commit c14e47cc00ba611d165fa7046bbe15d6c8ff1f65.
 - Updated approved plan with WP-SUB-0 owner runtime evidence and WP-SUB-1 implementation checkpoint; plan commit 26a27d3a886ab3655179660e72d341139183a904.
-- Static inspection: SUB-01..SUB-26 present; exact TEST guard, persistent manifest, immediate fixture ID capture, notification stub/restore, controlled in-memory Audit append failure injection, and terminal reconciliation present. No direct Sheet mutation, DriveApp/UrlFetch/network, trigger, deployment, cleanup or broad deletion calls.
+- Static inspection: SUB-01..SUB-26 present; exact TEST guard, persistent manifest, immediate fixture ID capture, dual in-memory stubs for notifyAssignmentOpened_ and notifySubmissionReceived_ installed before any Assignment opens and restored, controlled in-memory Audit append failure injection, and terminal reconciliation present. No direct Sheet mutation, DriveApp/UrlFetch/network, trigger, deployment, cleanup or broad deletion calls.
 - Runner fixture scope: existing six synthetic Core users/offering/enrollments only; creates Alpha(2), Beta(3), Solo(1) and the approved Individual/Group Assignment test set via application handlers. URL metadata only; no binary upload.
 - Read-only runner preflight: SNC_SubmissionIntegrationRunnerPreflight_TEST().
 - Persistent runner: SNC_RunSubmissionIntegration_CONFIRMED_TEST('RUN SNC SUBMISSION INTEGRATION WP-SUB-1 2026-11-24').
@@ -946,3 +946,17 @@ Start by reading this `CURRENT.md` on branch `development`, then inspect the lat
 - **Current status: WP-SUB-1 SOURCE PREPARED — STATIC REVIEW COMPLETE — OWNER GAS PREFLIGHT PENDING.** Runner has not been copied into GAS or executed. No WP-SUB-1 runtime result is claimed.
 - Owner next action: add only the runner file to TEST GAS; run SNC_SubmissionIntegrationRunnerPreflight_TEST(); share the full sanitized log. Proceed to persistent run only if READY. Execute persistent runner once only. If interrupted or stopped, do not rerun; share logs and reconcile manifest first.
 - WP-SUB-2 Drive upload/access, WP-SUB-3 deployed API/LIFF/Browser E2E, and cleanup remain outside this authorization. No cleanup is authorized.
+
+
+### WP-SUB-1 dual notification-stub safety correction — 24 Nov 2026
+- Static source inspection of NotificationManagement.gs found notifyAssignmentOpened_() is called by assignment.open and can invoke ntSend_(), which may call LINE UrlFetch and write NotificationLogs.
+- Earlier Runner version stubbed only notifySubmissionReceived_ after Assignment creation/opening. That was insufficient to guarantee the approved no-LINE/no-external-side-effect boundary.
+- Updated Runner now stubs BOTH notifyAssignmentOpened_ and notifySubmissionReceived_ before the first Assignment is created/opened; restores both original function references in normal completion and error recovery.
+- SUB-24 verifies six assignment-open stub calls, one or more submission-received stub calls, and restoration of both hooks.
+- Corrected a SUB-18 test actor collision: SUB-18 now uses a different student than SUB-17 so its first request reaches creation and the second changed-payload replay can test CONFLICT rather than fail early as DUPLICATE.
+- Latest Runner blob SHA: a8e9864f88b18c368a689432535096c902dff583.
+- Updated runner design document commit: 7effe3a8172bc2cde81f27684eba2c55cfaaa007.
+- Updated plan commit: b8f1d89ab17f5fc5ba549d1441161ba8053039eb.
+- Earlier user-run Runner Preflight READY (7/7) predates these source corrections and does NOT validate the latest Runner revision.
+- **Current status: WP-SUB-1 LATEST SOURCE STATIC REVIEW COMPLETE — FRESH OWNER READ-ONLY PREFLIGHT REQUIRED — PERSISTENT RUN NOT STARTED.**
+- Owner action: sync latest runner blob SHA a8e9864f88b18c368a689432535096c902dff583, run SNC_SubmissionIntegrationRunnerPreflight_TEST() again, and share the complete sanitized Execution Log. Only if READY may the persistent runner be run once.
