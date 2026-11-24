@@ -1134,3 +1134,32 @@ Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migrat
 
 ### Current status
 **WP-SUB-2 GitHub folder structure: CREATED. Test utilities: NOT IMPLEMENTED. Drive folder: owner-created; configuration and access NOT VERIFIED.**
+
+
+## WP-SUB-2 Preflight & Runner Specification drafted — 24 Nov 2026
+
+### Document created
+- Added `docs/WP-SUB-2/WP-SUB-2_PREFLIGHT_RUNNER_SPEC_v1.0.0_2026-11-24.md`.
+- Commit: `ec4660c5224ed5ea5eaef7588b4c7dd48bc56a02`.
+- Status: **DRAFT FOR OWNER REVIEW — NOT APPROVED FOR IMPLEMENTATION OR EXECUTION**.
+- The specification defines separate read-only Preflight, persistent Runner, and read-only Reconciliation utilities; proposed entry points and file paths; check matrix; Runner state machine; manifest/idempotency controls; notification isolation; case batches; stop conditions; and approval gates.
+
+### Owner-provided Drive layout recorded
+- `SNC_TEST_SUBMISSION_FILES` under `ProjectLine`.
+- Child folders: `01_VALID_FILES`, `02_INVALID_FILES`, `03_UPLOADED_TEST_FILES`, `04_ROLLBACK_TEST`.
+- Folder ID transcribed from the owner-supplied screenshot URL: `1qkSUK8nEOw_bZqElkpM4VJQZEZjK56`.
+- This is owner-provided setup information only. Folder identity, parent, ownership, effective/inherited permissions, Script Property mapping and GAS runtime access have not been independently verified.
+
+### Source basis
+- Latest observed `development` HEAD before specification: `d27e9d6fe40b1e298a4610c349431fe976e2bf5c`.
+- Re-fetched relevant source: FileManagement `86cd29160dd00207c9a575ce801da09e643911cb`; SubmissionManagement `ef4b86678e8c1feeea425ba578501846129a229c`; NotificationManagement `875b60d90f4599ee0f9bdf0f60dcea31e215de7b`.
+- Source details and limitations are documented in the specification. Re-fetch current source before implementation.
+
+### Current safety boundary
+- Only the specification document was added. No Preflight, Runner or Reconciliation code was implemented.
+- No GAS execution, Drive file creation/upload, permission change, Script Property change, cleanup, migration, trigger, deployment, LINE/UrlFetch or external call was performed.
+- Preflight implementation, Preflight runtime execution, Runner implementation and persistent Runner execution are separate approval gates.
+- WP-SUB-1 remains formally CLOSED; preserve its records and evidence. WP-SUB-3 remains separately gated.
+
+### Current status
+**WP-SUB-2 Preflight/Runner design: DRAFTED — OWNER REVIEW REQUIRED. Implementation and all runtime/mutation activity: NOT AUTHORIZED.**
