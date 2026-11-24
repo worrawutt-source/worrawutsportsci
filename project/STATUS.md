@@ -315,3 +315,13 @@ Backend commit:
 - Static verification: CSS อยู่ก่อน closing style tag, จำนวน style opening/closing tag เท่ากับ 1/1, Styles.html ใน pinned snapshot ตรงกับไฟล์ที่แก้ไข
 - Runtime/Browser verification หลัง Deploy: **PENDING**
 - หมายเหตุ: ต้อง Deploy TEST version ใหม่เพื่อให้ Apps Script ใช้ Backend pin ใหม่; Cache เดิมของ Apps Script อาจทำให้เห็น Frontend รุ่นก่อนจนกว่าจะหมดอายุหรือมีการจัดการ Cache ตามกลไกของระบบ
+
+
+## 15. Follow-up Code.gs line 130 correction
+
+- ผู้ใช้พบว่า line 130 ยังมี comma ซ้ำหลัง `FRONTEND_CONFIG.COMMIT_SHA`.
+- ตรวจสอบไฟล์จาก Branch ล่าสุดและยืนยันข้อผิดพลาดจริง: `...,',,`
+- แก้ไขโดยลบ comma ส่วนเกินหนึ่งตัว
+- ตรวจสอบไฟล์หลังบันทึกจาก GitHub ซ้ำแล้ว: line 130 เป็น `COMMIT_SHA: '71230f41bd056d08c698533b02b18cb46cd7d632',` และไม่พบ `,,` ในบรรทัดดังกล่าว
+- Correction commit: `89f1ffd183039c8e7fd41592bcb7c2a3747d98a7`
+- Runtime compile / deployment: ยังไม่ทดสอบ
