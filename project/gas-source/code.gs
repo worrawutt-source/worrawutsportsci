@@ -127,7 +127,7 @@ function doPost(e){
 const FRONTEND_CONFIG = Object.freeze({
   OWNER: 'worrawutt-source',
   REPOSITORY: 'worrawutsportsci',
-  COMMIT_SHA: 'ada41b9f2ce321d3f190ed092a1629c497ebeff0',
+  COMMIT_SHA: '0eb0e8db1f45e737d56c3ac7ad1cada889a4a4e4',
   BASE_PATH: 'project/frontend/',
   CACHE_SECONDS: 21600,
   CACHE_CHUNK_SIZE: 20000
@@ -1809,69 +1809,85 @@ function assertStudentGroupLeader_(ctx){
     throw new Error('เฉพาะหัวหน้ากลุ่มที่ Admin กำหนดเท่านั้นที่บันทึกร่างหรือส่งหัวข้อวิจัยได้');
   return {groupId,g};
 }
+function latestResearchTopicVersion_(groupId){
+  return findObjectsByColumnValue_('RESEARCH_TOPIC_VERSIONS','GROUP_ID',groupId).sort((a,b)=>Number(b.VERSION_NO||0)-Number(a.VERSION_NO||0))[0]||null;
+}
+function assertResearchTopicEditable_(latest){
+  if(!latest)return;
+  const status=String(latest.REVIEW_STATUS||'');
+  if(status==='PENDING')throw new Error('หัวข้อวิจัยอยู่ระหว่างการพิจารณาของอาจารย์ที่ปรึกษา ไม่สามารถส่งซ้ำได้');
+  if(status==='APPROVED'||String(latest.STATUS)==='ADVISOR_APPROVED')throw new Error('อาจารย์ที่ปรึกษาเห็นชอบแล้ว ขั้นตอน RW-01 สิ้นสุดในระดับที่ปรึกษา');
+  if(status==='REJECTED')throw new Error('หัวข้อวิจัยไม่ผ่านความเห็นชอบ การเริ่มส่งหัวข้อใหม่ต้องได้รับการดำเนินการตามแนวทางที่ผู้รับผิดชอบรายวิชากำหนด');
+  if(status!=='REVISION_REQUIRED')throw new Error('สถานะหัวข้อวิจัยไม่อนุญาตให้ส่งฉบับใหม่');
+}
 function apiGetResearchTopicDraft(token){
-  const ctx=requireSession_(token,[ROLE.STUDENT]);
-  const {groupId}=assertStudentGroupLeader_(ctx);
+  const ctx=requireSession_(token,[ROLE.STUDENT]);const {groupId}=assertStudentGroupLeader_(ctx);
   const row=readObjectsFresh_('RESEARCH_TOPIC_DRAFTS').find(x=>String(x.GROUP_ID)===String(groupId)&&x.STATUS==='DRAFT');
-  if(!row)return {draft:null};
-  return {draft:{titleTh:row.TITLE_TH||'',titleEn:row.TITLE_EN||'',problem:row.PROBLEM_STATEMENT||'',objectives:row.OBJECTIVES||'',significance:row.RESEARCH_SIGNIFICANCE||'',updatedAt:row.UPDATED_AT||''}};
+  if(row)return {draft:{titleTh:row.TITLE_TH||'',titleEn:row.TITLE_EN||'',problem:row.PROBLEM_STATEMENT||'',objectives:row.OBJECTIVES||'',significance:row.RESEARCH_SIGNIFICANCE||'',updatedAt:row.UPDATED_AT||'',source:'DRAFT'}};
+  const latest=latestResearchTopicVersion_(groupId);
+  if(latest&&latest.REVIEW_STATUS==='REVISION_REQUIRED')return {draft:{titleTh:latest.TITLE_TH||'',titleEn:latest.TITLE_EN||'',problem:latest.PROBLEM_STATEMENT||'',objectives:latest.OBJECTIVES||'',significance:latest.RESEARCH_SIGNIFICANCE||'',updatedAt:latest.SUBMITTED_AT||'',source:'REVISION_REQUIRED',versionNo:Number(latest.VERSION_NO)||0,reviewComment:latest.REVIEW_COMMENT||''}};
+  return {draft:null};
 }
 function apiSaveResearchTopicDraft(token,payload){
-  const ctx=requireSession_(token,[ROLE.STUDENT]);payload=payload||{};
-  const {groupId}=assertStudentGroupLeader_(ctx);
-  const values={
-    TITLE_TH:String(payload.titleTh||'').slice(0,500),
-    TITLE_EN:String(payload.titleEn||'').slice(0,500),
-    PROBLEM_STATEMENT:String(payload.problem||'').slice(0,10000),
-    OBJECTIVES:String(payload.objectives||'').slice(0,5000),
-    RESEARCH_SIGNIFICANCE:String(payload.significance||'').slice(0,5000)
-  };
+  const ctx=requireSession_(token,[ROLE.STUDENT]);payload=payload||{};const {groupId}=assertStudentGroupLeader_(ctx);
+  const values={TITLE_TH:String(payload.titleTh||'').slice(0,500),TITLE_EN:String(payload.titleEn||'').slice(0,500),PROBLEM_STATEMENT:String(payload.problem||'').slice(0,10000),OBJECTIVES:String(payload.objectives||'').slice(0,5000),RESEARCH_SIGNIFICANCE:String(payload.significance||'').slice(0,5000)};
   const lock=LockService.getScriptLock();lock.waitLock(60000);
   try{
-    const sh=ensureWorkflowSheet_('RESEARCH_TOPIC_DRAFTS');
-    const rows=readObjectsFresh_('RESEARCH_TOPIC_DRAFTS');
-    const current=rows.find(x=>String(x.GROUP_ID)===String(groupId)&&x.STATUS==='DRAFT');
-    const now=new Date();
-    if(current){
-      const headers=SCHEMA.RESEARCH_TOPIC_DRAFTS;
-      Object.keys(values).forEach(k=>sh.getRange(current._row,headers.indexOf(k)+1).setValue(values[k]));
-      sh.getRange(current._row,headers.indexOf('UPDATED_BY')+1).setValue(ctx.user.USER_ID);
-      sh.getRange(current._row,headers.indexOf('UPDATED_AT')+1).setValue(now);
-    }else{
-      appendObject_('RESEARCH_TOPIC_DRAFTS',Object.assign({DRAFT_ID:Utilities.getUuid(),GROUP_ID:groupId},values,{STATUS:'DRAFT',UPDATED_BY:ctx.user.USER_ID,UPDATED_AT:now}));
-    }
+    const latest=latestResearchTopicVersion_(groupId);if(latest)assertResearchTopicEditable_(latest);
+    const sh=sheet_('RESEARCH_TOPIC_DRAFTS'),rows=readObjectsFresh_('RESEARCH_TOPIC_DRAFTS');
+    const current=rows.find(x=>String(x.GROUP_ID)===String(groupId)&&x.STATUS==='DRAFT'),now=new Date();
+    if(current){const headers=SCHEMA.RESEARCH_TOPIC_DRAFTS;Object.keys(values).forEach(k=>sh.getRange(current._row,headers.indexOf(k)+1).setValue(values[k]));sh.getRange(current._row,headers.indexOf('UPDATED_BY')+1).setValue(ctx.user.USER_ID);sh.getRange(current._row,headers.indexOf('UPDATED_AT')+1).setValue(now);}
+    else appendObject_('RESEARCH_TOPIC_DRAFTS',Object.assign({DRAFT_ID:Utilities.getUuid(),GROUP_ID:groupId},values,{STATUS:'DRAFT',UPDATED_BY:ctx.user.USER_ID,UPDATED_AT:now}));
     return {ok:true,message:'บันทึกร่างหัวข้อวิจัยแล้ว ยังไม่ส่งให้อาจารย์พิจารณา',updatedAt:now};
   }finally{lock.releaseLock();}
 }
-
 function apiStudentSaveResearchTopic(token,payload){
-  const ctx=requireSession_(token,[ROLE.STUDENT]);payload=payload||{};
-  const groupId=studentGroupForUser_(ctx),g=readObjects_('RESEARCH_GROUPS').find(x=>x.GROUP_ID===groupId&&x.STATUS==='ACTIVE');
-  if(!g||String(g.GROUP_LEADER_USER_ID||'')!==String(ctx.user.USER_ID))throw new Error('เฉพาะหัวหน้ากลุ่มที่ Admin กำหนดเท่านั้นที่ส่งหรือปรับปรุงหัวข้อวิจัยได้');
+  const ctx=requireSession_(token,[ROLE.STUDENT]);payload=payload||{};const {groupId}=assertStudentGroupLeader_(ctx);
   const titleTh=String(payload.titleTh||'').trim(),titleEn=String(payload.titleEn||'').trim();
   if(!titleTh)throw new Error('กรุณาระบุชื่อเรื่องวิจัยภาษาไทย');
+  if(titleTh.length>500||titleEn.length>500)throw new Error('ชื่อเรื่องต้องมีความยาวไม่เกิน 500 ตัวอักษร');
   const problem=String(payload.problem||'').trim(),objectives=String(payload.objectives||'').trim(),significance=String(payload.significance||'').trim();
-  if(problem.length<20)throw new Error('ช่องปัญหาวิจัยต้องมีอย่างน้อย 20 ตัวอักษร (ปัจจุบัน '+problem.length+' ตัวอักษร)');
-  if(objectives.length<10)throw new Error('ช่องวัตถุประสงค์ต้องมีอย่างน้อย 10 ตัวอักษร (ปัจจุบัน '+objectives.length+' ตัวอักษร)');
+  if(problem.length<20||problem.length>10000)throw new Error('ช่องปัญหาวิจัยต้องมี 20–10,000 ตัวอักษร');
+  if(objectives.length<10||objectives.length>5000)throw new Error('ช่องวัตถุประสงค์ต้องมี 10–5,000 ตัวอักษร');
+  if(significance.length>5000)throw new Error('ช่องความสำคัญของการวิจัยต้องมีความยาวไม่เกิน 5,000 ตัวอักษร');
   const lock=LockService.getScriptLock();lock.waitLock(60000);
   try{
-    const versions=findObjectsByColumnValue_('RESEARCH_TOPIC_VERSIONS','GROUP_ID',groupId),versionNo=versions.reduce((n,x)=>Math.max(n,Number(x.VERSION_NO)||0),0)+1,now=new Date();
-    const id=Utilities.getUuid();
+    const group=readObjectsFresh_('RESEARCH_GROUPS').find(x=>String(x.GROUP_ID)===String(groupId)&&x.STATUS==='ACTIVE');
+    if(!group||String(group.GROUP_LEADER_USER_ID||'')!==String(ctx.user.USER_ID))throw new Error('เฉพาะหัวหน้ากลุ่มที่ Admin กำหนดเท่านั้นที่ส่งหรือปรับปรุงหัวข้อวิจัยได้');
+    const latest=latestResearchTopicVersion_(groupId);if(latest)assertResearchTopicEditable_(latest);
+    const versions=findObjectsByColumnValue_('RESEARCH_TOPIC_VERSIONS','GROUP_ID',groupId),versionNo=versions.reduce((n,x)=>Math.max(n,Number(x.VERSION_NO)||0),0)+1,now=new Date(),id=Utilities.getUuid();
     appendObject_('RESEARCH_TOPIC_VERSIONS',{VERSION_ID:id,GROUP_ID:groupId,VERSION_NO:versionNo,TITLE_TH:titleTh,TITLE_EN:titleEn,PROBLEM_STATEMENT:problem,OBJECTIVES:objectives,RESEARCH_SIGNIFICANCE:significance,STATUS:'SUBMITTED',REVIEW_STATUS:'PENDING',SUBMITTED_BY:ctx.user.USER_ID,SUBMITTED_AT:now,REVIEWED_BY:'',REVIEWED_AT:'',REVIEW_COMMENT:''});
-    const sh=sheet_('RESEARCH_GROUPS');sh.getRange(g._row,3).setValue(titleTh);sh.getRange(g._row,4).setValue(titleEn);sh.getRange(g._row,8).setValue(now);
+    const groupSheet=sheet_('RESEARCH_GROUPS');groupSheet.getRange(group._row,3).setValue(titleTh);groupSheet.getRange(group._row,4).setValue(titleEn);groupSheet.getRange(group._row,8).setValue(now);
     const draft=readObjectsFresh_('RESEARCH_TOPIC_DRAFTS').find(x=>String(x.GROUP_ID)===String(groupId)&&x.STATUS==='DRAFT');
-    if(draft){const draftSh=sheet_('RESEARCH_TOPIC_DRAFTS');draftSh.getRange(draft._row,SCHEMA.RESEARCH_TOPIC_DRAFTS.indexOf('STATUS')+1).setValue('SUBMITTED');}
+    if(draft){const draftSheet=sheet_('RESEARCH_TOPIC_DRAFTS');draftSheet.getRange(draft._row,SCHEMA.RESEARCH_TOPIC_DRAFTS.indexOf('STATUS')+1).setValue('SUBMITTED');}
     logSystem_('RESEARCH_TOPIC_SUBMITTED','GROUP',groupId,{versionNo,titleTh},ctx.user.USER_ID);
-    return {ok:true,message:'บันทึกหัวข้อวิจัยเวอร์ชัน '+versionNo+' และส่งให้อาจารย์พิจารณาแล้ว'};
+    try{enqueueGroupNotification_(groupId,'RESEARCH_TOPIC_SUBMITTED','ส่งหัวข้อวิจัยให้อาจารย์พิจารณา','กลุ่มของท่านส่งหัวข้อวิจัยเวอร์ชัน '+versionNo+' ให้อาจารย์ที่ปรึกษาพิจารณาแล้ว','RESEARCH_TOPIC',id);}
+    catch(notificationError){logSystem_('RESEARCH_TOPIC_NOTIFICATION_FAILED','GROUP',groupId,{versionId:id,error:String(notificationError.message||notificationError)},ctx.user.USER_ID);}
+    return {ok:true,versionId:id,versionNo,message:'บันทึกหัวข้อวิจัยเวอร์ชัน '+versionNo+' และส่งให้อาจารย์พิจารณาแล้ว'};
   }finally{lock.releaseLock();}
 }
 function apiAdvisorReviewResearchTopic(token,versionId,decision,comment){
   const ctx=requireSession_(token,[ROLE.ADMIN,ROLE.ADVISOR]);
   if(!['APPROVED','REVISION_REQUIRED','REJECTED'].includes(decision))throw new Error('สถานะการพิจารณาไม่ถูกต้อง');
-  const row=readObjects_('RESEARCH_TOPIC_VERSIONS').find(x=>x.VERSION_ID===versionId);if(!row)throw new Error('ไม่พบหัวข้อวิจัยเวอร์ชันนี้');assertGroupAccess_(ctx,row.GROUP_ID);
-  const sh=sheet_('RESEARCH_TOPIC_VERSIONS');[['REVIEW_STATUS',decision],['REVIEWED_BY',ctx.user.USER_ID],['REVIEWED_AT',new Date()],['REVIEW_COMMENT',String(comment||'').slice(0,3000)]].forEach(([k,v])=>sh.getRange(row._row,SCHEMA.RESEARCH_TOPIC_VERSIONS.indexOf(k)+1).setValue(v));
-  logSystem_('RESEARCH_TOPIC_REVIEWED','GROUP',row.GROUP_ID,{versionId,decision},ctx.user.USER_ID);return {ok:true,message:'บันทึกผลการพิจารณาหัวข้อวิจัยแล้ว'};
+  const note=String(comment||'').trim();
+  if(['REVISION_REQUIRED','REJECTED'].includes(decision)&&note.length<5)throw new Error('กรุณาระบุข้อเสนอแนะอย่างน้อย 5 ตัวอักษรสำหรับผลการพิจารณานี้');
+  if(note.length>3000)throw new Error('ข้อเสนอแนะต้องมีความยาวไม่เกิน 3,000 ตัวอักษร');
+  const lock=LockService.getScriptLock();lock.waitLock(60000);
+  try{
+    const row=readObjectsFresh_('RESEARCH_TOPIC_VERSIONS').find(x=>String(x.VERSION_ID)===String(versionId));
+    if(!row)throw new Error('ไม่พบหัวข้อวิจัยเวอร์ชันนี้');assertGroupAccess_(ctx,row.GROUP_ID);
+    if(String(row.REVIEW_STATUS)!=='PENDING')throw new Error('หัวข้อวิจัยเวอร์ชันนี้ได้รับการพิจารณาแล้ว ไม่สามารถบันทึกผลซ้ำได้');
+    const sh=sheet_('RESEARCH_TOPIC_VERSIONS'),headers=SCHEMA.RESEARCH_TOPIC_VERSIONS,status=decision==='APPROVED'?'ADVISOR_APPROVED':decision;
+    [['STATUS',status],['REVIEW_STATUS',decision],['REVIEWED_BY',ctx.user.USER_ID],['REVIEWED_AT',new Date()],['REVIEW_COMMENT',note]].forEach(([k,v])=>sh.getRange(row._row,headers.indexOf(k)+1).setValue(v));
+    logSystem_('RESEARCH_TOPIC_REVIEWED','GROUP',row.GROUP_ID,{versionId,decision,status},ctx.user.USER_ID);
+    const titles={APPROVED:'อาจารย์ที่ปรึกษาเห็นชอบหัวข้อวิจัย',REVISION_REQUIRED:'อาจารย์ที่ปรึกษาให้ปรับปรุงหัวข้อวิจัย',REJECTED:'อาจารย์ที่ปรึกษาไม่เห็นชอบหัวข้อวิจัย'};
+    const messages={APPROVED:'หัวข้อวิจัยเวอร์ชัน '+row.VERSION_NO+' ได้รับความเห็นชอบจากอาจารย์ที่ปรึกษาแล้ว ขั้นตอน RW-01 สิ้นสุดในระดับที่ปรึกษา',REVISION_REQUIRED:'หัวข้อวิจัยเวอร์ชัน '+row.VERSION_NO+' ต้องปรับปรุง กรุณาอ่านข้อเสนอแนะและแก้ไขเพื่อส่งเป็นเวอร์ชันใหม่',REJECTED:'หัวข้อวิจัยเวอร์ชัน '+row.VERSION_NO+' ไม่ได้รับความเห็นชอบ กรุณาติดต่อผู้รับผิดชอบรายวิชาเพื่อพิจารณาแนวทางดำเนินการ'};
+    try{enqueueGroupNotification_(row.GROUP_ID,'RESEARCH_TOPIC_'+decision,titles[decision],messages[decision],'RESEARCH_TOPIC',String(versionId)+':'+decision);}
+    catch(notificationError){logSystem_('RESEARCH_TOPIC_NOTIFICATION_FAILED','GROUP',row.GROUP_ID,{versionId,decision,error:String(notificationError.message||notificationError)},ctx.user.USER_ID);}
+    return {ok:true,message:'บันทึกผลการพิจารณาหัวข้อวิจัยแล้ว'};
+  }finally{lock.releaseLock();}
 }
+
 function apiUploadProposalPdf(token,payload){
   const ctx=requireSession_(token,[ROLE.STUDENT,ROLE.ADVISOR,ROLE.ADMIN]);payload=payload||{};
   const groupId=String(payload.groupId||'');assertGroupAccess_(ctx,groupId);
