@@ -456,9 +456,25 @@ function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
         detail:'Injected Audit append failure returned SUBMISSION_WRITE_FAILED; Submission/SubmissionFiles and Group lock match pre-state; append dependency restored.'};
     });
 
+        // SUB-23: Submission create/revision audit events reconcile to persisted rows.
+    snsiCase_(manifest,'SUB-23',function(){
+      var assignmentIds={};
+      Object.keys(manifest.fixtures.assignments).forEach(function(k){assignmentIds[String(manifest.fixtures.assignments[k])]=true;});
+      var rows=snsiRows_('Submissions').filter(function(x){return Boolean(assignmentIds[String(x.AssignmentID)]);});
+      var ids={};rows.forEach(function(x){ids[String(x.SubmissionID)]=true;});
+      var audit=snsiRows_('AuditLogs').filter(function(x){return String(x.EntityType)==='Submission'&&ids[String(x.EntityID)];});
+      var valid=audit.length===rows.length&&audit.every(function(x){
+        return ['SUBMISSION_CREATED','SUBMISSION_REVISED'].indexOf(String(x.Action))>=0&&Boolean(x.RequestID);
+      });
+      return {pass:valid,detail:'Each persisted test Submission has one matching create/revise AuditLog with RequestID.'};
+    });
         // Notification stub and final evidence.
     manifest.notificationStub.calls=stub.calls.slice();snsiStubRestore_(stub);stub=null;
     manifest.notificationStub.restored=true;snsiSave_(manifest);
+    snsiCase_(manifest,'SUB-24',function(){
+      return {pass:manifest.notificationStub.restored===true&&manifest.notificationStub.calls.length>0,
+        detail:'In-memory notification stub received submission events and original hook identity was restored.'};
+    });
     var createdAudit=snsiAuditFor_(manifest.created.Submissions);
     var current={
       Assignments:snsiIds_('Assignments','AssignmentID'),Groups:snsiIds_('Groups','GroupID'),
@@ -467,6 +483,20 @@ function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
       IdempotencyKeys:snsiIds_('IdempotencyKeys','IdempotencyKey'),AuditLogs:snsiIds_('AuditLogs','AuditID')
     };
     Object.keys(current).forEach(function(k){manifest.created[k]=snsiDelta_(before[k],current[k]);});
+    snsiCase_(manifest,'SUB-26',function(){
+      var exact=true;
+      Object.keys(manifest.created).forEach(function(k){
+        var expected=manifest.created[k]||[];
+        var actual=snsiDelta_(before[k]||[],current[k]||[]);
+        if(JSON.stringify(expected.slice().sort())!==JSON.stringify(actual.slice().sort()))exact=false;
+      });
+      var fixtureAssignments={};
+      Object.keys(manifest.fixtures.assignments).forEach(function(k){fixtureAssignments[String(manifest.fixtures.assignments[k])]=true;});
+      var fixtureSubmissions=snsiRows_('Submissions').filter(function(x){return Boolean(fixtureAssignments[String(x.AssignmentID)]);});
+      var fixtureIds={};fixtureSubmissions.forEach(function(x){fixtureIds[String(x.SubmissionID)]=true;});
+      var badLinks=snsiRows_('SubmissionFiles').filter(function(x){return fixtureIds[String(x.SubmissionID)]===false;});
+      return {pass:exact&&badLinks.length===0,detail:'Exact post-minus-pre IDs reconcile; fixture SubmissionFile references resolve.'};
+    });
     var caseFailures=manifest.cases.filter(function(c){return c.status!=='PASS';});
     manifest.reconciliation={currentCounts:{
       Groups:snsiRows_('Groups').length,GroupMembers:snsiRows_('GroupMembers').length,
