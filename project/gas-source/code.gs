@@ -894,7 +894,7 @@ function apiAdminSetGroupLeader(token,groupId,leaderUserId,note){
     if(col<0) throw new Error('ยังไม่พบคอลัมน์ GROUP_LEADER_USER_ID กรุณารัน migration ก่อน');
     sh.getRange(group._row,col+1).setValue(newLeader);
     const hist={HISTORY_ID:Utilities.getUuid(),GROUP_ID:gid,OLD_LEADER_USER_ID:oldLeader,NEW_LEADER_USER_ID:newLeader,ACTION_BY:ctx.user.USER_ID,ACTION_AT:new Date(),NOTE:String(note||'').trim()};
-    appendObject_('GROUP_LEADER_HISTORY','ADVISOR_INVITATIONS','ADVISOR_MAGIC_LINKS','ADVISOR_INVITATIONS','ADVISOR_MAGIC_LINKS',hist);
+    appendObject_('GROUP_LEADER_HISTORY',hist);
     logSystem_(newLeader?'GROUP_LEADER_ASSIGNED':'GROUP_LEADER_UNASSIGNED','GROUP',gid,{oldLeaderUserId:oldLeader,newLeaderUserId:newLeader,note:String(note||'').trim()},ctx.user.USER_ID);
     SpreadsheetApp.flush();
     return {ok:true,message:newLeader?'กำหนดหัวหน้ากลุ่มเรียบร้อยแล้ว':'ยกเลิกการกำหนดหัวหน้ากลุ่มแล้ว'};
@@ -913,7 +913,7 @@ function apiAdminRemoveGroupMember(token,membershipId){
     if(group&&String(group.GROUP_LEADER_USER_ID||'')===String(row.USER_ID||'')){
       const gs=sheet_('RESEARCH_GROUPS'), headers=gs.getRange(1,1,1,gs.getLastColumn()).getDisplayValues()[0], col=headers.indexOf('GROUP_LEADER_USER_ID');
       if(col>=0)gs.getRange(group._row,col+1).setValue('');
-      appendObject_('GROUP_LEADER_HISTORY','ADVISOR_INVITATIONS','ADVISOR_MAGIC_LINKS','ADVISOR_INVITATIONS','ADVISOR_MAGIC_LINKS',{HISTORY_ID:Utilities.getUuid(),GROUP_ID:row.GROUP_ID,OLD_LEADER_USER_ID:row.USER_ID||'',NEW_LEADER_USER_ID:'',ACTION_BY:ctx.user.USER_ID,ACTION_AT:new Date(),NOTE:'ยกเลิกหัวหน้ากลุ่มเนื่องจากถูกนำออกจากกลุ่ม'});
+      appendObject_('GROUP_LEADER_HISTORY',{HISTORY_ID:Utilities.getUuid(),GROUP_ID:row.GROUP_ID,OLD_LEADER_USER_ID:row.USER_ID||'',NEW_LEADER_USER_ID:'',ACTION_BY:ctx.user.USER_ID,ACTION_AT:new Date(),NOTE:'ยกเลิกหัวหน้ากลุ่มเนื่องจากถูกนำออกจากกลุ่ม'});
     }
     logSystem_('GROUP_MEMBER_REMOVED','GROUP',row.GROUP_ID,{studentId:row.STUDENT_ID},ctx.user.USER_ID);
   }finally{lock.releaseLock();}
