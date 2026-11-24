@@ -494,7 +494,7 @@ function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
       Object.keys(manifest.fixtures.assignments).forEach(function(k){fixtureAssignments[String(manifest.fixtures.assignments[k])]=true;});
       var fixtureSubmissions=snsiRows_('Submissions').filter(function(x){return Boolean(fixtureAssignments[String(x.AssignmentID)]);});
       var fixtureIds={};fixtureSubmissions.forEach(function(x){fixtureIds[String(x.SubmissionID)]=true;});
-      var badLinks=snsiRows_('SubmissionFiles').filter(function(x){return fixtureIds[String(x.SubmissionID)]===false;});
+      var badLinks=snsiRows_('SubmissionFiles').filter(function(x){return !fixtureIds[String(x.SubmissionID)];});
       return {pass:exact&&badLinks.length===0,detail:'Exact post-minus-pre IDs reconcile; fixture SubmissionFile references resolve.'};
     });
     var caseFailures=manifest.cases.filter(function(c){return c.status!=='PASS';});
