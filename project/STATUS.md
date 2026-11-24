@@ -381,3 +381,10 @@ Backend commit:
 - Backend Frontend pin updated to immutable snapshot `9fd19148fed090fe06547a1935cd7664382d77b1`, which contains the latest Advisor `Client.html` and corrected `Styles.html`.
 - Latest Backend correction commit: `16b71af4a8b31a2f06f79e209c2233b024ce4ff6`.
 - Verified line 130 after save: `COMMIT_SHA: '9fd19148fed090fe06547a1935cd7664382d77b1',` (single trailing comma; no duplicate comma).
+
+
+### A4 assessment-window freshness
+- Added `assessmentSettingsFresh_()` and use it in the Advisor workspace summary and A4 save authorization.
+- The displayed A4 window state and server-side save guard now read current settings rather than a potentially stale cached value.
+- Backend commit: `7c5803e7a595c9d62032f8991d207d98d3edd340`.
+- Frontend pin remains `9fd19148fed090fe06547a1935cd7664382d77b1`; no Frontend change was needed for this Backend-only correction.
