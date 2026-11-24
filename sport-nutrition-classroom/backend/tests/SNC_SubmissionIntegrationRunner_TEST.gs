@@ -555,7 +555,11 @@ function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
 function SNC_SubmissionIntegrationManifestSummary_READONLY_TEST(){
   snsiAssertTest_();
   var m=snsiReadManifest_();
-  if(!m)return {status:'NO_MANIFEST',writesExpected:0,externalCallsExpected:0};
+  if(!m){
+    var empty={status:'NO_MANIFEST',writesExpected:0,externalCallsExpected:0};
+    console.log('SNC_SUBMISSION_MANIFEST_SUMMARY='+JSON.stringify(empty));
+    return empty;
+  }
   var out={status:m.status,version:m.version,caseCount:m.cases.length,
     pass:m.cases.filter(function(c){return c.status==='PASS';}).length,
     fail:m.cases.filter(function(c){return c.status==='FAIL';}).length,
