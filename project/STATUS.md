@@ -283,3 +283,13 @@ Backend commit:
 - ยังไม่ได้ทดสอบ Runtime ด้วยข้อมูลจริงของบัญชี Advisor
 - หากไม่พบกลุ่มหลัง Deploy ต้องตรวจสอบค่าจริงในแถว `ADVISOR_ASSIGNMENTS` (ADVISOR_USER_ID, GROUP_ID, STATUS) และ `RESEARCH_GROUPS` (GROUP_ID, STATUS) โดยไม่แก้ข้อมูลเอง
 - Runtime Test/UAT: **PENDING**
+
+
+## 13. Code.gs Syntax Error Hotfix
+
+- ตรวจพบข้อผิดพลาดจากภาพผู้ใช้: บรรทัด 130 มี comma ซ้ำหลังค่า `COMMIT_SHA` ทำให้ Apps Script แจ้ง `SyntaxError: Unexpected token ','`
+- แก้ไขโดยลบ comma ที่เกินออกเพียง 1 ตัว
+- ปรับ `FRONTEND_CONFIG.COMMIT_SHA` ให้ชี้ไปยัง immutable branch snapshot `a3926b5aac13b02a8ec14e679783c82e564519ef` ซึ่งมี Frontend files ที่เกี่ยวข้องอยู่ใน commit เดียวกัน
+- Commit แก้ไขล่าสุด: `1f675b15bbbe4881a920c0c614f0b12d1a582a0a`
+- ผลตรวจ: บรรทัด COMMIT_SHA เหลือ comma ปิด property เพียงตัวเดียว
+- ข้อจำกัด: ยังไม่ได้รัน Apps Script deployment/runtime; ต้องวาง/ดึง Code.gs ล่าสุดและทดสอบ Syntax ใน Apps Script Editor ก่อน Deploy TEST
