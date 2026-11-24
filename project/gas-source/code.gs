@@ -118,6 +118,21 @@ const FRONTEND_CONFIG = Object.freeze({
   CACHE_CHUNK_SIZE: 20000
 });
 
+/**
+ * Run once from the Apps Script editor after adding the external_request scope.
+ * This authorizes and verifies the pinned GitHub frontend source without
+ * changing database records or Script Properties.
+ */
+function authorizeFrontendFetch() {
+  const html = getFrontendAsset_('Index.html');
+  return {
+    ok: !!html,
+    commit: FRONTEND_CONFIG.COMMIT_SHA,
+    characters: html.length,
+    message: 'GitHub frontend fetch completed'
+  };
+}
+
 function renderFrontend_(magicSessionToken) {
   const html = getFrontendAsset_('Index.html')
     .replace('<!-- SSRL_STYLES -->', getFrontendAsset_('Styles.html'))
