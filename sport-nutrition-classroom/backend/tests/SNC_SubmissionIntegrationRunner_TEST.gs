@@ -118,7 +118,7 @@ function snsiFutureDeadline_(offsetMinutes){
 function snsiPastDeadline_(){
   return Utilities.formatDate(new Date(Date.now()-86400000),'Asia/Bangkok',"yyyy-MM-dd'T'HH:mm");
 }
-function snsiGroup_(offeringId,creator,members,name,tag,onCreated){
+function snsiGroup_(offeringId,creator,members,name,tag,onCreated,onMember){
   var g=snsiCall_(handleGroupManagementAction_,'group.create',creator,{offeringId:offeringId,groupName:name},tag+'_CREATE');
   var gid=String(g.groupId);
   members.forEach(function(uid,i){
@@ -228,11 +228,11 @@ function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
     snsiSave_(manifest);
 
     // Synthetic groups: Alpha(2), Beta(3), Solo(1), through business handlers only.
-    var alpha=snsiGroup_(core.offeringId,u[0], [core.userIds[1]],SNC_SUB_INT_PREFIX_+'Alpha','ALPHA',function(id){manifest.fixtures.groups.Alpha=id;snsiSave_(manifest);});
+    var alpha=snsiGroup_(core.offeringId,u[0], [core.userIds[1]],SNC_SUB_INT_PREFIX_+'Alpha','ALPHA',function(id){manifest.fixtures.groups.Alpha=id;manifest.created.Groups.push(id);snsiSave_(manifest);},function(id){manifest.created.GroupMembers.push(id);snsiSave_(manifest);});
     manifest.fixtures.groups.Alpha=alpha;snsiSave_(manifest);
-    var beta=snsiGroup_(core.offeringId,u[2],[core.userIds[3],core.userIds[4]],SNC_SUB_INT_PREFIX_+'Beta','BETA',function(id){manifest.fixtures.groups.Beta=id;snsiSave_(manifest);});
+    var beta=snsiGroup_(core.offeringId,u[2],[core.userIds[3],core.userIds[4]],SNC_SUB_INT_PREFIX_+'Beta','BETA',function(id){manifest.fixtures.groups.Beta=id;manifest.created.Groups.push(id);snsiSave_(manifest);},function(id){manifest.created.GroupMembers.push(id);snsiSave_(manifest);});
     manifest.fixtures.groups.Beta=beta;snsiSave_(manifest);
-    var solo=snsiGroup_(core.offeringId,u[5],[],SNC_SUB_INT_PREFIX_+'Solo','SOLO',function(id){manifest.fixtures.groups.Solo=id;snsiSave_(manifest);});
+    var solo=snsiGroup_(core.offeringId,u[5],[],SNC_SUB_INT_PREFIX_+'Solo','SOLO',function(id){manifest.fixtures.groups.Solo=id;manifest.created.Groups.push(id);snsiSave_(manifest);},function(id){manifest.created.GroupMembers.push(id);snsiSave_(manifest);});
     manifest.fixtures.groups.Solo=solo;snsiSave_(manifest);
 
     // Assignments: Individual, Group max 3, max 2, unlimited, CLOSED and LATE.
@@ -380,7 +380,7 @@ function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
       var beforeN=snsiRows_('Submissions').length,beforeA=snsiRows_('AuditLogs').length;
       var first=handleSubmissionManagementAction_('submission.create',u[2],payload,rid);
       manifest.created.Submissions.push(String(first.submission.SubmissionID));snsiSave_(manifest);
-      var second=handleSubmissionManagementAction_('submission.create',u[3],payload,rid);
+      var second=handleSubmissionManagementAction_('submission.create',u[2],payload,rid);
       return {pass:JSON.stringify(first)===JSON.stringify(second)&&
         snsiRows_('Submissions').length===beforeN+1&&snsiRows_('AuditLogs').length===beforeA+1};
     });
