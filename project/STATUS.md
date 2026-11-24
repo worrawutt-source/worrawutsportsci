@@ -303,3 +303,15 @@ Backend commit:
 - Commit Backend pin: `96ef79176a2e2d757d48f51c63d4b641b88c3924`
 - ตรวจสอบ Source: ไม่มีข้อความหลัง `</style>` และ Metric CSS อยู่ก่อน closing tag
 - Runtime/UI test หลัง Deploy: PENDING
+
+
+## 14. Styles.html CSS Output Hotfix
+
+- ผู้ใช้รายงานว่า CSS ของ Metric Cards ยังคงแสดงเป็นข้อความเหนือ Workspace
+- ตรวจสอบ Source ล่าสุดพบว่า `Styles.html` มี `</style>` ปิดก่อนบล็อก Metric CSS และมี closing tag อีกตัวท้ายไฟล์
+- แก้ไขโดยย้าย Metric CSS เข้าไปภายใน style element เดิม และเหลือ `<style>` / `</style>` อย่างละหนึ่งตัว
+- ตรวจสอบ Frontend Snapshot ที่ Backend โหลดจริงแล้ว: `FRONTEND_CONFIG.COMMIT_SHA = 71230f41bd056d08c698533b02b18cb46cd7d632`
+- Backend commit หลังปรับ pin: `a9138264d769037d5430441a570a001ec397a206`
+- Static verification: CSS อยู่ก่อน closing style tag, จำนวน style opening/closing tag เท่ากับ 1/1, Styles.html ใน pinned snapshot ตรงกับไฟล์ที่แก้ไข
+- Runtime/Browser verification หลัง Deploy: **PENDING**
+- หมายเหตุ: ต้อง Deploy TEST version ใหม่เพื่อให้ Apps Script ใช้ Backend pin ใหม่; Cache เดิมของ Apps Script อาจทำให้เห็น Frontend รุ่นก่อนจนกว่าจะหมดอายุหรือมีการจัดการ Cache ตามกลไกของระบบ
