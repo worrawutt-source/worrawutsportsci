@@ -1,20 +1,28 @@
 # WP-SUB-2 — Test Utilities
 
-Reserved for WP-SUB-2 TEST-only utilities, including:
-
-- Preflight checks for TEST configuration and Drive folder safety.
-- Controlled test Runner for approved binary upload and access scenarios.
-- Read-only post-run reconciliation and evidence reporting.
+TEST-only utilities for controlled binary upload/access verification.
 
 ## Current status
 
-**No test utility has been implemented or authorized for execution in this directory.**
+- **Preflight source: IMPLEMENTED on `development`** — `SNC_WP_SUB_2_Preflight_READONLY_TEST()`.
+- **GAS runtime: NOT YET VERIFIED** — the owner must sync this exact source into the TEST GAS project and run the read-only entry point.
+- **Runner: NOT IMPLEMENTED.**
+- **Read-only Reconciliation: NOT IMPLEMENTED.**
+- No Drive upload, file creation, permission change, Sheet write, Script Property write, trigger, notification, external call, or cleanup has been performed by this utility.
 
-Before implementation, re-fetch the latest `development` source and obtain explicit owner approval of the exact utility behavior, fixture/actor mapping, permitted Drive mutations, failure-injection points, notification stubbing/restoration, and file disposition.
+Preflight is intentionally conservative. It reports `BLOCKED` for requirements that cannot be established safely from the current GAS runtime or that still require owner-supplied evidence. A `success=true` result means inspection completed; it does not mean the environment is READY.
+
+## Entry point
+
+`SNC_WP_SUB_2_Preflight_READONLY_TEST()`
+
+File: `SNC_WP_SUB_2_Preflight_TEST.gs`
 
 ## Hard boundaries
 
 - TEST environment only; synthetic data only.
-- No production changes, migrations, triggers, deployment, cleanup, or external LINE/UrlFetch calls.
+- Read-only inspection only. No Sheets/Drive/Properties/Cache writes or Drive mutations.
+- No LINE, UrlFetch, email, triggers, deployment, migration, or cleanup.
+- Do not implement or run the persistent Runner until separately approved.
 - Never replay a persistent Runner without first reconciling its manifest and exact existing IDs.
 - Do not claim runtime PASS without owner-supplied GAS execution evidence.
