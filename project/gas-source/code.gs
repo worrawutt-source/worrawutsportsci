@@ -1240,30 +1240,54 @@ function apiStudentNominateAdvisor(token,advisorName,advisorEmail){
 function apiAdminReviewAdvisorInvitation(token,invitationId,decision){
   const ctx=requireSession_(token,[ROLE.ADMIN]);
   if(!['APPROVE','REJECT'].includes(decision))throw new Error('คำสั่งไม่ถูกต้อง');
-  const row=readObjectsFresh_('ADVISOR_INVITATIONS').find(x=>x.INVITATION_ID===invitationId&&x.STATUS==='ACCEPTED');
-  if(!row)throw new Error('ไม่พบคำเชิญที่อาจารย์ตอบรับและตั้งรหัสผ่านแล้ว');
   const lock=LockService.getScriptLock();lock.waitLock(60000);
   try{
+    const row=readObjectsFresh_('ADVISOR_INVITATIONS').find(x=>x.INVITATION_ID===invitationId&&x.STATUS==='ACCEPTED');
+    if(!row)throw new Error('ไม่พบคำเชิญที่อาจารย์ตอบรับและตั้งรหัสผ่านแล้ว');
     const sh=sheet_('ADVISOR_INVITATIONS'),headers=SCHEMA.ADVISOR_INVITATIONS;
     const set=(key,value)=>sh.getRange(row._row,headers.indexOf(key)+1).setValue(value);
     if(decision==='REJECT'){
       set('STATUS','REJECTED');set('APPROVED_BY',ctx.user.USER_ID);set('APPROVED_AT',new Date());
-      MailApp.sendEmail({to:row.ADVISOR_EMAIL,subject:'ผลการพิจารณาคำเชิญที่ปรึกษา',body:'เรียน '+row.ADVISOR_NAME+'\n\nขอบคุณที่ตอบรับคำเชิญ ขณะนี้ Admin ไม่อนุมัติการแต่งตั้งสำหรับกลุ่มนี้ หากมีข้อสงสัยกรุณาติดต่อผู้รับผิดชอบรายวิชา'});
-      return {ok:true,message:'ไม่อนุมัติการแต่งตั้งแล้ว'};
+      SpreadsheetApp.flush();
+      let noticeSent=true,noticeError='';
+      try{MailApp.sendEmail({to:row.ADVISOR_EMAIL,subject:'ผลการพิจารณาคำเชิญที่ปรึกษา · '+APP.NAME,body:'เรียน '+row.ADVISOR_NAME+'\n\nขอบคุณที่ตอบรับคำเชิญ ขณะนี้ Admin ไม่อนุมัติการแต่งตั้งสำหรับกลุ่มนี้ หากมีข้อสงสัยกรุณาติดต่อผู้รับผิดชอบรายวิชา'});}
+      catch(mailErr){noticeSent=false;noticeError=String(mailErr&&mailErr.message||mailErr);}
+      logSystem_('ADVISOR_INVITATION_REJECTED','GROUP',row.GROUP_ID,{invitationId,noticeSent,noticeError},ctx.user.USER_ID);
+      return {ok:true,message:'บันทึกผลไม่อนุมัติแล้ว'+(noticeSent?' และส่งอีเมลแจ้งอาจารย์แล้ว':' แต่ส่งอีเมลแจ้งอาจารย์ไม่สำเร็จ')};
     }
+
     let user=readObjectsFresh_('SYS_USERS').find(u=>normalizeEmail_(u.EMAIL)===normalizeEmail_(row.ADVISOR_EMAIL));
     if(user&&user.ROLE_ID!==ROLE.ADVISOR)throw new Error('อีเมลนี้ถูกใช้กับบัญชีบทบาทอื่น ไม่สามารถสร้างบัญชี Advisor ซ้ำได้');
     if(!user){
-      if(!row.PASSWORD_SALT||!row.PASSWORD_HASH)throw new Error('คำเชิญนี้ยังไม่มีรหัสผ่านที่อาจารย์ตั้งไว้ กรุณาส่งคำเชิญใหม่');
+      if(!row.PASSWORD_SALT||!row.PASSWORD_HASH)throw new Error('คำเชิญนี้ยังไม่มีรหัสผ่านที่อาจารย์ตั้งไว้ กรุณาตรวจสอบข้อมูลก่อนอนุมัติ');
       user=createUser_({email:row.ADVISOR_EMAIL,displayName:row.ADVISOR_NAME,roleId:ROLE.ADVISOR,passwordSalt:row.PASSWORD_SALT,passwordHash:row.PASSWORD_HASH,emailVerified:true,status:'ACTIVE',createdBy:ctx.user.USER_ID});
     }else if(user.STATUS!=='ACTIVE'){throw new Error('บัญชีอาจารย์นี้ถูกระงับ กรุณาตรวจสอบบัญชีก่อนอนุมัติ');}
     const existing=readObjectsFresh_('ADVISOR_ASSIGNMENTS').find(a=>a.GROUP_ID===row.GROUP_ID&&a.STATUS==='APPROVED');
     if(existing)throw new Error('กลุ่มนี้มีอาจารย์ที่ปรึกษาที่ได้รับอนุมัติแล้ว');
+
     appendObject_('ADVISOR_ASSIGNMENTS',{ASSIGNMENT_ID:Utilities.getUuid(),GROUP_ID:row.GROUP_ID,ADVISOR_USER_ID:user.USER_ID,STATUS:'APPROVED',APPROVED_BY:ctx.user.USER_ID,APPROVED_AT:new Date(),CREATED_AT:new Date()});
     set('STATUS','APPROVED');set('APPROVED_BY',ctx.user.USER_ID);set('APPROVED_AT',new Date());set('ADVISOR_USER_ID',user.USER_ID);
-    MailApp.sendEmail({to:user.EMAIL,subject:'อนุมัติการเป็นอาจารย์ที่ปรึกษาแล้ว · '+APP.NAME,body:'เรียน '+(user.DISPLAY_NAME||row.ADVISOR_NAME)+'\n\nAdmin อนุมัติการแต่งตั้งท่านเป็นอาจารย์ที่ปรึกษาแล้ว\nท่านสามารถเข้าสู่ระบบ SPORT SCIENCE RESEARCH LAB ด้วยอีเมลนี้และรหัสผ่านที่ตั้งไว้ในขั้นตอนตอบรับคำเชิญ\n\nหากลืมรหัสผ่าน กรุณาติดต่อผู้ดูแลระบบเพื่อดำเนินการรีเซ็ตรหัสผ่าน'});
-    logSystem_('ADVISOR_INVITATION_APPROVED','GROUP',row.GROUP_ID,{invitationId,userId:user.USER_ID},ctx.user.USER_ID);
-    return {ok:true,message:'อนุมัติและกำหนดอาจารย์ที่ปรึกษาเรียบร้อยแล้ว'};
+    SpreadsheetApp.flush();
+
+    const group=readObjectsFresh_('RESEARCH_GROUPS').find(g=>String(g.GROUP_ID)===String(row.GROUP_ID));
+    const members=readObjectsFresh_('GROUP_MEMBERS').filter(m=>String(m.GROUP_ID)===String(row.GROUP_ID)&&m.STATUS==='ACTIVE');
+    const studentIds=new Set(members.map(m=>normalizeStudentId_(m.STUDENT_ID)).filter(Boolean));
+    const studentUsers=readObjectsFresh_('SYS_USERS').filter(u=>u.ROLE_ID===ROLE.STUDENT&&u.STATUS==='ACTIVE'&&studentIds.has(normalizeStudentId_(u.STUDENT_ID))&&normalizeEmail_(u.EMAIL));
+    const studentEmails=[...new Set(studentUsers.map(u=>normalizeEmail_(u.EMAIL)).filter(email=>email&&email!==normalizeEmail_(user.EMAIL)))];
+    const groupName=String(group&&group.GROUP_NAME||row.GROUP_ID);
+    const approvedAt=new Date();
+    const advisorBody='เรียน '+(user.DISPLAY_NAME||row.ADVISOR_NAME)+'\n\nAdmin อนุมัติการแต่งตั้งท่านเป็นอาจารย์ที่ปรึกษาของกลุ่ม '+groupName+' เรียบร้อยแล้ว\n\nท่านสามารถเข้าสู่ระบบ SPORT SCIENCE RESEARCH LAB ด้วยอีเมลนี้และรหัสผ่านที่ตั้งไว้ในขั้นตอนตอบรับคำเชิญ\n\nหากลืมรหัสผ่าน กรุณาติดต่อผู้ดูแลระบบเพื่อดำเนินการรีเซ็ตรหัสผ่าน';
+    const studentBody='เรียน นักศึกษากลุ่ม '+groupName+'\n\nขอแจ้งให้ทราบว่า Admin ได้อนุมัติการแต่งตั้ง '+(user.DISPLAY_NAME||row.ADVISOR_NAME)+' ('+user.EMAIL+') เป็นอาจารย์ที่ปรึกษาของกลุ่มเรียบร้อยแล้ว\n\nนักศึกษาสามารถติดต่อและดำเนินงานวิจัยภายใต้คำปรึกษาของอาจารย์ตามกระบวนการของรายวิชา';
+    const mailResults={advisorSent:false,studentsSent:0,studentRecipientCount:studentEmails.length,errors:[]};
+    try{MailApp.sendEmail({to:user.EMAIL,subject:'อนุมัติการเป็นอาจารย์ที่ปรึกษาแล้ว · '+APP.NAME,body:advisorBody});mailResults.advisorSent=true;}
+    catch(mailErr){mailResults.errors.push('advisor: '+String(mailErr&&mailErr.message||mailErr));}
+    for(const email of studentEmails){
+      try{MailApp.sendEmail({to:email,subject:'แจ้งผลอนุมัติอาจารย์ที่ปรึกษาประจำกลุ่ม · '+APP.NAME,body:studentBody});mailResults.studentsSent++;}
+      catch(mailErr){mailResults.errors.push(email+': '+String(mailErr&&mailErr.message||mailErr));}
+    }
+    logSystem_('ADVISOR_INVITATION_APPROVED','GROUP',row.GROUP_ID,{invitationId,userId:user.USER_ID,approvedAt:approvedAt.toISOString(),mailResults},ctx.user.USER_ID);
+    const allNotified=mailResults.advisorSent&&mailResults.studentsSent===mailResults.studentRecipientCount;
+    return {ok:true,message:'อนุมัติและกำหนดอาจารย์ที่ปรึกษาเรียบร้อยแล้ว · ส่งอีเมลถึงอาจารย์ '+(mailResults.advisorSent?'สำเร็จ':'ไม่สำเร็จ')+' · ส่งถึงนักศึกษา '+mailResults.studentsSent+'/'+mailResults.studentRecipientCount+' คน'+(allNotified?'':' · โปรดตรวจสอบบันทึกการส่งอีเมล')};
   }finally{lock.releaseLock();}
 }
 function issueAdvisorMagicLink_(user){
