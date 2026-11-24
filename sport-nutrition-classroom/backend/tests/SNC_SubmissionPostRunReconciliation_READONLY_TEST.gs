@@ -153,7 +153,7 @@ function SNC_SubmissionPostRunReconciliation_READONLY_TEST() {
     var active = members.filter(function(x) { return String(x.Status).toUpperCase() === 'ACTIVE'; });
     memberCounts[n] = { total: members.length, active: active.length };
   });
-  var topologyOk = groupValid && memberRows.length === 6 &&
+  var topologyOk = groupValid && memberRows.length === 7 &&
     memberCounts.Alpha.total === 2 && memberCounts.Alpha.active === 2 &&
     memberCounts.Beta.total === 4 && memberCounts.Beta.active === 3 &&
     memberCounts.Solo.total === 1 && memberCounts.Solo.active === 0;
