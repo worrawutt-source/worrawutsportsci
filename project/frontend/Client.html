@@ -148,7 +148,7 @@ function renderDashboard(d){
       else if(label==='ประเมินเพื่อน A5') await renderPeerAssessment();
       else if(label==='การตั้งค่าระบบ' && currentDashboard.user.roleId==='ADMIN') await renderSystemSettings();
       else if(label==='กลุ่มที่ได้รับมอบหมาย') await renderAdvisorGroups();
-      else if(label==='พื้นที่ทำงานกลุ่ม') await renderStudentWorkspace();
+      else if(label==='ข้อมูลของกลุ่ม') await renderStudentWorkspace();
       else if(label==='หัวข้อวิจัย') await renderStudentTopics();
       else if(label==='เอกสารโครงร่าง') await renderProposalDocuments();
       else if(label==='ความก้าวหน้า') await renderProgressReports();
@@ -580,7 +580,7 @@ async function renderStudentTopics(){
  const a=$('sectionText');a.textContent='กำลังโหลดหัวข้อวิจัย...';
  try{
   const d=await getStudentResearchDataOrNoGroup();a.textContent='';
-  if(!d.group){a.append(el('div',{className:'notice'},'กรุณาสร้างหรือเข้าร่วมกลุ่มวิจัยในเมนูพื้นที่ทำงานกลุ่มก่อน จึงจะเสนอหัวข้อวิจัยได้'));return;}
+  if(!d.group){a.append(el('div',{className:'notice'},'กรุณาสร้างหรือเข้าร่วมกลุ่มวิจัยในเมนูข้อมูลของกลุ่มก่อน จึงจะเสนอหัวข้อวิจัยได้'));return;}
   const box=el('div',{className:'notice'});
   box.append(el('h3',{},'เสนอหรือปรับปรุงหัวข้อวิจัย · '+d.group.groupName),el('p',{},'สามารถบันทึกร่างไว้ก่อนได้ การบันทึกร่างจะยังไม่ส่งให้อาจารย์พิจารณา'));
   if(d.group.isLeader){
@@ -944,7 +944,7 @@ async function renderAdvisorGroups(){
 }
 
 async function renderStudentWorkspace(){
- const a=$('sectionText');a.textContent='กำลังโหลดพื้นที่ทำงานกลุ่ม...';
+ const a=$('sectionText');a.textContent='กำลังโหลดข้อมูลของกลุ่ม...';
  try{
   const d=await callApi('apiGetStudentWorkspace',sessionToken);a.textContent='';
   if(!d.group){
@@ -971,7 +971,7 @@ async function renderStudentWorkspace(){
   if(!g.leaderAssigned)box.append(el('p',{className:'notice'},'ขณะนี้ยังไม่มีหัวหน้ากลุ่มที่ Admin รับรอง การเสนอชื่ออาจารย์ที่ปรึกษาจะทำได้หลัง Admin กำหนดหัวหน้ากลุ่ม'));
   a.append(box);
   if(d.ethicsSummary){const ethics=el('div',{className:'notice'});ethics.append(el('h3',{},'สรุปแผนจริยธรรมการวิจัย (อ่านอย่างเดียว)'),el('p',{},'แผน: '+({DURING_COURSE:'ยื่นระหว่างรายวิชา',AFTER_COURSE:'ยื่นหลังรายวิชา',NOT_APPLICABLE:'ไม่เกี่ยวข้อง',UNDECIDED:'ยังไม่กำหนด'}[d.ethicsSummary.plan]||'ยังไม่มีข้อมูล')),el('p',{},'สถานะการยื่น: '+(d.ethicsSummary.submissionStatus||'—')+' · ผล REC: '+(d.ethicsSummary.approvalStatus||'—')));ethics.append(el('p',{},'การดำเนินงานในรายวิชาไม่ถือเป็นการรับรองจาก REC และห้ามเริ่มเก็บข้อมูลจากมนุษย์ก่อนการรับรองที่เกี่ยวข้อง'));a.append(ethics);}
- }catch(e){a.textContent='โหลดพื้นที่ทำงานกลุ่มไม่สำเร็จ: '+e.message;}
+ }catch(e){a.textContent='โหลดข้อมูลของกลุ่มไม่สำเร็จ: '+e.message;}
 }
 
 // Password panel supports both forced first-login change and voluntary change from Dashboard.
