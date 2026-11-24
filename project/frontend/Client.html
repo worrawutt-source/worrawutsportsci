@@ -147,6 +147,7 @@ $('logoutBtn').addEventListener('click',async()=>{
 async function loadDashboard(forcePasswordChange, isSessionRestore=false){
   try{
     currentDashboard=await callApi('apiGetDashboard',sessionToken);
+    if(currentDashboard && currentDashboard.expiresAt) scheduleSessionExpiry(currentDashboard.expiresAt);
     $('authView').classList.add('hidden');$('appView').classList.remove('hidden');
     const mustChange = forcePasswordChange === true || currentDashboard.forcePasswordChange === true;
     $('passwordChangePanel').classList.toggle('hidden',!mustChange);
