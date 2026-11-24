@@ -1141,28 +1141,71 @@ function apiStudentNominateAdvisor(token,advisorName,advisorEmail){
   const name=String(advisorName||'').trim(),email=normalizeEmail_(advisorEmail);
   if(name.length<3||name.length>150)throw new Error('กรุณากรอกชื่อ–นามสกุลอาจารย์ให้ถูกต้อง');
   validateEmail_(email);
-  if(readObjectsFresh_('ADVISOR_INVITATIONS').some(x=>x.GROUP_ID===me.GROUP_ID&&['INVITED','ACCEPTED','APPROVED'].includes(x.STATUS)))throw new Error('กลุ่มนี้มีคำเชิญหรือการแต่งตั้งอาจารย์ที่ปรึกษาที่ยังดำเนินการอยู่');
-  if(readObjectsFresh_('ADVISOR_ASSIGNMENTS').some(a=>a.GROUP_ID===me.GROUP_ID&&a.STATUS==='APPROVED'))throw new Error('กลุ่มนี้ได้รับมอบหมายอาจารย์ที่ปรึกษาแล้ว');
-  const tokenValue=Utilities.getUuid()+Utilities.getUuid(),expires=new Date(Date.now()+7*24*60*60*1000);
-  const invitationId=Utilities.getUuid();
-  appendObject_('ADVISOR_INVITATIONS',{INVITATION_ID:invitationId,GROUP_ID:me.GROUP_ID,ADVISOR_NAME:name,ADVISOR_EMAIL:email,STATUS:'INVITED',TOKEN_HASH:tokenHash_(tokenValue),EXPIRES_AT:expires,CREATED_AT:new Date(),CREATED_BY:ctx.user.USER_ID});
-  const url=ScriptApp.getService().getUrl()+'?advisorInvite='+encodeURIComponent(tokenValue);
-  const subject='คำเชิญเป็นอาจารย์ที่ปรึกษางานวิจัยนักศึกษาสาขาวิทยาศาสตร์การกีฬา';
-  const groupMembers=readObjectsFresh_('GROUP_MEMBERS').filter(m=>String(m.GROUP_ID)===String(me.GROUP_ID)&&m.STATUS==='ACTIVE');
-  const studentRows=readObjectsFresh_('STUDENTS');
-  const memberLines=groupMembers.map((m,i)=>{
-    const st=studentRows.find(x=>normalizeStudentId_(x.STUDENT_ID)===normalizeStudentId_(m.STUDENT_ID));
-    const fullName=st?String(st.FULL_NAME||[st.TITLE,st.FIRST_NAME,st.LAST_NAME].filter(Boolean).join(' ')).trim():'ไม่พบชื่อในทะเบียน';
-    return (i+1)+'. '+fullName+' (รหัสนักศึกษา '+String(m.STUDENT_ID||'-')+')';
-  });
-  const body='เรียน '+name+'\n\nนักศึกษาเสนอชื่อท่านเป็นอาจารย์ที่ปรึกษาของกลุ่ม '+group.GROUP_NAME+' ในรายวิชา '+APP.COURSE_CODE+' ภาคการศึกษา '+APP.TERM+
-    '\n\nรายชื่อสมาชิกกลุ่ม ('+memberLines.length+' คน)\n'+(memberLines.length?memberLines.join('\n'):'ไม่พบข้อมูลสมาชิกกลุ่ม')+
-    '\n\nกรุณาเปิดลิงก์นี้เพื่อตรวจสอบคำเชิญ ตอบรับหรือปฏิเสธ และหากตอบรับให้ตั้งรหัสผ่านสำหรับเข้าใช้งานระบบ (ลิงก์มีอายุ 7 วันและใช้ได้ครั้งเดียว):\n'+url+
-    '\n\nการตอบรับยังต้องรอ Admin อนุมัติการแต่งตั้งอย่างเป็นทางการ';
-  try{MailApp.sendEmail({to:email,subject,body,name:APP.NAME});}
-  catch(err){sheet_('ADVISOR_INVITATIONS').getRange(readObjectsFresh_('ADVISOR_INVITATIONS').find(x=>x.INVITATION_ID===invitationId)._row,5).setValue('EMAIL_FAILED');throw new Error('บันทึกคำเชิญแล้ว แต่ส่งอีเมลไม่สำเร็จ: '+err.message);}
-  logSystem_('ADVISOR_INVITATION_SENT','GROUP',me.GROUP_ID,{invitationId,email},ctx.user.USER_ID);
-  return {ok:true,message:'ส่งคำเชิญไปยัง '+email+' แล้ว ลิงก์มีอายุ 7 วัน'};
+
+  const lock=LockService.getScriptLock();lock.waitLock(60000);
+  let invitationId='',invitationRow=0,inviteSheet;
+  try{
+    const invitations=readObjectsFresh_('ADVISOR_INVITATIONS').filter(x=>String(x.GROUP_ID)===String(me.GROUP_ID));
+    const active=invitations.find(x=>['ACCEPTED','APPROVED'].includes(String(x.STATUS||'')));
+    if(active)throw new Error('กลุ่มนี้มีอาจารย์ที่ตอบรับหรือได้รับการแต่งตั้งแล้ว ไม่สามารถส่งคำเชิญซ้ำได้');
+    if(readObjectsFresh_('ADVISOR_ASSIGNMENTS').some(a=>String(a.GROUP_ID)===String(me.GROUP_ID)&&a.STATUS==='APPROVED'))throw new Error('กลุ่มนี้ได้รับมอบหมายอาจารย์ที่ปรึกษาแล้ว');
+
+    // Reuse the existing pending/failed invitation row instead of blocking a resend
+    // or creating duplicate invitation records for the same group.
+    const pending=invitations.filter(x=>['INVITED','EMAIL_FAILED'].includes(String(x.STATUS||'')))
+      .sort((a,b)=>new Date(b.CREATED_AT||0)-new Date(a.CREATED_AT||0))[0]||null;
+    const tokenValue=Utilities.getUuid()+Utilities.getUuid();
+    const expires=new Date(Date.now()+7*24*60*60*1000);
+    inviteSheet=sheet_('ADVISOR_INVITATIONS');
+    const headers=SCHEMA.ADVISOR_INVITATIONS;
+    const set=(row,key,value)=>inviteSheet.getRange(row,headers.indexOf(key)+1).setValue(value);
+    if(pending){
+      invitationId=String(pending.INVITATION_ID);
+      invitationRow=pending._row;
+      set(invitationRow,'ADVISOR_NAME',name);
+      set(invitationRow,'ADVISOR_EMAIL',email);
+      set(invitationRow,'STATUS','INVITED');
+      set(invitationRow,'TOKEN_HASH',tokenHash_(tokenValue));
+      set(invitationRow,'EXPIRES_AT',expires);
+      set(invitationRow,'CREATED_AT',new Date());
+      set(invitationRow,'CREATED_BY',ctx.user.USER_ID);
+      set(invitationRow,'RESPONDED_AT','');
+      set(invitationRow,'RESPONSE_NOTE','');
+      set(invitationRow,'APPROVED_BY','');
+      set(invitationRow,'APPROVED_AT','');
+      set(invitationRow,'ADVISOR_USER_ID','');
+      set(invitationRow,'PASSWORD_SALT','');
+      set(invitationRow,'PASSWORD_HASH','');
+    }else{
+      invitationId=Utilities.getUuid();
+      appendObject_('ADVISOR_INVITATIONS',{INVITATION_ID:invitationId,GROUP_ID:me.GROUP_ID,ADVISOR_NAME:name,ADVISOR_EMAIL:email,STATUS:'INVITED',TOKEN_HASH:tokenHash_(tokenValue),EXPIRES_AT:expires,CREATED_AT:new Date(),CREATED_BY:ctx.user.USER_ID});
+      invitationRow=readObjectsFresh_('ADVISOR_INVITATIONS').find(x=>x.INVITATION_ID===invitationId)._row;
+    }
+    SpreadsheetApp.flush();
+
+    const url=ScriptApp.getService().getUrl()+'?advisorInvite='+encodeURIComponent(tokenValue);
+    const subject='คำเชิญเป็นอาจารย์ที่ปรึกษางานวิจัยนักศึกษาสาขาวิทยาศาสตร์การกีฬา';
+    const groupMembers=readObjectsFresh_('GROUP_MEMBERS').filter(m=>String(m.GROUP_ID)===String(me.GROUP_ID)&&m.STATUS==='ACTIVE');
+    const studentRows=readObjectsFresh_('STUDENTS');
+    const memberLines=groupMembers.map((m,i)=>{
+      const st=studentRows.find(x=>normalizeStudentId_(x.STUDENT_ID)===normalizeStudentId_(m.STUDENT_ID));
+      const fullName=st?String(st.FULL_NAME||[st.TITLE,st.FIRST_NAME,st.LAST_NAME].filter(Boolean).join(' ')).trim():'ไม่พบชื่อในทะเบียน';
+      return (i+1)+'. '+fullName+' (รหัสนักศึกษา '+String(m.STUDENT_ID||'-')+')';
+    });
+    const body='เรียน '+name+'\n\nนักศึกษาเสนอชื่อท่านเป็นอาจารย์ที่ปรึกษาของกลุ่ม '+group.GROUP_NAME+' ในรายวิชา '+APP.COURSE_CODE+' ภาคการศึกษา '+APP.TERM+
+      '\n\nรายชื่อสมาชิกกลุ่ม ('+memberLines.length+' คน)\n'+(memberLines.length?memberLines.join('\n'):'ไม่พบข้อมูลสมาชิกกลุ่ม')+
+      '\n\nกรุณาเปิดลิงก์นี้เพื่อตรวจสอบคำเชิญ ตอบรับหรือปฏิเสธ และหากตอบรับให้ตั้งรหัสผ่านสำหรับเข้าใช้งานระบบ (ลิงก์มีอายุ 7 วันและใช้ได้ครั้งเดียว):\n'+url+
+      '\n\nการตอบรับยังต้องรอ Admin อนุมัติการแต่งตั้งอย่างเป็นทางการ';
+    try{
+      MailApp.sendEmail({to:email,subject,body,name:APP.NAME});
+    }catch(err){
+      set(invitationRow,'STATUS','EMAIL_FAILED');
+      SpreadsheetApp.flush();
+      throw new Error('บันทึกคำเชิญแล้ว แต่ส่งอีเมลไม่สำเร็จ: '+err.message+' สามารถกดส่งคำเชิญอีกครั้งได้');
+    }
+    logSystem_(pending?'ADVISOR_INVITATION_RESENT':'ADVISOR_INVITATION_SENT','GROUP',me.GROUP_ID,{invitationId,email},ctx.user.USER_ID);
+    return {ok:true,message:(pending?'ส่งคำเชิญซ้ำไปยัง ':'ส่งคำเชิญไปยัง ')+email+' แล้ว ลิงก์มีอายุ 7 วัน'};
+  }finally{lock.releaseLock();}
 }
 function apiAdminReviewAdvisorInvitation(token,invitationId,decision){
   const ctx=requireSession_(token,[ROLE.ADMIN]);
