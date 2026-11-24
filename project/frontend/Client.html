@@ -168,6 +168,11 @@ function renderDashboard(d){
     const value=document.createElement('div');value.className='metric-value';value.textContent=String(v);
     card.append(label,value);$('metricGrid').appendChild(card);
   });
+
+  // Load the role-specific landing page immediately after login.
+  // This prevents the dashboard shell from appearing with stale placeholder content.
+  const firstMenuItem=$('sideMenu').querySelector('.menu-item');
+  if(firstMenuItem) firstMenuItem.click();
 }
 async function renderUserAdmin(){
   const area=$('sectionText');area.textContent='กำลังโหลดบัญชีผู้ใช้...';
