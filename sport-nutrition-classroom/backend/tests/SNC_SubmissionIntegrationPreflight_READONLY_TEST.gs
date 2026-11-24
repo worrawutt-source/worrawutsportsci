@@ -19,9 +19,10 @@ var SNC_SUB_PREFLIGHT_CONFIG_TEST = Object.freeze({
     Code:'7c9928f7ae269287d1537dec6256dce13783d26d'
   },
   HEADERS:{
-    Users:['UserID','FirstName','LastName','Email','Status'],
-    Enrollments:['EnrollmentID','OfferingID','UserID','Status'],
-    CourseOfferings:['OfferingID','CourseID','SemesterID','InstructorUserID','Status'],
+    Users:['UserID','StudentID','FirstName','LastName','Email','Status','CreatedAt','UpdatedAt'],
+    UserRoles:['UserRoleID','UserID','Role','ScopeType','ScopeID','Status','CreatedAt','UpdatedAt','CreatedByUserID'],
+    Enrollments:['EnrollmentID','OfferingID','UserID','Status','EnrolledAt','CreatedAt','UpdatedAt'],
+    CourseOfferings:['OfferingID','CourseID','SemesterID','Section','Status','CreatedAt','UpdatedAt','CreatedByUserID'],
     Assignments:['AssignmentID','OfferingID','Title','Description','Instructions','MaxScore','Deadline','SubmissionType','MinGroupMembers','MaxGroupMembers','Status','OpenedAt','ClosedAt','CreatedAt','UpdatedAt','CreatedByUserID','AutoOpenEnabled','ScheduledOpenAt','AutoOpenProcessedAt','AutoCloseEnabled','ScheduledCloseAt','AutoCloseProcessedAt'],
     Groups:['GroupID','OfferingID','GroupName','CreatedByUserID','MembershipLockedAt','Status','CreatedAt','UpdatedAt'],
     GroupMembers:['GroupMemberID','GroupID','UserID','MemberRole','JoinedAt','LeftAt','Status'],
