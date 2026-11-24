@@ -1048,3 +1048,24 @@ Start by reading this `CURRENT.md` on branch `development`, then inspect the lat
 - Before implementation, explicitly separate the permitted Drive operations from prohibited LINE/UrlFetch, deployment, trigger, migration, and cleanup actions. Preserve all WP-SUB-1 evidence and current TEST records.
 - No WP-SUB-2 implementation or GAS execution is authorized by this closure entry.
 
+## Session checkpoint — state preserved before WP-SUB-2 — 24 Nov 2026
+
+### Confirmed project state at handoff
+- Repository: `worrawutt-source/worrawutsportsci`; active work branch: `development` only.
+- Approved design baseline remains DOC-01 v1.0, DOC-02 v1.1, DOCS v1.3 and SNC-WG-001 v1.0.0. Do not promote pending drafts into approved requirements.
+- WP-SUB-1 is formally CLOSED for handler-level integration and read-only post-run reconciliation. Owner-supplied runtime evidence: 26/26 runner cases PASS, 0 FAIL; independent read-only reconciliation PASS, 10/10, 0 BLOCKED.
+- WP-SUB-1 reconciled TEST counts: Assignments 6 created; Groups 3; GroupMembers 7; Submissions 12; SubmissionFiles 2; IdempotencyKeys 12; AuditLogs 34. Baseline ID retention, exact deltas, uniqueness and tested relationships passed. Notification hooks restored; Assignment-open stub calls 6 and Submission-received stub calls 12; externalCallsExpected=0.
+- Evidence limitation: no full baseline row snapshots were captured, so the evidence does not prove historical cell-by-cell immutability.
+- The separate prior cleanup utility must not be rerun. Its latest dry-run found the former 14 approved targets absent and aborted safely. Do not recreate those targets or infer any further cleanup authorization.
+- WP-SUB-1 did not test real Drive binary upload/access, deployed API/LIFF/browser E2E, full regression or UAT.
+
+### WP-SUB-2 status — explicitly not started
+- WP-SUB-2 (Drive binary upload/access and permission behavior) is **NOT STARTED**. No WP-SUB-2 implementation, Runner, Preflight, GAS execution, Drive upload, permission change, or test file creation has been performed or authorized.
+- The next permitted activity, only after a separate instruction to proceed, is to inspect current `development` source and prepare a WP-SUB-2 Test Plan for owner review. Source must be re-fetched at that time; previously recorded blob SHAs are historical references, not authorization to use stale source.
+- The proposed plan should cover the configured private TEST folder, 4 MB size limit, MIME/signature validation, staged-file lifecycle, uploader and authorized actor access, group membership and instructor permissions, rollback/orphan-file handling, exact synthetic file/record manifest, and read-only post-run reconciliation.
+- Because WP-SUB-2 creates real Drive files and may change viewer permissions, its plan must specify the exact TEST folder, synthetic test accounts, permitted Drive operations, file cleanup disposition, and recovery safeguards before implementation.
+- WP-SUB-2 must remain separate from WP-SUB-3 deployment/API/LIFF/browser E2E. No LINE/UrlFetch calls, triggers, migration, deployment, production changes, or cleanup are included.
+- Implementation and GAS execution require review and explicit owner approval of the WP-SUB-2 plan and mutation scope. This checkpoint itself grants no such approval.
+
+### Working rule
+Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migration, deployment, trigger, or Drive operation merely because this checkpoint has been recorded. Resume from this exact state in the next session.
