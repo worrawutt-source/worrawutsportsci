@@ -900,3 +900,22 @@ Start by reading this `CURRENT.md` on branch `development`, then inspect the lat
 - **Current status: PLAN DRAFTED — OWNER REVIEW/APPROVAL PENDING.** No runner/test code created, no GAS functions executed, no fixtures created, no Spreadsheet/Drive/LINE/trigger/deployment/migration/cleanup actions performed.
 - Next action: owner reviews the plan and responds with approval/amendments. Only after approval may the implementation work package begin. The Assistant must re-fetch current source and verify TEST GAS synchronization before implementation.
 
+## Submission Integration — owner approval and WP-SUB-0 preflight prepared — 24 Nov 2026
+
+- Owner approved the Submission Integration Test Plan v1.0 and all six decisions on 24 Nov 2026:
+  1. WP-SUB-1 handler-level integration scope.
+  2. Synthetic fixture topology: Alpha (2), Beta (3), Solo (1), Individual Assignment and Group Assignments (max 3, max 2, no max).
+  3. WP-SUB-1 attachment scope limited to Google Drive/Docs URL metadata; binary upload/Drive permission testing remains separately gated as WP-SUB-2.
+  4. Controlled in-memory Audit Append failure injection, with restoration and exact rollback verification; BLOCKED if safe restoration cannot be established.
+  5. Mandatory in-memory `notifySubmissionReceived_` stub and zero LINE/UrlFetch/external calls.
+  6. No cleanup authorization; cleanup requires a separate exact-ID preview and explicit authorization.
+- Plan updated to owner-approved status: `docs/SUBMISSION_INTEGRATION_TEST_PLAN_v1.0_DRAFT_2026-11-24.md`; commit `c781cd9a2cda5781878a439815962f65d4ff8c5b`.
+- Re-fetched current `development` source and inspected schema. Correct schema headers were checked against `backend/setup.gs`; Users, UserRoles, CourseOfferings, Enrollments, Assignments, Groups, GroupMembers, Submissions, SubmissionFiles, IdempotencyKeys and AuditLogs are included in the read-only preflight.
+- Created WP-SUB-0 preflight:
+  `backend/tests/SNC_SubmissionIntegrationPreflight_READONLY_TEST.gs`, version 1.0.0.
+  - Initial commit `e4d0894c03c732bd3ae7a3964408be10e2b4e751`; schema-alignment fix commit `302e2f739c7abc751187d77af38c292d19300b84`; latest blob SHA `31da4a63144f7a2204882f21bbc6ea37d3b493d1`.
+  - Read-only checks: exact TEST identity, Core Fixture manifest, no prior Submission Integration manifest, exact required headers, active offering, six active users/enrollments, existing active SYSTEM_ADMIN role, handler/hook availability, reserved-prefix collision, no existing Core Fixture submissions, and unique AuditLog IDs.
+  - Reports expected GitHub development blob SHAs for owner comparison. It cannot inspect GAS editor source itself.
+- **Current status: WP-SUB-0 SOURCE PREPARED — OWNER SOURCE-SYNC CONFIRMATION AND READ-ONLY GAS PREFLIGHT PENDING.** No Submission handler, fixture creation, Drive upload, LINE, trigger, migration, deployment or cleanup was run.
+- Next step: owner syncs the preflight file into TEST GAS and confirms the listed backend source files match the expected development versions; then runs only `SNC_SubmissionIntegrationPreflight_READONLY_TEST()` and shares the complete sanitized Execution Log. If READY, prepare WP-SUB-1 persistent runner; if BLOCKED, resolve only the reported readiness issue before any mutation.
+
