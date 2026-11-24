@@ -441,10 +441,22 @@ function apiGetAdvisorAssignedGroups(token){
   return sanitizeForClient_(getAdvisorAssignedGroups_(ctx.user.USER_ID));
 }
 
+function advisorWorkspaceSummary_(advisorUserId){
+  const groups=getAdvisorAssignedGroups_(advisorUserId),ids=new Set(groups.map(g=>String(g.groupId)));
+  const reports=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>ids.has(String(r.GROUP_ID||'')));
+  const topics=readObjectsFresh_('RESEARCH_TOPIC_VERSIONS').filter(r=>ids.has(String(r.GROUP_ID||'')));
+  const meetings=readObjectsFresh_('MEETING_RECORDS').filter(r=>ids.has(String(r.GROUP_ID||'')));
+  const feedback=readObjectsFresh_('ADVISOR_FEEDBACK').filter(r=>ids.has(String(r.GROUP_ID||''))&&String(r.STATUS||'ACTIVE').toUpperCase()==='ACTIVE');
+  const pendingReports=reports.filter(r=>['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').toUpperCase()));
+  const pendingTopics=topics.filter(r=>String(r.REVIEW_STATUS||'').toUpperCase()==='PENDING');
+  return {groups,metrics:{assignedGroups:groups.length,pendingReports:pendingReports.length,pendingTopics:pendingTopics.length,meetingsRecorded:meetings.length,feedbackProvided:feedback.length}};
+}
+
 /** Advisor workspace summary: one server round-trip for dashboard and group monitoring. */
 function apiGetAdvisorWorkspaceSummary(token){
   const ctx=requireSession_(token,[ROLE.ADVISOR]);
-  const groups=getAdvisorAssignedGroups_(ctx.user.USER_ID);
+  const summary=advisorWorkspaceSummary_(ctx.user.USER_ID);
+  const groups=summary.groups;
   const ids=new Set(groups.map(g=>String(g.groupId)));
   const reports=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>ids.has(String(r.GROUP_ID||'')));
   const topics=readObjectsFresh_('RESEARCH_TOPIC_VERSIONS').filter(r=>ids.has(String(r.GROUP_ID||'')));
@@ -504,7 +516,8 @@ function apiGetDashboard(token) {
     base.metrics = {users:readObjects_('SYS_USERS').length, sessions:readObjects_('SYS_SESSIONS').filter(s=>!s.REVOKED_AT && new Date(s.EXPIRES_AT)>new Date()).length, roster:readObjects_('STUDENTS').length};
     base.menu = ['ภาพรวมระบบ','จัดการกลุ่มวิจัย','กำหนดอาจารย์ที่ปรึกษา','บันทึกการเข้าพบ','จัดการรายงานความก้าวหน้า','จัดการงานกลุ่ม','ติดตามจริยธรรม','สัญญาณเตือนความเสี่ยง','ประเมินผล A1–A6','บัญชีผู้ใช้','นำเข้ารายชื่อนักศึกษา','บันทึกระบบ','การตั้งค่าระบบ'];
     } else if (role === ROLE.ADVISOR) {
-    const advisorGroups=getAdvisorAssignedGroups_(ctx.user.USER_ID);const advisorGroupIds=advisorGroups.map(g=>g.groupId);const advisorReports=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>advisorGroupIds.includes(String(r.GROUP_ID))&&['SUBMITTED','RESUBMITTED','APPROVED','REVISION_REQUIRED'].includes(String(r.STATUS||'').toUpperCase()));const feedback=readObjectsFresh_('ADVISOR_FEEDBACK').filter(f=>advisorGroupIds.includes(String(f.GROUP_ID))&&String(f.STATUS||'ACTIVE').toUpperCase()==='ACTIVE');const meetings=readObjectsFresh_('MEETING_RECORDS').filter(m=>advisorGroupIds.includes(String(m.GROUP_ID)));base.metrics = {assignedGroups:advisorGroups.length, reportsAvailable:advisorReports.length, feedbackProvided:feedback.length, meetings:meetings.length};
+    const advisorSummary=advisorWorkspaceSummary_(ctx.user.USER_ID);
+    base.metrics={assignedGroups:advisorSummary.metrics.assignedGroups,pendingReports:advisorSummary.metrics.pendingReports,pendingTopics:advisorSummary.metrics.pendingTopics,meetingsRecorded:advisorSummary.metrics.meetingsRecorded};
     base.menu = ['ภาพรวมการให้คำปรึกษา','กลุ่มที่ได้รับมอบหมาย','บันทึกการพบอาจารย์','ประเมิน A4'];
   } else if (role === ROLE.STUDENT) {
     // Derive dashboard group status from the active membership relationship.
