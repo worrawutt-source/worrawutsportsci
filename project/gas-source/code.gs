@@ -231,7 +231,7 @@ function initializeTestDatabase() {
  * Requires Advanced Google Service: Drive API v3 enabled.
  * Expected columns: student ID + first name + last name OR full name.
  */
-function importStudentRosterFromExcel(fileId, sheetName, actorUserId) {
+function importStudentRosterFromExcel_(fileId, sheetName, actorUserId) {
   requireDatabase_();
   if (!fileId) throw new Error('กรุณาระบุ File ID ของไฟล์ Excel');
   const sourceFile = DriveApp.getFileById(String(fileId));
@@ -625,7 +625,7 @@ function apiListUsers(token) {
 
 function apiAdminImportStudentRosterFromExcel(token, fileId, sheetName) {
   const ctx=requireSession_(token, [ROLE.ADMIN]);
-  return importStudentRosterFromExcel(fileId, sheetName, ctx.user.USER_ID);
+  return importStudentRosterFromExcel_(fileId, sheetName, ctx.user.USER_ID);
 }
 
 function apiSetUserRole(token, userId, roleId) {
@@ -1015,12 +1015,12 @@ function authorizeAdvisorEmailService(){
   const quota=MailApp.getRemainingDailyQuota();
   return {ok:true,remainingDailyQuota:quota,message:'อนุญาตบริการส่งอีเมลแล้ว'};
 }
-function migrateAdvisorMagicLinkSchema(){
+function migrateAdvisorMagicLinkSchema_(){
   requireDatabase_();
   ['ADVISOR_INVITATIONS','ADVISOR_MAGIC_LINKS'].forEach(n=>ensureWorkflowSheet_(n));
   return {ok:true,message:'สร้างชีต ADVISOR_INVITATIONS และ ADVISOR_MAGIC_LINKS แล้ว'};
 }
-function migrateAdvisorPasswordSetupSchema(){
+function migrateAdvisorPasswordSetupSchema_(){
   requireDatabase_();
   ensureWorkflowSheet_('ADVISOR_INVITATIONS');
   return {ok:true,message:'ปรับโครงสร้างคำเชิญอาจารย์เพื่อรองรับการตั้งรหัสผ่านครั้งแรกแล้ว'};
@@ -1485,7 +1485,7 @@ function apiAdvisorReviewMeetingSubmission(token,fileRecordId,decision,comment){
 }
 
 /** Additive, non-destructive migration for meeting submission review metadata. */
-function migrateMeetingFilesSchema(){
+function migrateMeetingFilesSchema_(){
   const dbId=requireDatabase_(),lock=LockService.getScriptLock();if(!lock.tryLock(30000))throw new Error('ระบบกำลังทำงาน กรุณาลองใหม่');
   try{const ss=SpreadsheetApp.openById(dbId);let sh=ss.getSheetByName('MEETING_FILES');if(!sh){sh=ss.insertSheet('MEETING_FILES');sh.getRange(1,1,1,SCHEMA.MEETING_FILES.length).setValues([SCHEMA.MEETING_FILES]);sh.setFrozenRows(1);return {ok:true,added:SCHEMA.MEETING_FILES.length};}
     if(sh.getLastRow()===0||sh.getLastColumn()===0){sh.getRange(1,1,1,SCHEMA.MEETING_FILES.length).setValues([SCHEMA.MEETING_FILES]);sh.setFrozenRows(1);return {ok:true,added:SCHEMA.MEETING_FILES.length};}
@@ -1780,7 +1780,7 @@ function apiAdminReviewProgressReport(token,reportId,decision,comment){
   }finally{lock.releaseLock();}
 }
 
-function migrateProgressWorkflowSchema(){
+function migrateProgressWorkflowSchema_(){
   requireDatabase_();
   const created=[],verified=[];
   ['PROGRESS_REPORTS','PROGRESS_WEEK_SETTINGS'].forEach(name=>{
@@ -1797,7 +1797,7 @@ function studentGroupForUser_(ctx){
   if(!m)throw new Error('ยังไม่ได้อยู่ในกลุ่มวิจัย');
   assertGroupAccess_(ctx,m.GROUP_ID);return m.GROUP_ID;
 }
-function migrateResearchTopicDraftSchema(){
+function migrateResearchTopicDraftSchema_(){
   requireDatabase_();
   ensureWorkflowSheet_('RESEARCH_TOPIC_DRAFTS');
   return {ok:true,message:'สร้างชีต RESEARCH_TOPIC_DRAFTS เรียบร้อยแล้ว'};
@@ -1972,7 +1972,7 @@ function apiStudentSubmitProgress(token,payload){
     return {ok:true,message:'ส่งรายงานสัปดาห์ที่ '+week+' แล้ว'};
   }finally{lock.releaseLock();}
 }
-function migrateCollaborativeWorkspaceSchema(){
+function migrateCollaborativeWorkspaceSchema_(){
   const lock=LockService.getScriptLock();lock.waitLock(30000);
   try{
     const db=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('DB_ID'));
@@ -2169,7 +2169,7 @@ function apiAdminSetRegistrationOpen(token,isOpen){
  * The same safe creation now also runs lazily when a workflow API first needs
  * one of these sheets, so users do not have to run this manually.
  */
-function migrateResearchWorkflowSchema(){
+function migrateResearchWorkflowSchema_(){
   const ss = db_();
   const names = AUTO_CREATE_WORKFLOW_SHEETS_;
   const created = [], existing = [];
