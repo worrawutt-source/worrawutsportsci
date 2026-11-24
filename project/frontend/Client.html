@@ -948,7 +948,7 @@ async function renderStudentWorkspace(){
  try{
   const d=await callApi('apiGetStudentWorkspace',sessionToken);a.textContent='';
   if(!d.group){
-   const box=el('div',{className:'notice'});box.append(el('h3',{},'ยังไม่มีกลุ่มวิจัย'),el('p',{},'สร้างกลุ่มวิจัยและเป็นสมาชิกคนแรก จากนั้นเชิญสมาชิกที่ลงทะเบียนแล้วเข้ากลุ่ม'));
+   const box=el('div',{className:'notice'});box.append(el('h3',{},'ยังไม่มีกลุ่มวิจัย'),el('p',{},'สร้างกลุ่มวิจัยและเป็นสมาชิกคนแรก จากนั้นรอการจัดสมาชิกกลุ่มโดยผู้ดูแลรายวิชา'));
    const f=el('form',{className:'admin-form'}),name=el('input',{required:'required',maxLength:'100',placeholder:'ชื่อกลุ่มวิจัย'}),topic=el('input',{placeholder:'หัวข้อวิจัยเบื้องต้น'}),b=el('button',{type:'submit',className:'primary'},'สร้างกลุ่ม');f.append(el('label',{},'ชื่อกลุ่ม'),name,el('label',{},'หัวข้อวิจัย'),topic,b);
    f.onsubmit=async e=>{e.preventDefault();b.disabled=true;try{const r=await callApi('apiStudentCreateGroup',sessionToken,{groupName:name.value,topicTh:topic.value});showOperationStatus(r.message);await renderStudentWorkspace()}catch(x){showOperationStatus(x.message,true)}finally{b.disabled=false}};
    box.append(f);a.append(box);return;
@@ -956,9 +956,8 @@ async function renderStudentWorkspace(){
   const g=d.group,box=el('div',{className:'notice'});box.append(el('h3',{},g.groupName),el('p',{},'หัวข้อวิจัย: '+(g.topicTh||'ยังไม่กำหนด')),el('p',{},'หัวหน้ากลุ่ม: '+(g.leaderAssigned?(g.isLeader?'คุณเป็นหัวหน้ากลุ่ม':'กำหนดแล้ว'):'รอ Admin กำหนด')+' · อาจารย์ที่ปรึกษา: '+(g.advisor||'ยังไม่ได้รับอนุมัติ')+(g.pendingAdvisor?' · รออนุมัติ: '+g.pendingAdvisor:'')));
   box.append(el('h3',{},'สมาชิกกลุ่ม ('+g.members.length+')'));g.members.forEach(m=>box.append(el('p',{},m.studentId+' · '+m.name+(m.isMe?' (คุณ)':''))));
   if(g.isLeader&&g.leaderAssigned){
-   const addBox=el('div',{className:'admin-form'}),sel=el('select');d.roster.forEach(s=>sel.append(el('option',{value:s.studentId},s.studentId+' · '+s.name)));
-   const add=el('button',{type:'button',className:'secondary'},'เพิ่มสมาชิกที่ลงทะเบียนแล้ว');add.onclick=async()=>{add.disabled=true;try{const r=await callApi('apiStudentAddGroupMember',sessionToken,sel.value);showOperationStatus(r.message);await renderStudentWorkspace()}catch(e){showOperationStatus(e.message,true)}finally{add.disabled=false}};
-   addBox.append(el('label',{},'เลือกนักศึกษา'),sel,add);box.append(addBox);
+   // Group membership is finalized during the one-time grouping process.
+   // Students do not add registered members from this workspace.
    if(!g.advisor&&!g.pendingAdvisor&&(!g.advisorInvite||['REJECTED','DECLINED','EMAIL_FAILED'].includes(g.advisorInvite.status))){
     const advisorName=el('input',{type:'text',placeholder:'ชื่อ–นามสกุลอาจารย์ที่ปรึกษา',maxLength:150});
     const advisorEmail=el('input',{type:'email',placeholder:'อีเมลอาจารย์ เช่น name@university.ac.th'});
@@ -969,7 +968,7 @@ async function renderStudentWorkspace(){
     box.append(el('p',{className:'notice'},'อาจารย์ที่เสนอ: '+g.advisorInvite.name+' · '+g.advisorInvite.email+' · '+statusText));
    }
   }
-  if(!g.leaderAssigned)box.append(el('p',{className:'notice'},'ขณะนี้ยังไม่มีหัวหน้ากลุ่มที่ Admin รับรอง การเพิ่มสมาชิกและเสนอชื่ออาจารย์ที่ปรึกษาจะทำได้หลัง Admin กำหนดหัวหน้ากลุ่ม'));
+  if(!g.leaderAssigned)box.append(el('p',{className:'notice'},'ขณะนี้ยังไม่มีหัวหน้ากลุ่มที่ Admin รับรอง การเสนอชื่ออาจารย์ที่ปรึกษาจะทำได้หลัง Admin กำหนดหัวหน้ากลุ่ม'));
   a.append(box);
   if(d.ethicsSummary){const ethics=el('div',{className:'notice'});ethics.append(el('h3',{},'สรุปแผนจริยธรรมการวิจัย (อ่านอย่างเดียว)'),el('p',{},'แผน: '+({DURING_COURSE:'ยื่นระหว่างรายวิชา',AFTER_COURSE:'ยื่นหลังรายวิชา',NOT_APPLICABLE:'ไม่เกี่ยวข้อง',UNDECIDED:'ยังไม่กำหนด'}[d.ethicsSummary.plan]||'ยังไม่มีข้อมูล')),el('p',{},'สถานะการยื่น: '+(d.ethicsSummary.submissionStatus||'—')+' · ผล REC: '+(d.ethicsSummary.approvalStatus||'—')));ethics.append(el('p',{},'การดำเนินงานในรายวิชาไม่ถือเป็นการรับรองจาก REC และห้ามเริ่มเก็บข้อมูลจากมนุษย์ก่อนการรับรองที่เกี่ยวข้อง'));a.append(ethics);}
  }catch(e){a.textContent='โหลดพื้นที่ทำงานกลุ่มไม่สำเร็จ: '+e.message;}
