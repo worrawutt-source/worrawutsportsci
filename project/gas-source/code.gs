@@ -87,9 +87,7 @@ function doGet(e) {
   if(p.advisorMagic){
     return HtmlService.createHtmlOutput('<meta name="viewport" content="width=device-width, initial-scale=1"><main style="font-family:Arial,sans-serif;max-width:560px;margin:40px auto;padding:24px;border:1px solid #ddd;border-radius:12px"><h2>เข้าสู่ระบบ Advisor</h2><p>กดปุ่มด้านล่างเพื่อยืนยันการเข้าสู่ระบบด้วยอีเมล</p><form method="post" action="'+ScriptApp.getService().getUrl()+'"><input type="hidden" name="advisorMagicToken" value="'+escapeHtml_(String(p.advisorMagic))+'"><button style="padding:12px 20px;background:#17324d;color:white;border:0;border-radius:8px">ยืนยันและเข้าสู่ระบบ</button></form></main>').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
-  const t=HtmlService.createTemplateFromFile('Index');
-  t.magicSessionToken=magicSessionToken;
-  return t.evaluate().setTitle(APP.NAME).addMetaTag('viewport','width=device-width, initial-scale=1').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  return renderFrontend_(magicSessionToken);
 }
 function doPost(e){
   const p=(e&&e.parameter)||{};
@@ -101,14 +99,93 @@ function doPost(e){
   }
   if(p.advisorMagicToken){
     const token=consumeAdvisorMagicLink_(String(p.advisorMagicToken));
-    const t=HtmlService.createTemplateFromFile('Index');t.magicSessionToken=token;
-    return t.evaluate().setTitle(APP.NAME).addMetaTag('viewport','width=device-width, initial-scale=1').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    return renderFrontend_(token);
   }
   return HtmlService.createHtmlOutput('คำขอไม่ถูกต้อง');
 }
 
-function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+/**
+ * GitHub-hosted frontend loader.
+ * Frontend assets are fetched only from this immutable commit SHA.
+ * The whitelist prevents arbitrary URL/path fetching.
+ */
+const FRONTEND_CONFIG = Object.freeze({
+  OWNER: 'worrawutt-source',
+  REPOSITORY: 'worrawutsportsci',
+  COMMIT_SHA: '793f7d11892166dd43a394c7ea88a38c61e6df9f',
+  BASE_PATH: 'project/frontend/',
+  CACHE_SECONDS: 21600,
+  CACHE_CHUNK_SIZE: 80000
+});
+
+function renderFrontend_(magicSessionToken) {
+  const html = getFrontendAsset_('Index.html')
+    .replace('<!-- SSRL_STYLES -->', getFrontendAsset_('Styles.html'))
+    .replace('<!-- SSRL_CLIENT -->', getFrontendAsset_('Client.html'))
+    .replace('__SSRL_MAGIC_SESSION_JSON__', safeJsonForHtml_(magicSessionToken || ''));
+
+  if (/<!-- SSRL_(?:STYLES|CLIENT) -->|__SSRL_MAGIC_SESSION_JSON__|<\?!=/.test(html)) {
+    throw new Error('Frontend template markers were not fully resolved');
+  }
+  return HtmlService.createHtmlOutput(html)
+    .setTitle(APP.NAME)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function safeJsonForHtml_(value) {
+  return JSON.stringify(String(value || ''))
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
+function getFrontendAsset_(filename) {
+  const allowed = ['Index.html', 'Client.html', 'Styles.html'];
+  if (!allowed.includes(filename)) throw new Error('Frontend asset is not allowed');
+  const cache = CacheService.getScriptCache();
+  const key = 'SSRL_FRONTEND_' + FRONTEND_CONFIG.COMMIT_SHA + '_' + filename;
+  const count = Number(cache.get(key + '_COUNT') || 0);
+  if (count > 0) {
+    const chunks = [];
+    for (let i = 0; i < count; i++) {
+      const part = cache.get(key + '_' + i);
+      if (part === null) { chunks.length = 0; break; }
+      chunks.push(part);
+    }
+    if (chunks.length === count) return chunks.join('');
+  }
+
+  const url = 'https://raw.githubusercontent.com/' +
+    FRONTEND_CONFIG.OWNER + '/' + FRONTEND_CONFIG.REPOSITORY + '/' +
+    FRONTEND_CONFIG.COMMIT_SHA + '/' + FRONTEND_CONFIG.BASE_PATH + filename;
+  const response = UrlFetchApp.fetch(url, {
+    method: 'get',
+    followRedirects: true,
+    muteHttpExceptions: true
+  });
+  const status = response.getResponseCode();
+  if (status !== 200) {
+    throw new Error('โหลดไฟล์ ' + filename + ' จาก GitHub ไม่สำเร็จ (HTTP ' + status + ')');
+  }
+  const content = response.getContentText('UTF-8');
+  if (!content) throw new Error('ไฟล์ frontend ว่าง: ' + filename);
+
+  const pieces = [];
+  for (let offset = 0; offset < content.length; offset += FRONTEND_CONFIG.CACHE_CHUNK_SIZE) {
+    pieces.push(content.slice(offset, offset + FRONTEND_CONFIG.CACHE_CHUNK_SIZE));
+  }
+  try {
+    pieces.forEach(function(piece, index) {
+      cache.put(key + '_' + index, piece, FRONTEND_CONFIG.CACHE_SECONDS);
+    });
+    cache.put(key + '_COUNT', String(pieces.length), FRONTEND_CONFIG.CACHE_SECONDS);
+  } catch (cacheError) {
+    // Cache is an optimization only; the fetched content remains usable.
+  }
+  return content;
 }
 
 /**
