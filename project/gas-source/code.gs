@@ -1062,6 +1062,14 @@ function diagnoseAdvisorInvitationToken_(rawToken){
   };
 }
 
+/** Public Apps Script entry points for manual, read-only diagnostics. */
+function diagnoseAdvisorInvitationToken(rawToken){
+  return diagnoseAdvisorInvitationToken_(rawToken);
+}
+function diagnoseLatestAdvisorInvitation(){
+  return diagnoseLatestAdvisorInvitation_();
+}
+
 /** Read-only summary; cannot verify Token Match without the raw URL token. */
 function diagnoseLatestAdvisorInvitation_(){
   requireDatabase_();
