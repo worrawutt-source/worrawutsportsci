@@ -2356,6 +2356,19 @@ function logSystem_(action,targetType,targetId,details,actorUserId){
  * Paste the token value from the advisorInvite URL when running.
  * Remove this helper after the diagnostic is complete.
  */
+
 function runAdvisorInviteDiagnostic() {
-  return diagnoseAdvisorInvitationToken('วาง TOKEN จากลิงก์อีเมลตรงนี้');
+  const inviteUrl = 'https://script.google.com/macros/s/AKfycbwV6XL3kV9fP-8yZnPpb8L9wAutK_Ah2zReRbyfauJfebp44sasXmmLyGG1YczG5R9D/exec?advisorInvite=b54344e9-56ba-4cc6-9638-7dc406dcb070faa52d39-ed87-44be-b984-b437743bffb9\n\n';
+
+  const match = inviteUrl.match(/[?&]advisorInvite=([^&#\s]+)/);
+
+  if (!match) {
+    throw new Error('ไม่พบ advisorInvite ใน URL');
+  }
+
+  const token = decodeURIComponent(match[1]);
+  const result = diagnoseAdvisorInvitationToken(token);
+
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
 }
