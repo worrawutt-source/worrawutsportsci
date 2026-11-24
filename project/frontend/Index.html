@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17324d">
+  <base target="_top">
+  <?!= include('Styles'); ?>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand-mark">SS</div>
+      <div><div class="brand-title">SPORT SCIENCE RESEARCH</div><div class="brand-sub">4084901 · ภาคการศึกษา 2/2569</div></div>
+      <span class="env">TEST</span>
+    </header>
+    <section id="authView" class="auth-grid">
+      <div class="intro">
+        <div class="eyebrow">RESEARCH LEARNING PLATFORM</div>
+        <h1>พัฒนาโครงร่างงานวิจัย<br></h1>
+        <p>พื้นที่กลางสำหรับผู้ดูแลระบบ อาจารย์ที่ปรึกษา และนักศึกษา</p>
+        <div class="intro-note"></div>
+      </div>
+      <div class="panel">
+        <div class="tabs">
+          <button class="tab active" data-tab="login">เข้าสู่ระบบ</button>
+          <button class="tab" data-tab="register">ลงทะเบียนนักศึกษา</button>
+        </div>
+        <form id="loginForm" class="form-view">
+          <label>Username หรืออีเมล<input id="loginEmail" type="text" autocomplete="username" required></label>
+          <label>รหัสผ่าน<input id="loginPassword" type="password" autocomplete="current-password" required></label>
+          <button class="primary" type="submit">เข้าสู่ระบบ</button>
+        </form>
+        <form id="registerForm" class="form-view hidden">
+          <label>รหัสนักศึกษา<input id="studentId" required maxlength="20"></label>
+          <label>อีเมลที่ใช้งานได้<input id="studentEmail" type="email" required></label>
+          <label>กำหนดรหัสผ่าน (อย่างน้อย 6 ตัวอักษร มีตัวอักษร ตัวเลข และอักขระพิเศษ)<input id="studentPassword" type="password" minlength="6" required></label>
+          <button class="primary" type="submit">ส่งรหัสยืนยันอีเมล</button>
+          <div class="otp-row"><label>รหัส OTP<input id="studentOtp" inputmode="numeric" maxlength="6"></label><button class="secondary" id="verifyStudent" type="button">ยืนยันและลงทะเบียน</button></div>
+        </form>
+        <div id="authMessage" class="message" aria-live="polite"></div>
+      </div>
+    </section>
+    <section id="appView" class="hidden">
+      <div class="welcome-row">
+        <div><div class="eyebrow">WORKSPACE</div><h1 id="welcomeTitle">Dashboard</h1><p id="welcomeSub"></p></div>
+        <div class="welcome-actions">
+          <button id="changePasswordBtn" class="secondary" type="button">เปลี่ยนรหัสผ่าน</button>
+          <button id="logoutBtn" class="secondary" type="button">ออกจากระบบ</button>
+        </div>
+      </div>
+      <section id="passwordChangePanel" class="panel hidden">
+        <h2 id="passwordChangeTitle">เปลี่ยนรหัสผ่าน</h2>
+        <p id="passwordChangeNotice">กรุณากำหนดรหัสผ่านใหม่ก่อนใช้งานระบบ</p>
+        <form id="passwordChangeForm" class="form-view">
+          <label>รหัสผ่านปัจจุบัน<input id="currentPassword" type="password" autocomplete="current-password" required></label>
+          <label>รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร ต้องมีตัวอักษร ตัวเลข และอักขระพิเศษ)<input id="newPassword" type="password" minlength="6" autocomplete="new-password" required></label>
+          <label>ยืนยันรหัสผ่านใหม่<input id="confirmPassword" type="password" minlength="6" autocomplete="new-password" required></label>
+          <div class="password-actions">
+            <button id="saveNewPasswordBtn" class="primary" type="submit">บันทึกรหัสผ่านใหม่</button>
+            <button id="cancelPasswordChangeBtn" class="secondary hidden" type="button">ยกเลิก</button>
+          </div>
+          <div id="passwordMessage" class="message" aria-live="polite" role="status"></div>
+        </form>
+      </section>
+      <div class="dashboard-layout" id="dashboardLayout">
+        <nav id="sideMenu" class="side-menu"></nav>
+        <div class="content-area">
+          <div class="metric-grid" id="metricGrid"></div>
+          <div class="panel content-panel">
+            <h2 id="sectionTitle">ภาพรวม</h2>
+            <div id="sectionText">ยินดีต้อนรับเข้าสู่ระบบ</div>
+            
+          </div>
+        </div>
+      </div>
+    </section>
+    <footer>SPORT SCIENCE RESEARCH LAB</footer>
+  </main>
+  <script>window.SSRL_MAGIC_SESSION = <?!= JSON.stringify(magicSessionToken || '') ?>;</script>\n  <?!= include('Client'); ?>
+</body>
+</html>
