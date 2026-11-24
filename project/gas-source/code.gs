@@ -441,6 +441,54 @@ function apiGetAdvisorAssignedGroups(token){
   return sanitizeForClient_(getAdvisorAssignedGroups_(ctx.user.USER_ID));
 }
 
+/** Advisor workspace summary: one server round-trip for dashboard and group monitoring. */
+function apiGetAdvisorWorkspaceSummary(token){
+  const ctx=requireSession_(token,[ROLE.ADVISOR]);
+  const groups=getAdvisorAssignedGroups_(ctx.user.USER_ID);
+  const ids=new Set(groups.map(g=>String(g.groupId)));
+  const reports=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>ids.has(String(r.GROUP_ID||'')));
+  const topics=readObjectsFresh_('RESEARCH_TOPIC_VERSIONS').filter(r=>ids.has(String(r.GROUP_ID||'')));
+  const files=readObjectsFresh_('PROPOSAL_FILES').filter(r=>ids.has(String(r.GROUP_ID||''))&&String(r.STATUS||'').toUpperCase()==='ACTIVE');
+  const feedback=readObjectsFresh_('ADVISOR_FEEDBACK').filter(r=>ids.has(String(r.GROUP_ID||''))&&String(r.STATUS||'ACTIVE').toUpperCase()==='ACTIVE');
+  const meetings=readObjectsFresh_('MEETING_RECORDS').filter(r=>ids.has(String(r.GROUP_ID||'')));
+  const tasks=readObjectsFresh_('GROUP_TASKS').filter(r=>ids.has(String(r.GROUP_ID||''))&&!['DONE','CANCELLED','DELETED'].includes(String(r.STATUS||'').toUpperCase()));
+  const groupSummaries=groups.map(g=>{
+    const gr=reports.filter(r=>String(r.GROUP_ID)===String(g.groupId)).sort((a,b)=>new Date(b.SUBMITTED_AT||0)-new Date(a.SUBMITTED_AT||0));
+    const gt=topics.filter(r=>String(r.GROUP_ID)===String(g.groupId)).sort((a,b)=>Number(b.VERSION_NO||0)-Number(a.VERSION_NO||0));
+    const gm=meetings.filter(r=>String(r.GROUP_ID)===String(g.groupId));
+    return {
+      groupId:g.groupId,groupName:g.groupName,topicTh:g.topicTh,topicEn:g.topicEn,members:g.members,
+      pendingReports:gr.filter(r=>['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').toUpperCase())).length,
+      totalReports:gr.length,latestReport:gr[0]?{weekNo:gr[0].WEEK_NO,status:gr[0].STATUS,submittedAt:gr[0].SUBMITTED_AT}:null,
+      proposalFiles:files.filter(r=>String(r.GROUP_ID)===String(g.groupId)).length,
+      feedbackCount:feedback.filter(r=>String(r.GROUP_ID)===String(g.groupId)).length,
+      meetingCount:[...new Set(gm.map(r=>String(r.MEETING_NO)))].filter(Boolean).length,
+      openTasks:tasks.filter(r=>String(r.GROUP_ID)===String(g.groupId)).length,
+      latestTopic:gt[0]?{versionNo:gt[0].VERSION_NO,reviewStatus:gt[0].REVIEW_STATUS,status:gt[0].STATUS}:null
+    };
+  });
+  const pendingReports=reports.filter(r=>['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').toUpperCase())).map(r=>{
+    const g=groups.find(x=>String(x.groupId)===String(r.GROUP_ID));
+    return {groupId:r.GROUP_ID,groupName:g?g.groupName:'',weekNo:r.WEEK_NO,status:r.STATUS,submittedAt:r.SUBMITTED_AT,reportId:r.REPORT_ID};
+  }).sort((a,b)=>new Date(b.submittedAt||0)-new Date(a.submittedAt||0));
+  const pendingTopics=topics.filter(r=>String(r.REVIEW_STATUS||'').toUpperCase()==='PENDING').map(r=>{
+    const g=groups.find(x=>String(x.groupId)===String(r.GROUP_ID));
+    return {groupId:r.GROUP_ID,groupName:g?g.groupName:'',versionNo:r.VERSION_NO,titleTh:r.TITLE_TH,submittedAt:r.SUBMITTED_AT,versionId:r.VERSION_ID};
+  });
+  return sanitizeForClient_({
+    metrics:{
+      assignedGroups:groups.length,
+      pendingReports:pendingReports.length,
+      pendingTopics:pendingTopics.length,
+      meetingsRecorded:meetings.length,
+      feedbackProvided:feedback.length,
+      openTasks:tasks.length
+    },
+    groups:groupSummaries,pendingReports,pendingTopics,
+    assessmentWindowA4:assessmentSettings_().WINDOW_A4||'CLOSED'
+  });
+}
+
 /** Dashboard bootstrap: all authorization is performed on the server. */
 function apiGetDashboard(token) {
   const ctx = requireSession_(token, null, true);
@@ -2266,10 +2314,30 @@ function migrateResearchWorkflowSchema_(){
 }
 
 function assertGroupAccess_(ctx,groupId){
-  const group=readObjects_('RESEARCH_GROUPS').find(g=>g.GROUP_ID===groupId&&g.STATUS==='ACTIVE'); if(!group) throw new Error('ไม่พบกลุ่มวิจัย');
+  const targetGroupId=String(groupId||'').trim();
+  const groups=readObjectsFresh_('RESEARCH_GROUPS');
+  const group=groups.find(g=>String(g.GROUP_ID||'').trim()===targetGroupId&&String(g.STATUS||'').trim().toUpperCase()==='ACTIVE');
+  if(!group)throw new Error('ไม่พบกลุ่มวิจัย');
   if(ctx.user.ROLE_ID===ROLE.ADMIN)return true;
-  if(ctx.user.ROLE_ID===ROLE.ADVISOR){if(!readObjects_('ADVISOR_ASSIGNMENTS').some(a=>a.GROUP_ID===groupId&&a.ADVISOR_USER_ID===ctx.user.USER_ID&&a.STATUS==='APPROVED'))throw new Error('ไม่มีสิทธิ์เข้าถึงกลุ่มนี้');return true;}
-  const m=readObjects_('GROUP_MEMBERS').find(x=>x.GROUP_ID===groupId&&(x.USER_ID===ctx.user.USER_ID || String(x.STUDENT_ID)===String(ctx.user.STUDENT_ID))&&x.STATUS==='ACTIVE'); if(!m)throw new Error('ไม่มีสิทธิ์เข้าถึงกลุ่มนี้');return true;
+  if(ctx.user.ROLE_ID===ROLE.ADVISOR){
+    const advisorId=String(ctx.user.USER_ID||'').trim();
+    const assigned=readObjectsFresh_('ADVISOR_ASSIGNMENTS').some(a=>
+      String(a.GROUP_ID||'').trim()===targetGroupId&&
+      String(a.ADVISOR_USER_ID||'').trim()===advisorId&&
+      String(a.STATUS||'').trim().toUpperCase()==='APPROVED'
+    );
+    if(!assigned)throw new Error('ไม่มีสิทธิ์เข้าถึงกลุ่มนี้');
+    return true;
+  }
+  const members=readObjectsFresh_('GROUP_MEMBERS');
+  const member=members.find(x=>
+    String(x.GROUP_ID||'').trim()===targetGroupId&&
+    (String(x.USER_ID||'').trim()===String(ctx.user.USER_ID||'').trim()||
+     String(x.STUDENT_ID||'').trim()===String(ctx.user.STUDENT_ID||'').trim())&&
+    String(x.STATUS||'').trim().toUpperCase()==='ACTIVE'
+  );
+  if(!member)throw new Error('ไม่มีสิทธิ์เข้าถึงกลุ่มนี้');
+  return true;
 }
 function assessmentSettings_(){const o={WINDOW_A4:'CLOSED',WINDOW_A5:'CLOSED'};readObjects_('ASSESSMENT_SETTINGS').forEach(r=>o[r.SETTING_KEY]=r.SETTING_VALUE);return o;}
 function setAssessmentSetting_(key,value,actor){const sh=sheet_('ASSESSMENT_SETTINGS'),r=readObjects_('ASSESSMENT_SETTINGS').find(x=>x.SETTING_KEY===key);if(r){sh.getRange(r._row,2).setValue(value);sh.getRange(r._row,3).setValue(new Date());sh.getRange(r._row,4).setValue(actor);}else appendObject_('ASSESSMENT_SETTINGS',{SETTING_KEY:key,SETTING_VALUE:value,UPDATED_AT:new Date(),UPDATED_BY:actor});}
