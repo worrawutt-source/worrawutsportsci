@@ -960,3 +960,15 @@ Start by reading this `CURRENT.md` on branch `development`, then inspect the lat
 - Earlier user-run Runner Preflight READY (7/7) predates these source corrections and does NOT validate the latest Runner revision.
 - **Current status: WP-SUB-1 LATEST SOURCE STATIC REVIEW COMPLETE — FRESH OWNER READ-ONLY PREFLIGHT REQUIRED — PERSISTENT RUN NOT STARTED.**
 - Owner action: sync latest runner blob SHA a8e9864f88b18c368a689432535096c902dff583, run SNC_SubmissionIntegrationRunnerPreflight_TEST() again, and share the complete sanitized Execution Log. Only if READY may the persistent runner be run once.
+
+
+## WP-SUB-1 Summary Output Bug Fix — 24 Nov 2026
+
+- Owner confirmed the GAS editor had the Submission Integration Runner file selected when the 10:01 execution log showed only Cleanup output. Do not attribute the log to a wrong function selection without execution-history evidence.
+- Static inspection of the latest development Runner found a confirmed terminal Summary bug: the output object referenced `manifest.notificationStub.calls.length`, but the persisted Manifest schema stores calls in `manifest.notificationStub.submissionCalls` and `assignmentOpenCalls`. This would throw after the test cases and terminal reconciliation had run, then route execution into STOPPED_REQUIRES_RECONCILIATION despite the Summary-only defect.
+- Minimal fix applied: Summary now reads `manifest.notificationStub.submissionCalls.length`. No test logic, expected results, fixture topology, cleanup behavior, or authorization boundary changed.
+- Runner commit: `622cbcb20e2550b6b3d1224bc71e0a171888dac6`; updated Runner blob SHA: `837c893e8bfeb3fe835f35e93766e33add0addc8`.
+- Runner design document updated to reference the corrected Runner SHA; commit `bc156492e9be5771a5121dd85dc245b3f97a9945`.
+- **Current status: SUMMARY BUG FIXED IN DEVELOPMENT — FRESH OWNER READ-ONLY PREFLIGHT REQUIRED — PERSISTENT RUN NOT AUTHORIZED UNTIL MANIFEST RECONCILIATION.** The earlier 7/7 READY result predates this fix and does not validate the corrected source. The 10:01 log contains Cleanup output only and does not establish whether the Persistent Runner began or whether a Submission manifest was created.
+- Owner next action: first run only `SNC_SubmissionIntegrationManifestSummary_READONLY_TEST()` to establish whether a prior Manifest exists. If `NO_MANIFEST`, sync corrected Runner SHA `837c893e8bfeb3fe835f35e93766e33add0addc8`, run `SNC_SubmissionIntegrationRunnerPreflight_TEST()`, and share the complete log. Do not run the Persistent Runner until the manifest state is reconciled and a fresh preflight is READY.
+- Cleanup remains unauthorized; do not rerun Cleanup, recreate the earlier 14 cleanup targets, or delete any Submission Integration records.
