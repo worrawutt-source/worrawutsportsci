@@ -7,7 +7,7 @@
 - Governing plan: SUBMISSION_INTEGRATION_TEST_PLAN_v1.0_DRAFT_2026-11-24.md (owner-approved)
 - Runner: backend/tests/SNC_SubmissionIntegrationRunner_TEST.gs
 - Runner version: 0.1.0
-- Runner blob SHA: a8e9864f88b18c368a689432535096c902dff583
+- Runner blob SHA: 837c893e8bfeb3fe835f35e93766e33add0addc8
 
 ## 1. Entry points
 
