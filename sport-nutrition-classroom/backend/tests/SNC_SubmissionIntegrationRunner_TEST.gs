@@ -251,6 +251,8 @@ function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
     var solo=snsiGroup_(core.offeringId,u[5],[],SNC_SUB_INT_PREFIX_+'Solo','SOLO',function(id){manifest.fixtures.groups.Solo=id;manifest.created.Groups.push(id);snsiSave_(manifest);},function(id){manifest.created.GroupMembers.push(id);snsiSave_(manifest);});
     manifest.fixtures.groups.Solo=solo;snsiSave_(manifest);
 
+    stub=snsiStubBegin_();manifest.notificationStub.installed=true;snsiSave_(manifest);
+
     // Assignments: Individual, Group max 3, max 2, unlimited, CLOSED and LATE.
     var future=snsiFutureDeadline_(120);
     manifest.fixtures.assignments.Individual=snsiOpenAssignment_(admin,core.offeringId,SNC_SUB_INT_PREFIX_+'Individual','INDIVIDUAL',null,future,'IND',function(id){manifest.fixtures.assignments.Individual=id;snsiSave_(manifest);});
@@ -261,8 +263,6 @@ function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
     snsiCall_(handleAssignmentManagementAction_,'assignment.close',admin,{assignmentId:manifest.fixtures.assignments.GroupClosed},'GC_CLOSE');
     manifest.fixtures.assignments.IndividualLate=snsiOpenAssignment_(admin,core.offeringId,SNC_SUB_INT_PREFIX_+'IndividualLate','INDIVIDUAL',null,snsiPastDeadline_(),'LATE',function(id){manifest.fixtures.assignments.IndividualLate=id;snsiSave_(manifest);});
     snsiSave_(manifest);
-
-    stub=snsiStubBegin_();manifest.notificationStub.installed=true;snsiSave_(manifest);
 
     // SUB-04: one-person Group must fail minimum of two.
     snsiCase_(manifest,'SUB-04',function(){
