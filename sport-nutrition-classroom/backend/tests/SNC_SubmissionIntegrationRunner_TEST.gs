@@ -523,7 +523,7 @@ function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
       evidenceLevel:'HANDLER_LEVEL_INTEGRATION',caseCount:manifest.cases.length,
       pass:manifest.cases.filter(function(c){return c.status==='PASS';}).length,
       fail:caseFailures.length,createdCounts:Object.keys(manifest.created).reduce(function(o,k){o[k]=manifest.created[k].length;return o;},{}),
-      notificationStubRestored:manifest.notificationStub.restored,notificationStubCalls:manifest.notificationStub.calls.length,
+      notificationStubRestored:manifest.notificationStub.restored,notificationStubCalls:manifest.notificationStub.submissionCalls.length,
       externalCallsExpected:0,cleanupStatus:'NOT AUTHORIZED'};
     console.log('SNC_SUBMISSION_INTEGRATION='+JSON.stringify(out));
     return out;
