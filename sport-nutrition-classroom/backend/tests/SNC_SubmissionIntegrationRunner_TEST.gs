@@ -101,7 +101,7 @@ function snsiCase_(m,id,fn){
   if(rec.status!=='PASS')throw new Error('STOP_AFTER_'+id+'_'+rec.status);
   return rec;
 }
-function snsiOpenAssignment_(admin,offeringId,title,type,max,deadline,tag){
+function snsiOpenAssignment_(admin,offeringId,title,type,max,deadline,tag,onCreated){
   var a=snsiCall_(handleAssignmentManagementAction_,'assignment.create',admin,{
     offeringId:offeringId,title:title,description:'Synthetic WP-SUB-1 integration fixture',
     instructions:'Synthetic test only',maxScore:100,deadline:deadline,
@@ -118,7 +118,7 @@ function snsiFutureDeadline_(offsetMinutes){
 function snsiPastDeadline_(){
   return Utilities.formatDate(new Date(Date.now()-86400000),'Asia/Bangkok',"yyyy-MM-dd'T'HH:mm");
 }
-function snsiGroup_(offeringId,creator,members,name,tag){
+function snsiGroup_(offeringId,creator,members,name,tag,onCreated){
   var g=snsiCall_(handleGroupManagementAction_,'group.create',creator,{offeringId:offeringId,groupName:name},tag+'_CREATE');
   var gid=String(g.groupId);
   members.forEach(function(uid,i){
@@ -228,22 +228,22 @@ function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
     snsiSave_(manifest);
 
     // Synthetic groups: Alpha(2), Beta(3), Solo(1), through business handlers only.
-    var alpha=snsiGroup_(core.offeringId,u[0], [core.userIds[1]],SNC_SUB_INT_PREFIX_+'Alpha','ALPHA');
+    var alpha=snsiGroup_(core.offeringId,u[0], [core.userIds[1]],SNC_SUB_INT_PREFIX_+'Alpha','ALPHA',function(id){manifest.fixtures.groups.Alpha=id;snsiSave_(manifest);});
     manifest.fixtures.groups.Alpha=alpha;snsiSave_(manifest);
-    var beta=snsiGroup_(core.offeringId,u[2],[core.userIds[3],core.userIds[4]],SNC_SUB_INT_PREFIX_+'Beta','BETA');
+    var beta=snsiGroup_(core.offeringId,u[2],[core.userIds[3],core.userIds[4]],SNC_SUB_INT_PREFIX_+'Beta','BETA',function(id){manifest.fixtures.groups.Beta=id;snsiSave_(manifest);});
     manifest.fixtures.groups.Beta=beta;snsiSave_(manifest);
-    var solo=snsiGroup_(core.offeringId,u[5],[],SNC_SUB_INT_PREFIX_+'Solo','SOLO');
+    var solo=snsiGroup_(core.offeringId,u[5],[],SNC_SUB_INT_PREFIX_+'Solo','SOLO',function(id){manifest.fixtures.groups.Solo=id;snsiSave_(manifest);});
     manifest.fixtures.groups.Solo=solo;snsiSave_(manifest);
 
     // Assignments: Individual, Group max 3, max 2, unlimited, CLOSED and LATE.
     var future=snsiFutureDeadline_(120);
-    manifest.fixtures.assignments.Individual=snsiOpenAssignment_(admin,core.offeringId,SNC_SUB_INT_PREFIX_+'Individual','INDIVIDUAL',null,future,'IND');
-    manifest.fixtures.assignments.GroupMax3=snsiOpenAssignment_(admin,core.offeringId,SNC_SUB_INT_PREFIX_+'GroupMax3','GROUP',3,future,'G3');
-    manifest.fixtures.assignments.GroupMax2=snsiOpenAssignment_(admin,core.offeringId,SNC_SUB_INT_PREFIX_+'GroupMax2','GROUP',2,future,'G2');
-    manifest.fixtures.assignments.GroupUnlimited=snsiOpenAssignment_(admin,core.offeringId,SNC_SUB_INT_PREFIX_+'GroupUnlimited','GROUP','',future,'G0');
-    manifest.fixtures.assignments.GroupClosed=snsiOpenAssignment_(admin,core.offeringId,SNC_SUB_INT_PREFIX_+'GroupClosed','GROUP',3,future,'GC');
+    manifest.fixtures.assignments.Individual=snsiOpenAssignment_(admin,core.offeringId,SNC_SUB_INT_PREFIX_+'Individual','INDIVIDUAL',null,future,'IND',function(id){manifest.fixtures.assignments.Individual=id;snsiSave_(manifest);});
+    manifest.fixtures.assignments.GroupMax3=snsiOpenAssignment_(admin,core.offeringId,SNC_SUB_INT_PREFIX_+'GroupMax3','GROUP',3,future,'G3',function(id){manifest.fixtures.assignments.GroupMax3=id;snsiSave_(manifest);});
+    manifest.fixtures.assignments.GroupMax2=snsiOpenAssignment_(admin,core.offeringId,SNC_SUB_INT_PREFIX_+'GroupMax2','GROUP',2,future,'G2',function(id){manifest.fixtures.assignments.GroupMax2=id;snsiSave_(manifest);});
+    manifest.fixtures.assignments.GroupUnlimited=snsiOpenAssignment_(admin,core.offeringId,SNC_SUB_INT_PREFIX_+'GroupUnlimited','GROUP','',future,'G0',function(id){manifest.fixtures.assignments.GroupUnlimited=id;snsiSave_(manifest);});
+    manifest.fixtures.assignments.GroupClosed=snsiOpenAssignment_(admin,core.offeringId,SNC_SUB_INT_PREFIX_+'GroupClosed','GROUP',3,future,'GC',function(id){manifest.fixtures.assignments.GroupClosed=id;snsiSave_(manifest);});
     snsiCall_(handleAssignmentManagementAction_,'assignment.close',admin,{assignmentId:manifest.fixtures.assignments.GroupClosed},'GC_CLOSE');
-    manifest.fixtures.assignments.IndividualLate=snsiOpenAssignment_(admin,core.offeringId,SNC_SUB_INT_PREFIX_+'IndividualLate','INDIVIDUAL',null,snsiPastDeadline_(),'LATE');
+    manifest.fixtures.assignments.IndividualLate=snsiOpenAssignment_(admin,core.offeringId,SNC_SUB_INT_PREFIX_+'IndividualLate','INDIVIDUAL',null,snsiPastDeadline_(),'LATE',function(id){manifest.fixtures.assignments.IndividualLate=id;snsiSave_(manifest);});
     snsiSave_(manifest);
 
     stub=snsiStubBegin_();manifest.notificationStub.installed=true;snsiSave_(manifest);
@@ -378,7 +378,7 @@ function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
     snsiCase_(manifest,'SUB-17',function(){
       var payload={assignmentId:manifest.fixtures.assignments.Individual,driveUrls:[]},rid=snsiReq_('SUB17_REPLAY');
       var beforeN=snsiRows_('Submissions').length,beforeA=snsiRows_('AuditLogs').length;
-      var first=handleSubmissionManagementAction_('submission.create',u[3],payload,rid);
+      var first=handleSubmissionManagementAction_('submission.create',u[2],payload,rid);
       manifest.created.Submissions.push(String(first.submission.SubmissionID));snsiSave_(manifest);
       var second=handleSubmissionManagementAction_('submission.create',u[3],payload,rid);
       return {pass:JSON.stringify(first)===JSON.stringify(second)&&
@@ -424,31 +424,31 @@ function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
         {assignmentId:manifest.fixtures.assignments.IndividualLate,driveUrls:many},'SUB22B');},'VALIDATION_ERROR');
       return {pass:bad.pass&&tooMany.pass,detail:'Invalid URL and attachment count rejected.'};
     });
-    // SUB-25: controlled in-memory Audit append failure; verify rollback, restore dependency.
+    // SUB-25: controlled in-memory Audit append failure; exact compensating rollback.
     snsiCase_(manifest,'SUB-25',function(){
       var beforeS=snsiIds_('Submissions','SubmissionID'),beforeF=snsiIds_('SubmissionFiles','SubmissionFileID');
       var beforeLock=String(gmGet_('Groups','GroupID',alpha).MembershipLockedAt||'');
       var originalAppend=appendAudit_,restored=false,errCode='';
       try{
         appendAudit_=function(actorId,action,entityType,entityId,details,requestId){
-          if(String(entityType)==='Submission'&&String(action)==='SUBMISSION_CREATED')throw apiError_('INJECTED_AUDIT_FAILURE','Controlled test failure.');
+          if(String(entityType)==='Submission'&&String(action)==='SUBMISSION_CREATED')
+            throw apiError_('INJECTED_AUDIT_FAILURE','Controlled test failure.');
           return originalAppend(actorId,action,entityType,entityId,details,requestId);
         };
-        var e=snsiExpectError_(function(){snsiCall_(handleSubmissionManagementAction_,'submission.create',u[1],
-          {assignmentId:manifest.fixtures.assignments.GroupClosed,groupId:alpha},'SUB25');},'ASSIGNMENT_CLOSED');
-        // Closed guard is checked before injected append; use open GroupMax3 with a fresh individual target is unsuitable.
-        errCode=e.actual;
+        var r=snsiExpectError_(function(){snsiCall_(handleSubmissionManagementAction_,'submission.create',u[0],
+          {assignmentId:manifest.fixtures.assignments.IndividualLate},'SUB25');},'SUBMISSION_WRITE_FAILED');
+        errCode=r.actual;
       }finally{
         appendAudit_=originalAppend;restored=appendAudit_===originalAppend;
       }
       var afterS=snsiIds_('Submissions','SubmissionID'),afterF=snsiIds_('SubmissionFiles','SubmissionFileID');
       var afterLock=String(gmGet_('Groups','GroupID',alpha).MembershipLockedAt||'');
-      return {pass:restored&&errCode==='ASSIGNMENT_CLOSED'&&JSON.stringify(beforeS)===JSON.stringify(afterS)&&
+      return {pass:restored&&errCode==='SUBMISSION_WRITE_FAILED'&&JSON.stringify(beforeS)===JSON.stringify(afterS)&&
         JSON.stringify(beforeF)===JSON.stringify(afterF)&&beforeLock===afterLock,
-        detail:'Audit dependency restored; note: injected append path not reached because closed guard precedes writes.'};
+        detail:'Injected Audit append failure returned SUBMISSION_WRITE_FAILED; Submission/SubmissionFiles and Group lock match pre-state; append dependency restored.'};
     });
 
-    // Notification stub and final evidence.
+        // Notification stub and final evidence.
     manifest.notificationStub.calls=stub.calls.slice();snsiStubRestore_(stub);stub=null;
     manifest.notificationStub.restored=true;snsiSave_(manifest);
     var createdAudit=snsiAuditFor_(manifest.created.Submissions);
