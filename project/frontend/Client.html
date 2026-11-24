@@ -468,14 +468,19 @@ async function renderAdvisorAssignment(){
    ['APPROVE','REJECT'].forEach(decision=>{const b=el('button',{type:'button',className:'secondary'},decision==='APPROVE'?'อนุมัติ':'ปฏิเสธ');b.onclick=async()=>{b.disabled=true;try{const r=await callApi('apiAdminReviewAdvisorNomination',sessionToken,x.ASSIGNMENT_ID,decision);showOperationStatus(r.message);await renderAdvisorAssignment()}catch(e){showOperationStatus(e.message,true);b.disabled=false}};row.append(b)});
    pbox.append(row);
   });a.append(pbox);
-  const invitations=(d.advisorInvitations||[]).filter(x=>['INVITED','ACCEPTED'].includes(x.STATUS));
-  const ibox=el('div',{className:'notice'});ibox.append(el('h3',{},'คำเชิญอาจารย์ภายนอก ('+invitations.length+')'));
-  if(!invitations.length)ibox.append(el('p',{},'ไม่มีคำเชิญที่กำลังดำเนินการ'));
+  const invitations=(d.advisorInvitations||[]).filter(x=>['INVITED','ACCEPTED','DECLINED','APPROVED','REJECTED','EMAIL_FAILED','EXPIRED'].includes(x.STATUS)).sort((x,y)=>new Date(y.CREATED_AT||0)-new Date(x.CREATED_AT||0));
+  const invitationStatus={INVITED:'รออาจารย์ตอบรับ',ACCEPTED:'อาจารย์ตอบรับแล้ว · รอ Admin อนุมัติ',DECLINED:'อาจารย์ปฏิเสธคำเชิญ',APPROVED:'Admin อนุมัติแล้ว',REJECTED:'Admin ไม่อนุมัติ',EMAIL_FAILED:'ส่งอีเมลไม่สำเร็จ',EXPIRED:'คำเชิญหมดอายุ'};
+  const ibox=el('div',{className:'notice'});ibox.append(el('h3',{},'สถานะคำเชิญอาจารย์ภายนอก ('+invitations.length+')'));
+  if(!invitations.length)ibox.append(el('p',{},'ยังไม่มีประวัติการเสนอชื่ออาจารย์'));
   invitations.forEach(x=>{
     const group=d.groups.find(g=>g.GROUP_ID===x.GROUP_ID);
-    const row=el('div',{className:'admin-row'});
-    row.append(el('span',{},(group?group.GROUP_NAME:x.GROUP_ID)+' · '+x.ADVISOR_NAME+' · '+x.ADVISOR_EMAIL+' · '+(x.STATUS==='ACCEPTED'?'อาจารย์ตอบรับแล้ว':'รออาจารย์ตอบรับ')));
-    ['APPROVE','REJECT'].forEach(decision=>{const b=el('button',{type:'button',className:'secondary'},decision==='APPROVE'?'อนุมัติ':'ไม่อนุมัติ');if(x.STATUS!=='ACCEPTED'&&decision==='APPROVE')b.disabled=true;b.onclick=async()=>{b.disabled=true;try{const r=await callApi('apiAdminReviewAdvisorInvitation',sessionToken,x.INVITATION_ID,decision);showOperationStatus(r.message);await renderAdvisorAssignment()}catch(e){showOperationStatus(e.message,true);b.disabled=false}};row.append(b)});
+    const row=el('div',{className:'admin-row advisor-invitation-row'});
+    const info=el('div',{className:'advisor-invitation-info'});
+    info.append(el('strong',{},(group?group.GROUP_NAME:x.GROUP_ID)+' · '+x.ADVISOR_NAME),el('div',{className:'user-row-secondary'},x.ADVISOR_EMAIL),el('span',{className:'advisor-invitation-status status-'+String(x.STATUS||'').toLowerCase()},invitationStatus[x.STATUS]||x.STATUS));
+    row.append(info);
+    if(x.STATUS==='ACCEPTED'){
+      ['APPROVE','REJECT'].forEach(decision=>{const b=el('button',{type:'button',className:decision==='APPROVE'?'primary':'secondary'},decision==='APPROVE'?'อนุมัติ':'ไม่อนุมัติ');b.onclick=async()=>{const label=decision==='APPROVE'?'อนุมัติการแต่งตั้งอาจารย์รายนี้':'ไม่อนุมัติการแต่งตั้งอาจารย์รายนี้';if(!confirm('ยืนยัน'+label+' สำหรับ '+x.ADVISOR_NAME+' · '+(group?group.GROUP_NAME:x.GROUP_ID)+' หรือไม่?'))return;b.disabled=true;try{const r=await callApi('apiAdminReviewAdvisorInvitation',sessionToken,x.INVITATION_ID,decision);showOperationStatus(r.message);await renderAdvisorAssignment()}catch(e){showOperationStatus(e.message,true);b.disabled=false}};row.append(b)});
+    }
     ibox.append(row);
   });a.append(ibox);
   const current=el('div',{className:'notice'});current.append(el('h3',{},'สถานะอาจารย์ที่ปรึกษาทุกกลุ่ม'));
