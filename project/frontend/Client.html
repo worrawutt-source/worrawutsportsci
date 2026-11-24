@@ -37,7 +37,7 @@ function callApi(name, ...args) {
   });
 }
 function isInvalidSessionError(message){
-  return /Session\\s+หมดอายุ|Session.*ถูกยกเลิก|กรุณาเข้าสู่ระบบใหม่|บัญชีถูกระงับหรือไม่พบผู้ใช้/i.test(String(message||''));
+  return /Session\s+หมดอายุ|Session.*ถูกยกเลิก|กรุณาเข้าสู่ระบบใหม่|บัญชีถูกระงับหรือไม่พบผู้ใช้/i.test(String(message||''));
 }
 let sessionExpiryTimer=null;
 function scheduleSessionExpiry(expiresAt){
