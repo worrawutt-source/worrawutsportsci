@@ -1018,6 +1018,72 @@ function findAdvisorInvitationByToken_(token){
   row.GROUP_NAME=g?g.GROUP_NAME:row.GROUP_ID;
   return row;
 }
+
+/**
+ * Read-only diagnostic for an advisor invitation.
+ * Pass the raw token from the advisorInvite URL. Never logs or returns secrets.
+ * Use a temporary runner in Apps Script and remove it immediately after checking.
+ */
+function diagnoseAdvisorInvitationToken_(rawToken){
+  const token=String(rawToken||'').trim();
+  if(!token)throw new Error('กรุณาระบุ Token จากพารามิเตอร์ advisorInvite ในลิงก์อีเมล');
+  requireDatabase_();
+  const appSecret=PropertiesService.getScriptProperties().getProperty('APP_SECRET');
+  const rows=readObjectsFresh_('ADVISOR_INVITATIONS');
+  const now=new Date();
+  const matched=rows.find(x=>verifyTokenHash_(token,x.TOKEN_HASH));
+  const latest=rows.slice().sort((a,b)=>new Date(b.CREATED_AT||0)-new Date(a.CREATED_AT||0))[0]||null;
+  const target=matched||latest;
+  const maskEmail=email=>{
+    const parts=String(email||'').split('@');
+    if(parts.length!==2)return '';
+    return (parts[0].length>2?parts[0].slice(0,2)+'***':'*')+'@'+parts[1];
+  };
+  if(!target)return {ok:false,diagnostic:'NO_INVITATION_RECORD',message:'ไม่พบรายการคำเชิญใน ADVISOR_INVITATIONS',appSecretConfigured:!!(appSecret&&String(appSecret).trim()),tokenLength:token.length,checkedAt:now.toISOString()};
+  const expiry=new Date(target.EXPIRES_AT);
+  const expired=!target.EXPIRES_AT||isNaN(expiry.getTime())||expiry.getTime()<=now.getTime();
+  const hashValue=String(target.TOKEN_HASH||'');
+  const hashFormat=hashValue.length===64?'HEX_64':(hashValue.length===44?'BASE64_44':'UNKNOWN_OR_LEGACY');
+  let diagnostic='OK';
+  if(!appSecret||!String(appSecret).trim())diagnostic='APP_SECRET_MISSING';
+  else if(!matched)diagnostic='TOKEN_HASH_MISMATCH';
+  else if(expired)diagnostic='INVITATION_EXPIRED';
+  else if(target.STATUS!=='INVITED')diagnostic='INVITATION_ALREADY_RESPONDED_OR_NOT_ACTIVE';
+  return {
+    ok:diagnostic==='OK',diagnostic,
+    invitationId:String(target.INVITATION_ID||''),groupId:String(target.GROUP_ID||''),
+    advisorEmailMasked:maskEmail(target.ADVISOR_EMAIL),status:String(target.STATUS||''),
+    createdAt:target.CREATED_AT instanceof Date?target.CREATED_AT.toISOString():String(target.CREATED_AT||''),
+    expiresAt:isNaN(expiry.getTime())?'INVALID_DATE':expiry.toISOString(),expired,
+    tokenHashMatch:!!matched,tokenHashFormat:hashFormat,
+    appSecretConfigured:!!(appSecret&&String(appSecret).trim()),
+    tokenLength:token.length,checkedAt:now.toISOString(),
+    message:diagnostic==='OK'?'Token ตรงกับรายการคำเชิญ สถานะยังเป็น INVITED และยังไม่หมดอายุ':diagnostic
+  };
+}
+
+/** Read-only summary; cannot verify Token Match without the raw URL token. */
+function diagnoseLatestAdvisorInvitation_(){
+  requireDatabase_();
+  const rows=readObjectsFresh_('ADVISOR_INVITATIONS');
+  const now=new Date();
+  const latest=rows.slice().sort((a,b)=>new Date(b.CREATED_AT||0)-new Date(a.CREATED_AT||0))[0]||null;
+  const appSecret=PropertiesService.getScriptProperties().getProperty('APP_SECRET');
+  if(!latest)return {ok:false,diagnostic:'NO_INVITATION_RECORD',appSecretConfigured:!!(appSecret&&String(appSecret).trim()),checkedAt:now.toISOString()};
+  const expiry=new Date(latest.EXPIRES_AT);
+  return {
+    invitationId:String(latest.INVITATION_ID||''),groupId:String(latest.GROUP_ID||''),
+    status:String(latest.STATUS||''),
+    createdAt:latest.CREATED_AT instanceof Date?latest.CREATED_AT.toISOString():String(latest.CREATED_AT||''),
+    expiresAt:isNaN(expiry.getTime())?'INVALID_DATE':expiry.toISOString(),
+    expired:!latest.EXPIRES_AT||isNaN(expiry.getTime())||expiry.getTime()<=now.getTime(),
+    appSecretConfigured:!!(appSecret&&String(appSecret).trim()),
+    tokenHashFormat:String(latest.TOKEN_HASH||'').length===64?'HEX_64':(String(latest.TOKEN_HASH||'').length===44?'BASE64_44':'UNKNOWN_OR_LEGACY'),
+    checkedAt:now.toISOString(),
+    note:'ฟังก์ชันนี้ไม่สามารถยืนยัน Token Match ได้หากไม่มี raw token จาก URL'
+  };
+}
+
 function respondAdvisorInvitation_(token,decision,password,confirmPassword){
   if(!['ACCEPT','DECLINE'].includes(decision))throw new Error('คำตอบไม่ถูกต้อง');
   const row=findAdvisorInvitationByToken_(token);
