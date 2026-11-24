@@ -1279,11 +1279,11 @@ function apiAdminReviewAdvisorInvitation(token,invitationId,decision){
       const student=studentRecords.find(s=>normalizeStudentId_(s.STUDENT_ID)===normalizeStudentId_(m.STUDENT_ID));
       return student?String(student.FULL_NAME||[student.TITLE,student.FIRST_NAME,student.LAST_NAME].filter(Boolean).join(' ')).trim():String(m.STUDENT_ID||'ไม่พบข้อมูลชื่อ');
     }).filter(Boolean);
-    const memberList=memberNames.length?memberNames.map((name,index)=>(index+1)+'. '+name).join('\\n'):'ไม่พบข้อมูลสมาชิกในกลุ่ม';
+    const memberList=memberNames.length?memberNames.map((name,index)=>(index+1)+'. '+name).join('\n'):'ไม่พบข้อมูลสมาชิกในกลุ่ม';
     const loginUrl='https://worrawutt-source.github.io/worrawutsportsci/project/';
     const approvedAt=new Date();
-    const advisorBody='เรียน '+(user.DISPLAY_NAME||row.ADVISOR_NAME)+'\\n\\nAdmin อนุมัติการแต่งตั้งท่านเป็นอาจารย์ที่ปรึกษาเรียบร้อยแล้ว\\n\\nกลุ่มวิจัยประกอบด้วยสมาชิกดังนี้\\n'+memberList+'\\n\\nท่านสามารถเข้าสู่ระบบ SPORT SCIENCE RESEARCH LAB ได้ที่\\n'+loginUrl+'\\n\\nเข้าสู่ระบบด้วยอีเมลนี้และรหัสผ่านที่ตั้งไว้ในขั้นตอนตอบรับคำเชิญ\\n\\nหากลืมรหัสผ่าน กรุณาติดต่อผู้ดูแลระบบเพื่อดำเนินการรีเซ็ตรหัสผ่าน';
-    const studentBody='เรียน สมาชิกกลุ่มวิจัย\\n\\nกลุ่มวิจัยของท่านประกอบด้วยสมาชิกดังนี้\\n'+memberList+'\\n\\nขอแจ้งให้ทราบว่า Admin ได้อนุมัติการแต่งตั้ง '+(user.DISPLAY_NAME||row.ADVISOR_NAME)+' ('+user.EMAIL+') เป็นอาจารย์ที่ปรึกษาเรียบร้อยแล้ว\\n\\nสามารถเข้าสู่ระบบ SPORT SCIENCE RESEARCH LAB ได้ที่\\n'+loginUrl+'\\n\\nนักศึกษาสามารถติดต่อและดำเนินงานวิจัยภายใต้คำปรึกษาของอาจารย์ตามกระบวนการของรายวิชา';
+    const advisorBody='เรียน '+(user.DISPLAY_NAME||row.ADVISOR_NAME)+'\n\nAdmin อนุมัติการแต่งตั้งท่านเป็นอาจารย์ที่ปรึกษาเรียบร้อยแล้ว\n\nกลุ่มวิจัยประกอบด้วยสมาชิกดังนี้\n'+memberList+'\n\nท่านสามารถเข้าสู่ระบบ SPORT SCIENCE RESEARCH LAB ได้ที่\n'+loginUrl+'\n\nเข้าสู่ระบบด้วยอีเมลนี้และรหัสผ่านที่ตั้งไว้ในขั้นตอนตอบรับคำเชิญ\n\nหากลืมรหัสผ่าน กรุณาติดต่อผู้ดูแลระบบเพื่อดำเนินการรีเซ็ตรหัสผ่าน';
+    const studentBody='เรียน สมาชิกกลุ่มวิจัย\n\nกลุ่มวิจัยของท่านประกอบด้วยสมาชิกดังนี้\n'+memberList+'\n\nขอแจ้งให้ทราบว่า Admin ได้อนุมัติการแต่งตั้ง '+(user.DISPLAY_NAME||row.ADVISOR_NAME)+' ('+user.EMAIL+') เป็นอาจารย์ที่ปรึกษาเรียบร้อยแล้ว\n\nสามารถเข้าสู่ระบบ SPORT SCIENCE RESEARCH LAB ได้ที่\n'+loginUrl+'\n\nนักศึกษาสามารถติดต่อและดำเนินงานวิจัยภายใต้คำปรึกษาของอาจารย์ตามกระบวนการของรายวิชา';
     const mailResults={advisorSent:false,studentsSent:0,studentRecipientCount:studentEmails.length,errors:[]};
     try{MailApp.sendEmail({to:user.EMAIL,subject:'อนุมัติการเป็นอาจารย์ที่ปรึกษาแล้ว · '+APP.NAME,body:advisorBody});mailResults.advisorSent=true;}
     catch(mailErr){mailResults.errors.push('advisor: '+String(mailErr&&mailErr.message||mailErr));}
