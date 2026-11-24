@@ -1086,11 +1086,11 @@ function diagnoseAdvisorInvitationToken_(rawToken){
   };
 }
 
-/** Public Apps Script entry points for manual, read-only diagnostics. */
-function diagnoseAdvisorInvitationToken(rawToken){
+/** Diagnostic wrappers are private to prevent unauthenticated google.script.run access. */
+function diagnoseAdvisorInvitationToken__(rawToken){
   return diagnoseAdvisorInvitationToken_(rawToken);
 }
-function diagnoseLatestAdvisorInvitation(){
+function diagnoseLatestAdvisorInvitation__(){
   return diagnoseLatestAdvisorInvitation_();
 }
 
