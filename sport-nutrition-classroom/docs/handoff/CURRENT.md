@@ -1014,3 +1014,37 @@ Start by reading this `CURRENT.md` on branch `development`, then inspect the lat
 - **POST-RUN RECONCILIATION: SOURCE PREPARED — OWNER GAS RUN PENDING.**
 - Owner syncs only the reconciliation file into the existing TEST GAS project, confirms the Runner source is still the approved blob SHA, then runs `SNC_SubmissionPostRunReconciliation_READONLY_TEST()` and supplies the complete sanitized Execution Log.
 - Do not rerun the persistent Submission runner, cleanup, or make manual Sheet edits. WP-SUB-2 Drive upload/access and WP-SUB-3 deployed API/LIFF/Browser E2E remain separately gated.
+
+## WP-SUB-1 formal closure — owner runtime evidence and read-only reconciliation — 24 Nov 2026
+
+### Closure decision
+- **WP-SUB-1 is CLOSED at the handler-level integration and read-only reconciliation scope.**
+- Owner-provided GAS evidence: persistent runner completed 26/26 cases PASS, 0 FAIL; terminal label was `COMPLETE_WITH_REVIEW_ITEMS`. This label is retained as emitted and is not interpreted as proof of a populated review-items list.
+- Independent read-only post-run reconciliation returned **PASS, 10/10 checks, 0 BLOCKED**.
+- This closure does not represent Drive binary upload/access verification, deployed API/LIFF/browser E2E, full regression, or UAT.
+
+### Reconciled TEST state
+- Assignments: baseline 20, current 26, created 6; exact delta matched; missing 0; duplicates 0.
+- Groups: baseline 0, current 3, created 3; exact delta matched; missing 0; duplicates 0.
+- GroupMembers: baseline 0, current 7, created 7; exact delta matched; missing 0; duplicates 0.
+- Submissions: baseline 0, current 12, created 12; exact delta matched; missing 0; duplicates 0.
+- SubmissionFiles: baseline 0, current 2, created 2; exact delta matched; missing 0; duplicates 0.
+- IdempotencyKeys: baseline 0, current 12, created 12; exact delta matched; missing 0; duplicates 0.
+- AuditLogs: baseline 68, current 102, created 34; exact delta matched; missing 0; duplicates 0.
+- Group topology: Alpha 2 total/2 active; Beta 4 total/3 active (temporary join/leave history); Solo 1 total/0 active (left).
+- Assignment relationships 6/6; Submission relationships 12/12; SubmissionFile references 2/2; Submission Audit references 12/12.
+- Notification hooks restored: true; Assignment-open stub calls 6; Submission-received stub calls 12.
+- Reconciliation flags: writesExpected=0; externalCallsExpected=0; rawIdsLogged=false.
+
+### Evidence limitations and safety state
+- Evidence confirms baseline ID retention, exact created-ID deltas, uniqueness, and the tested relationships. It does **not** establish historical cell-by-cell immutability because the runner did not capture full baseline row snapshots.
+- The separate cleanup dry-run reported 0/0/0 remaining targets and correctly aborted; it was not a WP-SUB-1 failure. No cleanup rerun is permitted, no target rows should be recreated, and no cleanup authorization is inferred.
+- No Drive binary upload, Drive permission change, LINE/UrlFetch call, trigger, migration, deployment, or Web App/API E2E was performed as part of WP-SUB-1.
+- GAS runtime evidence is owner-supplied; the assistant did not execute GAS.
+
+### Next stage gate — WP-SUB-2
+- WP-SUB-2 (Drive binary upload/access and permission behavior) remains **NOT STARTED / NOT AUTHORIZED**.
+- The next permitted activity is source inspection and preparation of a WP-SUB-2 test design for owner review. It must define upload size/type constraints, ownership and access checks, temporary/staged file behavior, failure recovery/orphan handling, exact synthetic file/record manifest, and read-only post-run reconciliation.
+- Before implementation, explicitly separate the permitted Drive operations from prohibited LINE/UrlFetch, deployment, trigger, migration, and cleanup actions. Preserve all WP-SUB-1 evidence and current TEST records.
+- No WP-SUB-2 implementation or GAS execution is authorized by this closure entry.
+
