@@ -963,7 +963,7 @@ async function renderOverview(){
   const pending=el('div',{className:'notice'});pending.append(el('h3',{},'รายการที่ต้องดำเนินการ'));
   if(!d.pendingTopics.length&&!d.pendingReports.length)pending.append(el('p',{},'ไม่มีหัวข้อวิจัยหรือรายงานความก้าวหน้าที่รอการพิจารณา'));
   d.pendingTopics.forEach(x=>{const row=el('div',{className:'admin-row'});row.append(el('div',{},'หัวข้อวิจัย · '+x.groupName+' · V'+x.versionNo+' · '+(x.titleTh||'')));const b=el('button',{type:'button',className:'secondary'},'ตรวจหัวข้อ');b.onclick=()=>renderAdvisorReview();row.append(b);pending.append(row)});
-  d.pendingReports.forEach(x=>{const row=el('div',{className:'admin-row'});row.append(el('div',{},'รายงานความก้าวหน้า · '+x.groupName+' · สัปดาห์ '+x.weekNo));const b=el('button',{type:'button',className:'secondary'},'เปิดกลุ่ม');b.onclick=()=>renderAdvisorGroups();row.append(b);pending.append(row)});
+  d.pendingReports.forEach(x=>{const row=el('div',{className:'admin-row'});row.append(el('div',{},'รายงานความก้าวหน้า · '+x.groupName+' · สัปดาห์ '+x.weekNo));const b=el('button',{type:'button',className:'secondary'},'เปิดกลุ่ม');b.onclick=()=>renderAdvisorReview();row.append(b);pending.append(row)});
   a.append(pending);
   const groupBox=el('div',{className:'notice'});groupBox.append(el('h3',{},'สถานะกลุ่มที่รับผิดชอบ'));
   if(!d.groups.length)groupBox.append(el('p',{},'ยังไม่มีการแต่งตั้งอาจารย์ที่ปรึกษาที่ได้รับอนุมัติ'));
@@ -1093,7 +1093,7 @@ async function renderAdvisorGroups(){
      detailBody.append(files);
      const feedback=el('div');feedback.append(el('h4',{},'ข้อเสนอแนะที่บันทึกไว้'));
      if(!d.feedback.length)feedback.append(el('p',{},'ยังไม่มีข้อเสนอแนะ'));
-     d.feedback.forEach(x=>feedback.append(el('p',{},(x.COMMENT||x.FEEDBACK||x.MESSAGE||'ข้อเสนอแนะ')+' · '+(x.CREATED_AT?new Date(x.CREATED_AT).toLocaleDateString('th-TH'):''))));
+     d.feedback.forEach(x=>feedback.append(el('p',{},(x.comment||x.COMMENT||x.FEEDBACK||x.MESSAGE||'ข้อเสนอแนะ')+' · '+(x.CREATED_AT?new Date(x.CREATED_AT).toLocaleDateString('th-TH'):''))));
      detailBody.append(feedback);
     }catch(e){loaded=false;detailBody.textContent='โหลดรายละเอียดไม่สำเร็จ: '+e.message;}
    });
