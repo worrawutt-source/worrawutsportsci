@@ -3,7 +3,7 @@
 - Project: SPORT NUTRITION CLASSROOM
 - Date: 24 November 2026
 - Branch: `development` only
-- Status: **DRAFT — NOT APPROVED — NO IMPLEMENTATION OR TEST EXECUTION AUTHORIZED**
+- Status: **OWNER APPROVED — 24 November 2026; implementation proceeds through WP-SUB-0 readiness gate**
 - Evidence basis: approved DOC-01 v1.0, approved DOC-02 v1.1 (including FR-CL-001..008 and BR-007..009), approved DOCS v1.3 / CR-001 amendment, current `development` source inspection, SNC-WG-001 v1.0.0, and the approved synthetic fixture plan v1.0.
 - This plan does not treat pending DOC-03..DOC-08 drafts as approved requirements and does not authorize schema changes, migrations, setup, trigger installation, Drive operations, LINE calls, deployment, or data cleanup.
 
@@ -191,4 +191,14 @@ Please review and approve or amend these bounded decisions before implementation
 5. **External side effects:** approve mandatory in-memory stub of `notifySubmissionReceived_`; zero LINE pushes, UrlFetch, triggers, deployment and NotificationLog writes.
 6. **Cleanup:** no cleanup is requested or authorized by this plan. Any cleanup requires a separate exact-ID preview and explicit execution authorization after test evidence is reconciled.
 
-**Decision requested:** approve the WP-SUB-1 plan and its exact fixture/mutation boundaries, or identify amendments. Until approval, this document is planning only; do not add the runner to GAS, create fixtures, run handlers, upload files, or mutate the TEST Spreadsheet/Drive.
+**Owner approval:** The project owner approved the plan on 24 November 2026, including all six decisions in Section 8: WP-SUB-1 handler-level scope; exact synthetic fixture topology; URL/metadata-only attachment scope for WP-SUB-1; controlled in-memory audit-append failure injection; mandatory notification stub with zero external calls; and separate approval for any cleanup. Approval authorizes implementation within these boundaries, not WP-SUB-2, WP-SUB-3, Drive uploads, deployment, migration, or cleanup. WP-SUB-0 read-only preflight must return READY before any persistent fixture creation.
+
+
+## 9. Approval record and implementation checkpoint
+
+- Owner approval: **APPROVED**, 24 November 2026.
+- All six owner decisions in Section 8 are approved without amendment.
+- WP-SUB-0 read-only preflight source: `backend/tests/SNC_SubmissionIntegrationPreflight_READONLY_TEST.gs`, version 1.0.0.
+- Preflight verifies exact TEST identity, Core Fixture manifest, absence of prior Submission Integration manifest, required table headers, active offering/users/enrollments, existing SYSTEM_ADMIN role, required handler/hook functions, reserved-prefix collision, absence of existing Core Fixture submissions, and unique AuditLog IDs.
+- Preflight reports expected GitHub source blob SHAs for owner comparison. It cannot independently read the GAS editor source; owner must confirm the inspected source files are synchronized before running it.
+- Current stage: **WP-SUB-0 IMPLEMENTED IN SOURCE — OWNER-RUN READ-ONLY PREFLIGHT PENDING**. No persistent fixture or Submission handler has been run.
