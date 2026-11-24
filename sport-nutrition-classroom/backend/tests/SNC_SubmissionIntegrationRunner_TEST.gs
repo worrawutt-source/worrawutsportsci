@@ -148,15 +148,23 @@ function snsiAuditFor_(ids){
   });
 }
 function snsiStubBegin_(){
-  var original=notifySubmissionReceived_,calls=[];
+  var originalSubmission=notifySubmissionReceived_,originalAssignment=notifyAssignmentOpened_;
+  var submissionCalls=[],assignmentOpenCalls=[];
   notifySubmissionReceived_=function(a,s){
-    calls.push({assignmentId:String(a.AssignmentID),submissionId:String(s.SubmissionID)});
+    submissionCalls.push({assignmentId:String(a.AssignmentID),submissionId:String(s.SubmissionID)});
   };
-  return {original:original,calls:calls};
+  notifyAssignmentOpened_=function(a){
+    assignmentOpenCalls.push({assignmentId:String(a.AssignmentID)});
+  };
+  return {originalSubmission:originalSubmission,originalAssignment:originalAssignment,
+    submissionCalls:submissionCalls,assignmentOpenCalls:assignmentOpenCalls};
 }
 function snsiStubRestore_(stub){
-  notifySubmissionReceived_=stub.original;
-  if(notifySubmissionReceived_!==stub.original)throw new Error('NOTIFICATION_HOOK_RESTORE_FAILED');
+  notifySubmissionReceived_=stub.originalSubmission;
+  notifyAssignmentOpened_=stub.originalAssignment;
+  if(notifySubmissionReceived_!==stub.originalSubmission||
+     notifyAssignmentOpened_!==stub.originalAssignment)
+    throw new Error('NOTIFICATION_HOOK_RESTORE_FAILED');
 }
 function snsiPreflightForRunner_(){
   snsiAssertTest_();
@@ -187,7 +195,7 @@ function SNC_SubmissionIntegrationRunnerPreflight_TEST(){
     add('HANDLERS-01',typeof handleSubmissionManagementAction_==='function' &&
       typeof handleAssignmentManagementAction_==='function' &&
       typeof handleGroupManagementAction_==='function' &&
-      typeof appendAudit_==='function' && typeof notifySubmissionReceived_==='function',
+      typeof appendAudit_==='function' && typeof notifySubmissionReceived_==='function' && typeof notifyAssignmentOpened_==='function',
       'Required handlers and notification hook are loaded.');
     var admin=snsiAdmin_();
     add('ACTOR-01',Boolean(admin),'Existing active SYSTEM_ADMIN actor resolves.');
@@ -231,7 +239,7 @@ function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
       source:SNC_SUB_INT_SOURCE_,offeringId:String(core.offeringId),userIds:core.userIds.map(String),
       baseline:before,fixtures:{groups:{},assignments:{}},created:{Groups:[],GroupMembers:[],
       Assignments:[],Submissions:[],SubmissionFiles:[],IdempotencyKeys:[],AuditLogs:[]},
-      cases:[],notificationStub:{installed:false,restored:false,calls:[]},
+      cases:[],notificationStub:{installed:false,restored:false,submissionCalls:[],assignmentOpenCalls:[]},
       externalCallsExpected:0,cleanupStatus:'NOT AUTHORIZED',stopReason:null};
     snsiSave_(manifest);
 
@@ -470,11 +478,15 @@ function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
       return {pass:valid,detail:'Each persisted test Submission has one matching create/revise AuditLog with RequestID.'};
     });
         // Notification stub and final evidence.
-    manifest.notificationStub.calls=stub.calls.slice();snsiStubRestore_(stub);stub=null;
+    manifest.notificationStub.submissionCalls=stub.submissionCalls.slice();
+    manifest.notificationStub.assignmentOpenCalls=stub.assignmentOpenCalls.slice();
+    snsiStubRestore_(stub);stub=null;
     manifest.notificationStub.restored=true;snsiSave_(manifest);
     snsiCase_(manifest,'SUB-24',function(){
-      return {pass:manifest.notificationStub.restored===true&&manifest.notificationStub.calls.length>0,
-        detail:'In-memory notification stub received submission events and original hook identity was restored.'};
+      return {pass:manifest.notificationStub.restored===true&&
+        manifest.notificationStub.submissionCalls.length>0&&
+        manifest.notificationStub.assignmentOpenCalls.length===6,
+        detail:'Both in-memory notification hooks were invoked as expected and original hook identities were restored.'};
     });
     var createdAudit=snsiAuditFor_(manifest.created.Submissions);
     var current={
@@ -503,7 +515,7 @@ function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
       Groups:snsiRows_('Groups').length,GroupMembers:snsiRows_('GroupMembers').length,
       Submissions:snsiRows_('Submissions').length,SubmissionFiles:snsiRows_('SubmissionFiles').length,
       IdempotencyKeys:snsiRows_('IdempotencyKeys').length,AuditLogs:snsiRows_('AuditLogs').length
-    },submissionAuditRows:createdAudit.length,notificationStubCalls:manifest.notificationStub.calls.length,
+    },submissionAuditRows:createdAudit.length,notificationStubCalls:manifest.notificationStub.submissionCalls.length,assignmentOpenStubCalls:manifest.notificationStub.assignmentOpenCalls.length,
       notificationStubRestored:manifest.notificationStub.restored,externalCallsExpected:0};
     manifest.status=caseFailures.length?'COMPLETE_WITH_FAILURES':'COMPLETE_WITH_REVIEW_ITEMS';
     manifest.stopReason=null;snsiSave_(manifest);
@@ -520,7 +532,7 @@ function SNC_RunSubmissionIntegration_CONFIRMED_TEST(confirmationPhrase){
       manifest.status='STOPPED_REQUIRES_RECONCILIATION';
       manifest.stopReason=String(e.message||e).slice(0,300);
       try{
-        if(stub){manifest.notificationStub.calls=stub.calls.slice();snsiStubRestore_(stub);manifest.notificationStub.restored=true;}
+        if(stub){manifest.notificationStub.submissionCalls=stub.submissionCalls.slice();manifest.notificationStub.assignmentOpenCalls=stub.assignmentOpenCalls.slice();snsiStubRestore_(stub);manifest.notificationStub.restored=true;}
       }catch(restoreError){manifest.notificationStub.restoreError=String(restoreError.message||restoreError);}
       try{
         var after={
@@ -548,7 +560,7 @@ function SNC_SubmissionIntegrationManifestSummary_READONLY_TEST(){
     pass:m.cases.filter(function(c){return c.status==='PASS';}).length,
     fail:m.cases.filter(function(c){return c.status==='FAIL';}).length,
     stopReason:m.stopReason,notificationStubRestored:m.notificationStub.restored,
-    notificationStubCalls:(m.notificationStub.calls||[]).length,cleanupStatus:m.cleanupStatus,
+    notificationStubCalls:(m.notificationStub.submissionCalls||[]).length,assignmentOpenStubCalls:(m.notificationStub.assignmentOpenCalls||[]).length,cleanupStatus:m.cleanupStatus,
     createdCounts:{}};
   Object.keys(m.created||{}).forEach(function(k){out.createdCounts[k]=(m.created[k]||[]).length;});
   out.writesExpected=0;out.externalCallsExpected=0;
