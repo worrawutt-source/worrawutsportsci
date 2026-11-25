@@ -1303,3 +1303,24 @@ Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migrat
 - Treat the prior Export-vs-GitHub discrepancy for this file as resolved by owner confirmation; the previous ZIP remains historical evidence of the earlier exported version.
 - PF-02 is still BLOCKED pending a fresh export from the same GAS project and full file-by-file source reconciliation, including review of `SNC_ApprovedCleanup_EXACT14_TEST.js` and `appsscript.json`.
 - No Runner, Cleanup, or persistent test execution is authorized by this confirmation.
+
+
+## Fresh GAS Export reconciled — owner temporary utility explained — 25 Nov 2026
+
+### Export and source comparison
+- Reviewed owner-uploaded `SNC_GAS_EXPORT_20261125_FRESH.zip`: 34 entries total (33 code files plus `appsscript.json`).
+- Compared the 32 repository-tracked code files against current `development`, normalizing the export's missing final newline: 31/32 match exactly; the sole remaining tracked-file variance is three trailing comments in `SNC_ApprovedCleanup_EXACT14_TEST.js`.
+- The Cleanup variance is comment-only; no executable top-level invocation was found in those trailing lines. Preserve the file and do not call Cleanup.
+- `SNC_AuditLogReconciliation_READONLY_TEST.js` now matches current GitHub `development` after newline normalization. Normalized export blob SHA equals GitHub blob SHA `afc868148b568d2ed524c1fe66a2723b715e4dc5`. This supersedes the earlier historical export discrepancy.
+- Owner clarified that `SNC_SetFolderProperty_TEMP.js` was created by the owner to correct the submission-folder ID. Its presence is expected, not an unexplained source mismatch. Prior owner log verified the saved property matched the expected folder ID; do not rerun the setter without a specific need.
+- `appsscript.json` is not versioned in GitHub. Exported settings are `webapp.executeAs=USER_DEPLOYING` and `webapp.access=ANYONE_ANONYMOUS`; owner must review these against the intended TEST deployment. No deployment setting was changed or independently inspected.
+
+### Evidence documentation
+- Updated `docs/WP-SUB-2/WP-SUB-2_OWNER_EVIDENCE_MANIFEST_TEMPLATE_v1.0.0_2026-11-25.md` to replace the stale source comparison and record the owner-created temporary utility.
+- Documentation commit: `3061713fa733fb9715ff4a284289b6fffec1f7f3`.
+- PF-02 remains BLOCKED pending owner review/record of the exported manifest and intended deployment configuration. Source-code comparison is reconciled except for the documented non-executable comment variance.
+
+### Next safe gate
+- Do not run `SNC_ExactIdInventory_READONLY_TEST()` yet: its current output contains exact primary IDs and linked User IDs. PF-19 restricted storage location and PF-20 disposition must be approved first, and the output must remain restricted—not pasted into chat or GitHub.
+- Next action is owner review of `appsscript.json` deployment settings and approval of restricted evidence storage/access/retention plus `PRESERVE` file disposition. Then prepare exact-ID and Drive inventory read-only, using restricted local evidence and sanitized summary only.
+- No GAS execution, Runner, Cleanup, Drive/Sheet/Script Property write, permission change, upload, migration, trigger, deployment, LINE/UrlFetch, or external call was performed.
