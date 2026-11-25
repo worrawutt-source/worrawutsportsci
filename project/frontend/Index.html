@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#17324d">
   <base target="_top">
+  <script>
+    (function(){
+      try{
+        var token=localStorage.getItem('ssrl_token')||sessionStorage.getItem('ssrl_token')||'';
+        var expiry=localStorage.getItem('ssrl_expires_at')||sessionStorage.getItem('ssrl_expires_at')||'';
+        var validExpiry=!expiry||(Date.parse(expiry)>Date.now());
+        if(token&&validExpiry)document.documentElement.classList.add('ssrl-session-restoring');
+      }catch(e){}
+    })();
+  </script>
   <!-- SSRL_STYLES -->
 </head>
 <body>
@@ -14,6 +24,7 @@
       <div><div class="brand-title">SPORT SCIENCE RESEARCH</div><div class="brand-sub">4084901 · ภาคการศึกษา 2/2569</div></div>
       <span class="env">TEST</span>
     </header>
+    <section id="sessionRestoreView" class="session-restore hidden" role="status" aria-live="polite"><div class="session-restore-spinner"></div><div><strong>กำลังเรียกคืนการเข้าสู่ระบบ</strong><p>กำลังตรวจสอบ Session และเตรียมพื้นที่ทำงานของคุณ</p></div></section>
     <section id="authView" class="auth-grid">
       <div class="intro">
         <div class="eyebrow">RESEARCH LEARNING PLATFORM</div>
