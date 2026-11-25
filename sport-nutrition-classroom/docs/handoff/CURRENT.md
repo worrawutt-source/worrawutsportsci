@@ -1378,3 +1378,11 @@ Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migrat
 - **Not runtime-tested.** No GAS function was executed and no TEST data was read/written by this patch. A GAS-side syntax/runtime test and code review in the TEST project are still required before executing the inventory.
 - This patch reduces output exposure but does not verify GAS project editor access, Script Properties access, effective Drive ACLs, execution identity, or the quiet TEST window. PF-08/PF-09/PF-18 remain unresolved. PF-19 policy is approved; actual control verification remains pending. PF-20 remains PASS — PRESERVE.
 - Next safe action: owner verifies GAS project editor list and who can view execution results; confirms restricted encrypted evidence destination; confirms TEST quiet window. Then sync this exact source to TEST GAS, review the diff, and run only the sanitized read-only inventory if all gates pass. Do not run any Runner or Cleanup.
+
+
+## WP-SUB-2 sanitized output static verification — 25 Nov 2026
+
+- Re-fetched the committed inventory source at blob `ac8a271aa9c9ea74daab695ac2b557f961e6f98e` and performed a focused static output-boundary scan.
+- Confirmed the function's top-level report writes only `status`, `summary`, and `inventorySummary`; exactly one Logger call serializes `out`; exactly one `return out` exists; no raw ID array/record arrays are serialized; no ID-valued output fields are assigned; and no direct mutation API names (Sheets write, Properties write, Drive file mutation, trigger creation, UrlFetch) occur in the function. Read APIs are present as expected.
+- This is a source-level scan, not a JavaScript/GAS parser or runtime test. It does not prove that helper functions called by the inventory are read-only; helper source must also be audited before execution. In particular, `SNC_GetSyntheticFixtureManifest_TEST`, `SNC_GetAssignmentGroupManifest_TEST`, `sncAGR_ids_TEST_`, and `sncAGR_rows_TEST_` must be reviewed for side effects and data exposure.
+- No GAS execution or data access was performed. PF-08/PF-09/PF-18 and PF-16 remain blocked pending owner control verification and a controlled TEST run. PF-19 policy approved; enforcement/destination verification pending. PF-20 PASS — PRESERVE.
