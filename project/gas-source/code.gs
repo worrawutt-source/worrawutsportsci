@@ -127,7 +127,7 @@ function doPost(e){
 const FRONTEND_CONFIG = Object.freeze({
   OWNER: 'worrawutt-source',
   REPOSITORY: 'worrawutsportsci',
-  COMMIT_SHA: '85ebf91fa30cc0268bfb850bbbd13041e10ed2f5',
+  COMMIT_SHA: '92c95433cdb09c9899ceefd719b8f053c844c09d',
   BASE_PATH: 'project/frontend/',
   CACHE_SECONDS: 21600,
   CACHE_CHUNK_SIZE: 20000
@@ -544,6 +544,54 @@ function apiGetDashboard(token) {
     throw new Error('บัญชีนี้ไม่มี Role ที่ระบบรองรับ');
   }
   return base;
+}
+
+/**
+ * Admin overview: summarize active research groups, pending progress-report reviews,
+ * advisor nominations awaiting confirmation, and approved advisor assignments.
+ * Read-only endpoint; uses existing sheets only.
+ */
+function apiGetAdminGroupOverview(token){
+  requireSession_(token,[ROLE.ADMIN]);
+  const groups=readObjectsFresh_('RESEARCH_GROUPS').filter(g=>String(g.STATUS||'').toUpperCase()==='ACTIVE');
+  const groupMap=new Map(groups.map(g=>[String(g.GROUP_ID),g]));
+  const users=readObjectsFresh_('SYS_USERS').filter(u=>String(u.STATUS||'').toUpperCase()==='ACTIVE');
+  const userMap=new Map(users.map(u=>[String(u.USER_ID),u]));
+  const reports=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').toUpperCase())&&groupMap.has(String(r.GROUP_ID||'')));
+  const pendingReviewMap=new Map();
+  reports.forEach(r=>{
+    const id=String(r.GROUP_ID||'');if(!pendingReviewMap.has(id))pendingReviewMap.set(id,[]);
+    pendingReviewMap.get(id).push(Number(r.WEEK_NO||0));
+  });
+  const pendingReviewGroups=[...pendingReviewMap.entries()].map(([id,weeks])=>{
+    const g=groupMap.get(id);
+    return {groupId:id,groupName:String(g.GROUP_NAME||'ไม่ระบุชื่อกลุ่ม'),pendingCount:weeks.length,weeks:[...new Set(weeks.filter(Boolean))].sort((a,b)=>a-b)};
+  }).sort((a,b)=>a.groupName.localeCompare(b.groupName,'th'));
+  const assignments=readObjectsFresh_('ADVISOR_ASSIGNMENTS').filter(a=>groupMap.has(String(a.GROUP_ID||'')));
+  const approvedByGroup=new Map();
+  assignments.filter(a=>String(a.STATUS||'').toUpperCase()==='APPROVED').forEach(a=>{
+    if(!approvedByGroup.has(String(a.GROUP_ID)))approvedByGroup.set(String(a.GROUP_ID),a);
+  });
+  const pendingAdvisorByGroup=new Map();
+  assignments.filter(a=>String(a.STATUS||'').toUpperCase()==='PENDING'&&!approvedByGroup.has(String(a.GROUP_ID))).forEach(a=>{
+    const id=String(a.GROUP_ID),u=userMap.get(String(a.ADVISOR_USER_ID||''));
+    pendingAdvisorByGroup.set(id,{groupId:id,groupName:String(groupMap.get(id).GROUP_NAME||'ไม่ระบุชื่อกลุ่ม'),advisorName:String(u&&(u.DISPLAY_NAME||u.EMAIL)||'ไม่พบข้อมูลอาจารย์'),source:'NOMINATION'});
+  });
+  readObjectsFresh_('ADVISOR_INVITATIONS').filter(x=>String(x.STATUS||'').toUpperCase()==='ACCEPTED'&&groupMap.has(String(x.GROUP_ID||''))&&!approvedByGroup.has(String(x.GROUP_ID||''))).forEach(x=>{
+    const id=String(x.GROUP_ID);
+    pendingAdvisorByGroup.set(id,{groupId:id,groupName:String(groupMap.get(id).GROUP_NAME||'ไม่ระบุชื่อกลุ่ม'),advisorName:String(x.ADVISOR_NAME||x.ADVISOR_EMAIL||'ไม่ระบุชื่อ'),source:'INVITATION'});
+  });
+  const appointedGroups=[...approvedByGroup.entries()].map(([id,a])=>{
+    const g=groupMap.get(id),u=userMap.get(String(a.ADVISOR_USER_ID||''));
+    return {groupId:id,groupName:String(g.GROUP_NAME||'ไม่ระบุชื่อกลุ่ม'),advisorName:String(u&&(u.DISPLAY_NAME||u.EMAIL)||'ไม่พบข้อมูลอาจารย์')};
+  }).sort((a,b)=>a.groupName.localeCompare(b.groupName,'th'));
+  const pendingAdvisorGroups=[...pendingAdvisorByGroup.values()].sort((a,b)=>a.groupName.localeCompare(b.groupName,'th'));
+  return sanitizeForClient_({
+    totalGroups:{count:groups.length,groups:groups.map(g=>({groupId:String(g.GROUP_ID),groupName:String(g.GROUP_NAME||'ไม่ระบุชื่อกลุ่ม')})).sort((a,b)=>a.groupName.localeCompare(b.groupName,'th'))},
+    pendingReview:{count:pendingReviewGroups.length,groups:pendingReviewGroups},
+    pendingAdvisorConfirmation:{count:pendingAdvisorGroups.length,groups:pendingAdvisorGroups},
+    appointedAdvisor:{count:appointedGroups.length,groups:appointedGroups}
+  });
 }
 
 /** Admin-only: create/invite a Course Coordinator or Research Advisor. */
