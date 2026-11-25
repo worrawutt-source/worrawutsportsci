@@ -1386,3 +1386,22 @@ Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migrat
 - Confirmed the function's top-level report writes only `status`, `summary`, and `inventorySummary`; exactly one Logger call serializes `out`; exactly one `return out` exists; no raw ID array/record arrays are serialized; no ID-valued output fields are assigned; and no direct mutation API names (Sheets write, Properties write, Drive file mutation, trigger creation, UrlFetch) occur in the function. Read APIs are present as expected.
 - This is a source-level scan, not a JavaScript/GAS parser or runtime test. It does not prove that helper functions called by the inventory are read-only; helper source must also be audited before execution. In particular, `SNC_GetSyntheticFixtureManifest_TEST`, `SNC_GetAssignmentGroupManifest_TEST`, `sncAGR_ids_TEST_`, and `sncAGR_rows_TEST_` must be reviewed for side effects and data exposure.
 - No GAS execution or data access was performed. PF-08/PF-09/PF-18 and PF-16 remain blocked pending owner control verification and a controlled TEST run. PF-19 policy approved; enforcement/destination verification pending. PF-20 PASS — PRESERVE.
+
+
+## WP-SUB-2 helper source review and owner verification checklist — 25 Nov 2026
+
+### Read-only helper review
+- Static review of the inventory's direct helper functions in `SNC_AssignmentGroupIntegrationRunner_TEST.gs` and `SNC_SyntheticFixtureRunner_TEST.gs` found no direct mutation APIs, Logger calls, external calls, or trigger operations in the reviewed helper bodies.
+- `SNC_GetAssignmentGroupManifest_TEST` and `SNC_GetSyntheticFixtureManifest_TEST` read Script Properties and return manifest data; `sncAGR_ids_TEST_` reads sheet IDs; `sncAGR_rows_TEST_` reads rows. The returned manifest/row data includes identifiers, but in the inventory call path it remains local and is not serialized into the sanitized report.
+- This was a focused static review of the named helper bodies, not a full dependency graph audit or GAS runtime test.
+
+### Owner-controlled evidence checks still required
+1. **PF-09 — GAS project access:** owner reviews the Apps Script project's Editor/Viewer access and confirms every person who can execute or view results is authorized. Keep names/emails out of GitHub; record only reviewer/date and pass/fail.
+2. **PF-08 — Drive effective ACL:** inspect the TEST folder, its parent, relevant child folders, and candidate files for inherited/direct permissions and general/external access. Confirm no unintended broad access. Keep exact file IDs and identities in restricted evidence only.
+3. **PF-19 — encrypted evidence destination:** identify the actual encrypted owner-only location and verify access before capturing any raw evidence. Policy approval alone is not enforcement evidence.
+4. **PF-18 — quiet TEST window:** owner confirms no other test runner or process is operating on the synthetic TEST dataset during the planned read-only inventory.
+5. **TEST source sync gate:** do not modify GAS project source from this GitHub patch until owner explicitly performs/approves the sync and reviews the exact diff in TEST. After sync, save/inspect syntax only; no execution until the controls above are verified.
+
+### Tool availability note
+- Google Drive connector discovery returned Google Drive as `DISABLED_BY_ADMIN` / `NOT_AVAILABLE`. This session cannot inspect effective Drive permissions or GAS project access directly. No plugin was connected and no access request was submitted.
+- No GAS execution, Drive/Sheet/Properties write, permission change, source sync, deployment, or Cleanup was performed.
