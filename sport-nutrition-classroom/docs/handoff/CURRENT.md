@@ -1405,3 +1405,13 @@ Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migrat
 ### Tool availability note
 - Google Drive connector discovery returned Google Drive as `DISABLED_BY_ADMIN` / `NOT_AVAILABLE`. This session cannot inspect effective Drive permissions or GAS project access directly. No plugin was connected and no access request was submitted.
 - No GAS execution, Drive/Sheet/Properties write, permission change, source sync, deployment, or Cleanup was performed.
+
+
+## WP-SUB-2 read-only dependency audit continuation — 25 Nov 2026
+
+- Continued the static audit of the sanitized SNC_ExactIdInventory_READONLY_TEST() call path using the current GitHub development versions of the Inventory, Assignment/Group Runner, and Synthetic Fixture Runner, plus the owner-provided fresh GAS export dated 25 Nov.
+- Reviewed the direct read helpers: sncAGR_ids_TEST_() obtains primary-key values through sncAGR_rows_TEST_(); sncAGR_rows_TEST_() reads the named sheet and delegates to rowsAsObjects_(); manifest getters read Script Properties and return parsed manifest objects; TEST environment guards read Script Properties and active Spreadsheet identity.
+- In the fresh GAS export, rowsAsObjects_(sheet) uses getDataRange().getValues(), maps header/value rows to in-memory objects, and performs no writes, logging, external calls, or trigger operations. The helper's behavior is read-only.
+- No direct mutation API or Logger call was found in the reviewed Inventory helper path. Exact IDs are read into local memory for comparison but the Inventory's returned/logged report remains sanitized per the previously recorded source scan.
+- Audit scope remains focused/static: this is not a complete dependency graph or GAS runtime/parser verification, and the fresh export is evidence of the exported source, not a new live fetch of the GAS project. No GAS function was executed and no TEST data, properties, Drive files, permissions, or deployment settings were changed.
+- Owner-side gates remain open: verify effective GAS execution/result visibility (PF-09), effective Drive ACLs (PF-08), named encrypted owner-only evidence destination and controls (PF-19 operational verification), and quiet TEST window (PF-18). Do not execute the Inventory until these are confirmed.
