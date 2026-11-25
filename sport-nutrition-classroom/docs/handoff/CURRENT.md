@@ -1358,3 +1358,13 @@ Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migrat
 - PF-19: APPROVED POLICY; operational enforcement/destination verification pending.
 - PF-20: PASS — PRESERVE.
 - Overall WP-SUB-2 remains BLOCKED. No Runner, Cleanup, file disposition action, GAS execution, permission change, or inventory was performed in this checkpoint.
+
+
+## WP-SUB-2 static review — Exact-ID Inventory output exposure — 25 Nov 2026
+
+- Reviewed `SNC_ExactIdInventory_READONLY_TEST.js` from the fresh GAS export without executing it.
+- Confirmed the function's `finish()` both writes the complete `out` object to `Logger.log('SNC_EXACT_ID_INVENTORY='+JSON.stringify(out))` and returns the same `out` object. The report includes raw Offering/Assignment/Group/GroupMember/Submissions IDs, user IDs, and relationships. Therefore **restricting Logger alone is insufficient**; the returned execution result also exposes the raw inventory to the execution viewer.
+- The function is read-only with respect to Sheets/Properties/Drive/Triggers/handlers, but the output is sensitive. Do not execute until the execution identity and all people who can view execution results/logs are confirmed authorized, and a named encrypted evidence destination is ready.
+- PF-19 owner policy approval remains recorded; actual destination and effective access controls are not verified. PF-08 (effective/inherited folder ACL), PF-09 (approved execution identity), and PF-18 (quiet TEST window) remain open.
+- Safer next design is to separate a **sanitized execution report** (counts/check IDs/status only; no exact identifiers in Logger or return) from a restricted exact-evidence artifact. Any code change to implement this separation must be reviewed before use. Do not write raw evidence to Drive or add encryption code without a separately reviewed design and explicit confirmation of the destination/key handling.
+- No GAS execution or code change was performed in this static review.
