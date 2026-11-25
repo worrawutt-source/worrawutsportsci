@@ -22,6 +22,11 @@ function clearStoredSessionToken(){
 }
 let sessionToken = readStoredSessionToken();
 let currentDashboard = null;
+let activeWorkspace='ADMIN';
+const WORKSPACE_STORAGE_KEY='ssrl_active_workspace';
+const ADVISOR_WORKSPACE_MENU=['ภาพรวมการให้คำปรึกษ','กลุ่มที่ได้รับมอบหมาย','บันทึกการพบอาจารย์','ประเมิน A4'];
+function getSavedWorkspace(){try{return localStorage.getItem(WORKSPACE_STORAGE_KEY)||'ADMIN';}catch(e){return 'ADMIN';}}
+function saveWorkspace(value){try{localStorage.setItem(WORKSPACE_STORAGE_KEY,String(value||'ADMIN'));}catch(e){}}
 const ACTIVE_MENU_STORAGE_KEY='ssrl_active_menu';
 function getSavedActiveMenu(){try{return localStorage.getItem(ACTIVE_MENU_STORAGE_KEY)||'';}catch(e){return '';}}
 function saveActiveMenu(label){try{localStorage.setItem(ACTIVE_MENU_STORAGE_KEY,String(label||''));}catch(e){}}
@@ -153,6 +158,7 @@ $('logoutBtn').addEventListener('click',async()=>{
 async function loadDashboard(forcePasswordChange, isSessionRestore=false){
   try{
     currentDashboard=await callApi('apiGetDashboard',sessionToken);
+    activeWorkspace=currentDashboard.user.roleId==='ADVISOR'||currentDashboard.user.roleId==='RESEARCH_ADVISOR'?'ADVISOR':(currentDashboard.user.roleId==='ADMIN'&&currentDashboard.advisorWorkspaceAvailable&&getSavedWorkspace()==='ADVISOR'?'ADVISOR':'ADMIN');
     document.documentElement.classList.remove('ssrl-session-restoring');
     if(currentDashboard && currentDashboard.expiresAt) scheduleSessionExpiry(currentDashboard.expiresAt);
     $('authView').classList.add('hidden');$('appView').classList.remove('hidden');
@@ -165,7 +171,7 @@ async function loadDashboard(forcePasswordChange, isSessionRestore=false){
     $('passwordChangeNotice').textContent = mustChange ? 'บัญชีนี้ใช้รหัสผ่านชั่วคราว กรุณากำหนดรหัสผ่านใหม่ก่อนเข้าสู่ระบบส่วนอื่น' : 'สามารถเปลี่ยนรหัสผ่านได้จากส่วนนี้';
     $('welcomeTitle').textContent='สวัสดี, '+currentDashboard.user.displayName;
     $('welcomeSub').textContent=roleLabel(currentDashboard.user.roleId)+' · '+currentDashboard.courseCode+' · '+currentDashboard.term;
-    renderDashboard(currentDashboard);
+    if(currentDashboard.user.roleId==='ADMIN'&&activeWorkspace==='ADVISOR'){try{const advisorSummary=await callApi('apiGetAdvisorWorkspaceSummary',sessionToken);renderDashboard(currentDashboard,advisorSummary.metrics);}catch(workspaceError){activeWorkspace='ADMIN';saveWorkspace('ADMIN');renderDashboard(currentDashboard);showOperationStatus('เปิด Advisor Workspace ไม่สำเร็จ: '+workspaceError.message,true);}}else renderDashboard(currentDashboard);
   }catch(e){
     document.documentElement.classList.remove('ssrl-session-restoring');
     $('sessionRestoreView')?.classList.add('hidden');
@@ -185,15 +191,17 @@ function roleLabel(role){return ({ADMIN:'อาจารย์ประจำว
 function normalizeMenuLabel_(value){
   return String(value||'').normalize('NFC').replace(/[\u200B-\u200D\uFEFF\u00A0]/g,' ').replace(/\s+/g,' ').trim();
 }
-function renderDashboard(d){
+function renderDashboard(d,metricsOverride){
+  const isAdmin=d.user.roleId==='ADMIN';const isAdvisorWorkspace=isAdmin&&activeWorkspace==='ADVISOR';const menu=isAdvisorWorkspace?ADVISOR_WORKSPACE_MENU:d.menu;
+  const actions=$('.welcome-actions');if(actions){const old=actions.querySelector('#workspaceSwitcher');if(old)old.remove();if(isAdmin&&d.advisorWorkspaceAvailable){const select=document.createElement('select');select.id='workspaceSwitcher';select.className='secondary';select.setAttribute('aria-label','เลือก Workspace');[['ADMIN','Admin Workspace'],['ADVISOR','Advisor Workspace']].forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;select.appendChild(o);});select.value=activeWorkspace;select.addEventListener('change',async()=>{const next=select.value;select.disabled=true;try{if(next==='ADVISOR'){const summary=await callApi('apiGetAdvisorWorkspaceSummary',sessionToken);activeWorkspace='ADVISOR';saveWorkspace('ADVISOR');renderDashboard(currentDashboard,summary.metrics);}else{activeWorkspace='ADMIN';saveWorkspace('ADMIN');renderDashboard(currentDashboard);}}catch(e){select.value=activeWorkspace;showOperationStatus('สลับ Workspace ไม่สำเร็จ: '+e.message,true);}finally{select.disabled=false;}});actions.prepend(select);}}
   $('sideMenu').innerHTML='';
-  d.menu.forEach((label,i)=>{
+  menu.forEach((label,i)=>{
     const b=document.createElement('button');b.className='menu-item'+(i===0?' active':'');b.textContent=label;
     b.addEventListener('click',async()=>{
       document.querySelectorAll('.menu-item').forEach(x=>x.classList.remove('active'));b.classList.add('active');
       saveActiveMenu(label);
       const routeLabel=normalizeMenuLabel_(label);
-      const advisorRole=currentDashboard.user.roleId==='ADVISOR'||currentDashboard.user.roleId==='RESEARCH_ADVISOR';
+      const advisorRole=currentDashboard.user.roleId==='ADVISOR'||currentDashboard.user.roleId==='RESEARCH_ADVISOR'||(currentDashboard.user.roleId==='ADMIN'&&activeWorkspace==='ADVISOR');
       const advisorFallback=advisorRole?['overview','groups','meetings','a4'][i]:'';
       $('sectionTitle').textContent=label;$('sectionText').textContent='กำลังโหลดข้อมูล...';
       if(routeLabel==='บัญชีผู้ใช้' && currentDashboard.user.roleId==='ADMIN') await renderUserAdmin();
@@ -219,12 +227,13 @@ function renderDashboard(d){
       else if(routeLabel==='ข้อเสนอแนะ') await renderFeedback();
       else if(routeLabel==='ผลการประเมิน' && currentDashboard.user.roleId==='STUDENT') await renderStudentGrades();
       else if(routeLabel==='ตรวจหัวข้อและให้ข้อเสนอแนะ') await renderAdvisorReview();
+      else if(routeLabel==='ภาพรวมระบบ'&&currentDashboard.user.roleId==='ADMIN'&&activeWorkspace!=='ADVISOR') await renderAdminOverview();
       else if(routeLabel==='ภาพรวมระบบ' || routeLabel==='ภาพรวมการให้คำปรึกษ' || advisorFallback==='overview') await renderOverview();
       else $('sectionText').textContent='เมนูนี้ยังไม่มีสิทธิ์หรือไม่มีข้อมูลสำหรับบัญชีนี้';
     });
     $('sideMenu').appendChild(b);
   });
-  const metrics=Object.entries(d.metrics||{});
+  const metrics=Object.entries(metricsOverride||d.metrics||{});
   $('metricGrid').innerHTML='';
   metrics.forEach(([k,v])=>{
     const card=document.createElement('div');card.className='metric';
@@ -517,12 +526,12 @@ async function renderAdvisorAssignment(){
   const box=el('div',{className:'notice'});box.append(el('h3',{},'กำหนดอาจารย์ที่ปรึกษา'));
   const g=el('select'),adv=el('select');
   d.groups.forEach(x=>g.append(el('option',{value:x.GROUP_ID},x.GROUP_NAME)));
-  d.users.filter(x=>x.roleId==='ADVISOR'&&x.status==='ACTIVE').forEach(x=>adv.append(el('option',{value:x.userId},x.displayName+' · '+x.email)));
+  d.users.filter(x=>(x.roleId==='ADVISOR'||x.roleId==='ADMIN')&&x.status==='ACTIVE').forEach(x=>adv.append(el('option',{value:x.userId},x.displayName+' · '+x.email+(x.roleId==='ADMIN'?' · Admin + Advisor':' · Advisor'))));
   const assign=el('button',{type:'button',className:'primary'},'กำหนด/เปลี่ยนอาจารย์ที่ปรึกษา');
   if(!d.groups.length||!adv.options.length)assign.disabled=true;
   box.append(el('label',{},'กลุ่มวิจัย'),g,el('label',{},'อาจารย์ที่ปรึกษา'),adv,assign);
   if(!d.groups.length)box.append(el('p',{},'ยังไม่มีกลุ่มวิจัย กรุณาสร้างกลุ่มก่อน'));
-  if(!adv.options.length)box.append(el('p',{},'ยังไม่มีบัญชี Advisor ที่เปิดใช้งาน กรุณาเชิญอาจารย์และให้อาจารย์ลงทะเบียนก่อน'));
+  if(!adv.options.length)box.append(el('p',{},'ยังไม่มีบัญชี Advisor หรือ Admin ที่เปิดใช้งาน'));
   assign.onclick=async()=>{if(!g.value||!adv.value)return;assign.disabled=true;try{const r=await callApi('apiAdminAssignAdvisor',sessionToken,g.value,adv.value);showOperationStatus(r.message);await renderAdvisorAssignment()}catch(e){showOperationStatus(e.message,true)}finally{assign.disabled=false}};
   a.append(box);
   const pending=d.assignments.filter(x=>x.STATUS==='PENDING');
@@ -966,6 +975,12 @@ async function renderAdvisorReview(){
    a.append(box);
   }
  }catch(e){a.textContent='โหลดรายการตรวจหัวข้อไม่สำเร็จ: '+e.message;}
+}
+async function renderAdminOverview(){
+ const a=$('sectionText');a.textContent='';const m=currentDashboard.metrics||{};const box=el('div',{className:'notice'});
+ box.append(el('h2',{},'ภาพรวมระบบ'),el('p',{},'สรุปสถานะระบบสำหรับผู้ดูแลรายวิชา'));
+ const stats=el('div',{className:'stats-grid'});[['นักศึกษาในทะเบียน',m.roster||0],['Session ที่ยังใช้งาน',m.sessions||0],['บัญชีผู้ใช้ทั้งหมด',m.users||0]].forEach(([label,value])=>{const card=el('div',{className:'stat-card'});card.append(el('div',{className:'brand-sub'},label),el('h2',{},String(value)));stats.append(card);});
+ box.append(stats,el('p',{},'ใช้เมนูด้านซ้ายเพื่อจัดการกลุ่มวิจัย ผู้ใช้ การประเมิน และการตั้งค่าระบบ'));a.append(box);
 }
 async function renderOverview(){
  const a=$('sectionText');a.textContent='กำลังโหลดภาพรวมการให้คำปรึกษา...';
