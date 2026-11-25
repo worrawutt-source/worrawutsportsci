@@ -977,7 +977,7 @@ async function renderAdvisorReview(){
   }
  }catch(e){a.textContent='โหลดรายการตรวจหัวข้อไม่สำเร็จ: '+e.message;}
 }
-async async function renderAdminOverview(){
+async function renderAdminOverview(){
  const a=$('sectionText');a.textContent='กำลังโหลดภาพรวมกลุ่มวิจัย...';
  try{
   const d=await callApi('apiGetAdminGroupOverview',sessionToken);a.textContent='';
