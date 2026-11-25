@@ -26,7 +26,7 @@ Do not place raw User IDs, emails, Assignment/Group/Submission IDs, Drive File I
 | PF | Required evidence / owner decision | Evidence reference (restricted if needed) | Status |
 |---|---|---|---|
 | PF-01 | Approved, machine-verifiable TEST environment marker and exact TEST Spreadsheet identity |  | BLOCKED |
-| PF-02 | External Source Manifest comparison; reconcile GAS source with `development`; review `appsscript.json` deployment settings separately |  | BLOCKED |
+| PF-02 | External Source Manifest comparison; reconcile GAS source with `development`; review `appsscript.json` deployment settings separately | Fresh export comparison + owner confirmation of manifest settings; documented comment-only variance | PASS |
 | PF-03 | Exact WP-SUB-1 manifest/baseline IDs; prove WP-SUB-2 scope does not overlap or reuse them |  | BLOCKED |
 | PF-04 | Script Property matches owner-approved TEST submission folder | Preflight log 25 Nov 2026, 12:59 | PASS |
 | PF-05 | Folder name and parent verified | Preflight log 25 Nov 2026, 12:59 | PASS |
@@ -55,8 +55,8 @@ Do not place raw User IDs, emails, Assignment/Group/Submission IDs, Drive File I
 - `SNC_AuditLogReconciliation_READONLY_TEST.js` now matches GitHub `development` after newline normalization. Exported normalized Git blob SHA: `afc868148b568d2ed524c1fe66a2723b715e4dc5`, equal to the current GitHub blob. This supersedes the prior export discrepancy; the older ZIP remains historical evidence.
 - `SNC_ApprovedCleanup_EXACT14_TEST.js`: the export has three trailing commented invocation lines not present in GitHub. They are comments, not executable top-level calls. The difference is documented and does not indicate a runnable cleanup call. **Do not run Cleanup.**
 - `SNC_SetFolderProperty_TEMP.js` is an owner-created temporary utility to correct `SNC_SUBMISSION_FOLDER_ID`. Its presence in GAS is expected and explained; the property was previously verified by owner log. Do not rerun it unless the owner specifically needs to correct the property again.
-- `appsscript.json` is not versioned in this repository. The export declares `webapp.executeAs=USER_DEPLOYING` and `webapp.access=ANYONE_ANONYMOUS`. These settings still require owner review against the intended TEST deployment. No deployment was inspected or changed.
-- Source code reconciliation is therefore **reviewed with one documented comment-only variance and one owner-created temporary utility**. PF-02 remains BLOCKED until the exported manifest/deployment configuration is owner-reviewed and recorded.
+- `appsscript.json` is not versioned in this repository. The export declares `webapp.executeAs=USER_DEPLOYING` and `webapp.access=ANYONE_ANONYMOUS`. The owner confirmed these values are intentional/current for this project. No setting was changed.
+- Source code reconciliation is **owner-reviewed with one documented comment-only variance and one owner-created temporary utility**. PF-02 is now **PASS** for the source-manifest comparison and exported manifest review. This does not independently verify the effective settings of an already deployed Web App; no deployment was inspected or changed.
 
 | File | Exported normalized blob SHA | GitHub development blob SHA | Disposition |
 |---|---|---|---|
@@ -90,4 +90,4 @@ The capture must be read-only. Do not write a Script Property, Sheet, Drive file
 
 ## Gate
 
-**WP-SUB-2 remains BLOCKED.** Runner implementation and persistent execution remain separate approval gates. No cleanup is implied by this template.
+PF-02 source-manifest review is **PASS** with the documented comment-only Cleanup variance and owner confirmation of the exported manifest settings. Overall WP-SUB-2 Preflight remains **BLOCKED** because PF-01, PF-03, PF-08..PF-20 (except PF-04..PF-07 already PASS) are unresolved. Runner implementation and persistent execution remain separate approval gates. No cleanup is implied by this template.
