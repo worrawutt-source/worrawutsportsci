@@ -563,7 +563,7 @@ async function renderAdvisorAssignment(){
  }catch(e){a.textContent='โหลดข้อมูลอาจารย์ที่ปรึกษาไม่สำเร็จ: '+e.message;}
 }
 async function renderMeetingAttendance(){
- const a=$('sectionText'),role=currentDashboard.user.roleId;a.textContent='กำลังโหลดข้อมูลการเข้าพบ...';
+ const a=$('sectionText'),role=activeWorkspace==='ADVISOR'?'ADVISOR':currentDashboard.user.roleId;a.textContent='กำลังโหลดข้อมูลการเข้าพบ...';
  try{
   if(role==='ADMIN'){
    const d=await callApi('apiAdminGetMeetingMonitoring',sessionToken);a.textContent='';
@@ -644,8 +644,9 @@ async function renderAdvisorA4(){
   note.append(el('p',{},'สถานะช่วงประเมิน: '+(isOpen?'เปิดรับการบันทึกคะแนน':'ปิดรับการบันทึกคะแนน')));
   if(!isOpen)note.append(el('p',{},'ขณะนี้ยังไม่สามารถบันทึกหรือแก้ไขคะแนนได้ เนื่องจากผู้ดูแลรายวิชายังไม่ได้เปิดช่วงประเมิน A4'));
   a.append(note);
-  if(!report.length){a.append(el('p',{},'ยังไม่มีกลุ่มที่ได้รับมอบหมาย'));return;}
-  report.forEach(g=>{
+  const visibleReport=currentDashboard.user.roleId==='ADMIN'&&activeWorkspace==='ADVISOR'?report.filter(g=>workspace.groups.some(x=>String(x.groupId)===String(g.groupId))):report;
+  if(!visibleReport.length){a.append(el('p',{},'ยังไม่มีกลุ่มที่ได้รับมอบหมาย'));return;}
+  visibleReport.forEach(g=>{
    const box=el('div',{className:'notice'});box.append(el('h3',{},g.groupName));
    const form=el('form',{className:'admin-form'});
    const group=el('input',{type:'number',min:'0',max:'10',step:'0.01',required:'required',value:g.groupScore.A4_GROUP_SCORE??'',placeholder:'คะแนนกลุ่ม 0–10'});
