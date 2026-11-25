@@ -22,6 +22,10 @@ function clearStoredSessionToken(){
 }
 let sessionToken = readStoredSessionToken();
 let currentDashboard = null;
+const ACTIVE_MENU_STORAGE_KEY='ssrl_active_menu';
+function getSavedActiveMenu(){try{return localStorage.getItem(ACTIVE_MENU_STORAGE_KEY)||'';}catch(e){return '';}}
+function saveActiveMenu(label){try{localStorage.setItem(ACTIVE_MENU_STORAGE_KEY,String(label||''));}catch(e){}}
+function clearSavedActiveMenu(){try{localStorage.removeItem(ACTIVE_MENU_STORAGE_KEY);}catch(e){}}
 
 function callApi(name, ...args) {
   return new Promise((resolve,reject)=>{
@@ -59,6 +63,8 @@ function handleInvalidSession(reason){
   currentDashboard=null;
   clearStoredSessionToken();
   const app=$('appView'),auth=$('authView');
+  document.documentElement.classList.remove('ssrl-session-restoring');
+  const restore=$('sessionRestoreView');if(restore)restore.classList.add('hidden');
   if(app) app.classList.add('hidden');
   if(auth) auth.classList.remove('hidden');
   const message=/หมดอายุ/.test(String(reason||''))?'Session หมดอายุ กรุณาเข้าสู่ระบบใหม่':'Session ถูกยกเลิกหรือบัญชีไม่สามารถใช้งานได้ กรุณาเข้าสู่ระบบใหม่';
@@ -142,11 +148,12 @@ $('verifyStudent').addEventListener('click',async()=>{
 });
 $('logoutBtn').addEventListener('click',async()=>{
   try{await callApi('apiLogout',sessionToken)}catch(e){}
-  sessionToken='';clearStoredSessionToken();$('appView').classList.add('hidden');$('authView').classList.remove('hidden');showMessage('ออกจากระบบแล้ว');
+  sessionToken='';clearStoredSessionToken();clearSavedActiveMenu();document.documentElement.classList.remove('ssrl-session-restoring');$('appView').classList.add('hidden');$('authView').classList.remove('hidden');showMessage('ออกจากระบบแล้ว');
 });
 async function loadDashboard(forcePasswordChange, isSessionRestore=false){
   try{
     currentDashboard=await callApi('apiGetDashboard',sessionToken);
+    document.documentElement.classList.remove('ssrl-session-restoring');
     if(currentDashboard && currentDashboard.expiresAt) scheduleSessionExpiry(currentDashboard.expiresAt);
     $('authView').classList.add('hidden');$('appView').classList.remove('hidden');
     const mustChange = forcePasswordChange === true || currentDashboard.forcePasswordChange === true;
@@ -160,6 +167,8 @@ async function loadDashboard(forcePasswordChange, isSessionRestore=false){
     $('welcomeSub').textContent=roleLabel(currentDashboard.user.roleId)+' · '+currentDashboard.courseCode+' · '+currentDashboard.term;
     renderDashboard(currentDashboard);
   }catch(e){
+    document.documentElement.classList.remove('ssrl-session-restoring');
+    $('sessionRestoreView')?.classList.add('hidden');
     $('appView').classList.add('hidden');
     $('authView').classList.remove('hidden');
     if(isInvalidSessionError(e.message)){
@@ -179,6 +188,7 @@ function renderDashboard(d){
     const b=document.createElement('button');b.className='menu-item'+(i===0?' active':'');b.textContent=label;
     b.addEventListener('click',async()=>{
       document.querySelectorAll('.menu-item').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+      saveActiveMenu(label);
       $('sectionTitle').textContent=label;$('sectionText').textContent='กำลังโหลดข้อมูล...';
       if(label==='บัญชีผู้ใช้' && currentDashboard.user.roleId==='ADMIN') await renderUserAdmin();
       else if(label==='นำเข้ารายชื่อนักศึกษา' && currentDashboard.user.roleId==='ADMIN') await renderExcelImport();
@@ -217,10 +227,12 @@ function renderDashboard(d){
     card.append(label,value);$('metricGrid').appendChild(card);
   });
 
-  // Load the role-specific landing page immediately after login.
-  // This prevents the dashboard shell from appearing with stale placeholder content.
-  const firstMenuItem=$('sideMenu').querySelector('.menu-item');
-  if(firstMenuItem) firstMenuItem.click();
+  // Restore the last selected menu when the user refreshes the workspace.
+  // If the saved menu is no longer available for this role, fall back to the first menu.
+  const savedMenu=getSavedActiveMenu();
+  const menuItems=[...$('sideMenu').querySelectorAll('.menu-item')];
+  const targetMenu=menuItems.find(item=>item.textContent===savedMenu)||menuItems[0];
+  if(targetMenu) targetMenu.click();
 }
 async function renderUserAdmin(){
   const area=$('sectionText');area.textContent='กำลังโหลดบัญชีผู้ใช้...';
