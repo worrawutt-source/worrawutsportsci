@@ -388,3 +388,46 @@ Backend commit:
 - The displayed A4 window state and server-side save guard now read current settings rather than a potentially stale cached value.
 - Backend commit: `7c5803e7a595c9d62032f8991d207d98d3edd340`.
 - Frontend pin remains `9fd19148fed090fe06547a1935cd7664382d77b1`; no Frontend change was needed for this Backend-only correction.
+
+
+## 17. F5 Workspace Restoration — Implementation
+
+สถานะ ณ 25 พฤศจิกายน 2026: **แก้ไข Source Code บน feature branch แล้ว; รอ Runtime Test/UAT บน TEST**
+
+วัตถุประสงค์:
+- เมื่อผู้ใช้ Refresh (F5) ขณะมี Session ที่ยังไม่หมดอายุ ให้กลับเข้าสู่ Workspace โดยไม่แสดงหน้า Login คั่นระหว่างรอตรวจสอบ Session
+- คืนค่าเมนูเดิมที่ผู้ใช้เปิดอยู่ก่อน Refresh
+
+การเปลี่ยนแปลง:
+1. เพิ่ม Early Boot Check ใน `Index.html` เพื่อตรวจ Token และเวลาหมดอายุจาก LocalStorage/SessionStorage ก่อน Browser แสดงหน้าเว็บ
+2. เมื่อพบ Token และยังไม่หมดอายุ ให้ซ่อนหน้า Login ชั่วคราว และแสดงสถานะ “กำลังเรียกคืนการเข้าสู่ระบบ”
+3. เมื่อ Backend ตรวจสอบ Session สำเร็จ จึงแสดง Workspace และซ่อนสถานะกำลังเรียกคืน
+4. บันทึกชื่อเมนูที่เลือกไว้ใน LocalStorage และคืนค่าเมนูเดิมหลังสร้าง Dashboard; หากเมนูเดิมไม่อยู่ในสิทธิ์ของบัญชี ให้กลับไปเมนูแรก
+5. เมื่อ Logout ให้ลบเมนูที่บันทึกไว้ และเมื่อ Session หมดอายุ/ถูกยกเลิกให้กลับหน้า Login ตามกระบวนการเดิม
+6. หากเกิดปัญหาเครือข่าย/Server ชั่วคราว ยังคงรักษา Token ตาม Session Lifecycle Hotfix เดิม และแสดงข้อความให้ลอง Refresh ใหม่
+
+ไฟล์ที่เปลี่ยน:
+- `project/frontend/Index.html`
+- `project/frontend/Client.html`
+- `project/frontend/Styles.html`
+- `project/gas-source/code.gs` (อัปเดต Frontend immutable SHA)
+
+Frontend immutable SHA ที่ Backend pin:
+- `6423b3852ec34d50dc70390f06d1fc1e04348122`
+
+Backend commit:
+- `83cae7c5668573d26930a910785827ce177d801c`
+
+Static verification:
+- ตรวจ Early Boot Check และ Restore Placeholder
+- ตรวจการบันทึก/คืนค่าเมนู และ fallback เมื่อไม่พบเมนูเดิม
+- ตรวจการล้างสถานะ Restore เมื่อ Session สำเร็จ, ผิดพลาด, หมดอายุ และ Logout
+- ตรวจ CSS style opening/closing tags อย่างละหนึ่งชุด
+- ตรวจ Backend Frontend SHA ตรงกับ immutable Frontend snapshot
+
+ข้อจำกัด:
+- ยังไม่ได้ทดสอบ Google Apps Script Runtime หรือ Browser จริง
+- ยังไม่ได้ Deploy ไปยัง TEST Web App
+- การคืนค่ารอบนี้ครอบคลุมระดับเมนู (Menu-level) ไม่รวมข้อมูลที่ยังไม่ได้บันทึกในฟอร์ม หรือรายละเอียดภายในหน้าที่เปิดค้าง เช่น กลุ่มที่เลือก/Modal/แท็บย่อย
+- ไม่เปลี่ยน Session Policy, Password Hash, Database Schema, Role/Permission, Workflow หรือ Production Deployment
+- Runtime Test/UAT: **PENDING**
