@@ -454,12 +454,12 @@ Static verification:
 - `project/gas-source/code.gs` (อัปเดต Frontend SHA เท่านั้น)
 
 Commit:
-- Client: `0009329fb08822f126c8ca6bf473a44828a7e83f`
-- Backend: `36c5c66da95c7ea57b04bd81052f4fd0a1b105e9`
-- Frontend SHA pinned: `0009329fb08822f126c8ca6bf473a44828a7e83f`
+- Client: `91da1c393b4a515f6366cec14d09549a1703bb04`
+- Backend: `64edc7deabeb1ea95c076f69d70d2f7ab466c8e5`
+- Frontend SHA pinned: `91da1c393b4a515f6366cec14d09549a1703bb04`
 
 Static verification:
-- ตรวจพบ Normalize helper และการเรียกใช้ก่อน Menu Routing
+- ตรวจพบ Normalize helper และการเรียกใช้ก่อน Menu Routing; ตรวจ regex สำหรับ zero-width/BOM/non-breaking space และ whitespace
 - ตรวจเงื่อนไข fallback ของ Advisor ครบ 4 เมนูตามลำดับ
 - ตรวจชื่อเมนู Overview ยังคง route ไป `renderOverview()`
 - ตรวจ Backend Frontend SHA ตรงกับ Client snapshot ใหม่
