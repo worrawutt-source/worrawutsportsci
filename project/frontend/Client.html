@@ -977,11 +977,35 @@ async function renderAdvisorReview(){
   }
  }catch(e){a.textContent='โหลดรายการตรวจหัวข้อไม่สำเร็จ: '+e.message;}
 }
-async function renderAdminOverview(){
- const a=$('sectionText');a.textContent='';const m=currentDashboard.metrics||{};const box=el('div',{className:'notice'});
- box.append(el('h2',{},'ภาพรวมระบบ'),el('p',{},'สรุปสถานะระบบสำหรับผู้ดูแลรายวิชา'));
- const stats=el('div',{className:'stats-grid'});[['นักศึกษาในทะเบียน',m.roster||0],['Session ที่ยังใช้งาน',m.sessions||0],['บัญชีผู้ใช้ทั้งหมด',m.users||0]].forEach(([label,value])=>{const card=el('div',{className:'stat-card'});card.append(el('div',{className:'brand-sub'},label),el('h2',{},String(value)));stats.append(card);});
- box.append(stats,el('p',{},'ใช้เมนูด้านซ้ายเพื่อจัดการกลุ่มวิจัย ผู้ใช้ การประเมิน และการตั้งค่าระบบ'));a.append(box);
+async async function renderAdminOverview(){
+ const a=$('sectionText');a.textContent='กำลังโหลดภาพรวมกลุ่มวิจัย...';
+ try{
+  const d=await callApi('apiGetAdminGroupOverview',sessionToken);a.textContent='';
+  const box=el('div',{className:'notice'});box.append(el('h2',{},'ภาพรวมระบบ'),el('p',{},'สถานะกลุ่มวิจัยและรายการที่ผู้ดูแลรายวิชาต้องติดตาม'));
+  const stats=el('div',{className:'stats-grid'});
+  const sections=[
+   {key:'totalGroups',title:'กลุ่มวิจัยทั้งหมด',desc:'กลุ่มที่มีสถานะใช้งาน'},
+   {key:'pendingReview',title:'กลุ่มที่มีงานค้างรอตรวจ',desc:'มีรายงานความก้าวหน้าส่งแล้วและรอ Admin ตรวจ'},
+   {key:'pendingAdvisorConfirmation',title:'เสนอชื่อที่ปรึกษา · รอยืนยัน',desc:'กลุ่มที่เสนอชื่อหรืออาจารย์ตอบรับแล้ว แต่ยังไม่อนุมัติแต่งตั้ง'},
+   {key:'appointedAdvisor',title:'แต่งตั้งที่ปรึกษาแล้ว',desc:'กลุ่มที่มี assignment สถานะอนุมัติ'}
+  ];
+  sections.forEach(section=>{
+   const data=d[section.key]||{count:0,groups:[]};const card=el('div',{className:'stat-card'});
+   card.append(el('div',{className:'brand-sub'},section.title),el('h2',{},String(data.count||0)),el('p',{},section.desc));
+   const list=el('div',{className:'admin-overview-group-list'});
+   if(!data.groups.length)list.append(el('p',{className:'brand-sub'},'ไม่มีรายการ'));
+   data.groups.forEach(g=>{
+    const row=el('div',{className:'admin-overview-group-row'});
+    let detail=String(g.groupName||'ไม่ระบุชื่อกลุ่ม');
+    if(section.key==='pendingReview')detail+=' · รอตรวจ '+String(g.pendingCount||0)+' รายการ'+(g.weeks&&g.weeks.length?' · สัปดาห์ '+g.weeks.join(', '):'');
+    if(section.key==='pendingAdvisorConfirmation')detail+=' · '+String(g.advisorName||'ยังไม่ระบุชื่อ')+(g.source==='INVITATION'?' · รอ Admin อนุมัติหลังตอบรับ':' · รอ Admin ยืนยัน');
+    if(section.key==='appointedAdvisor')detail+=' · '+String(g.advisorName||'ไม่พบข้อมูลอาจารย์');
+    row.append(el('span',{},detail));list.append(row);
+   });
+   card.append(list);stats.append(card);
+  });
+  box.append(stats);a.append(box);
+ }catch(e){a.textContent='โหลดภาพรวมกลุ่มวิจัยไม่สำเร็จ: '+e.message;}
 }
 async function renderOverview(){
  const a=$('sectionText');a.textContent='กำลังโหลดภาพรวมการให้คำปรึกษา...';
