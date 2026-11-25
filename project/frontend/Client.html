@@ -195,29 +195,49 @@ function progressSubmissionState_(progress,weekNo){
  const rows=(Array.isArray(progress)?progress:[]).filter(x=>Number(x.weekNo)===Number(weekNo)).sort((x,y)=>new Date(y.submittedAt||0)-new Date(x.submittedAt||0));
  return rows.length?String(rows[0].status||'').toUpperCase():'NOT_SUBMITTED';
 }
-function createProgressBadge_(text,type){
- const badge=document.createElement('span');badge.className='progress-task-badge '+(type||'new');badge.textContent=text;badge.setAttribute('aria-label',text);return badge;
+function createProgressBadge_(count,description){
+ const badge=document.createElement('span');badge.className='progress-task-badge';badge.textContent=String(count);badge.title=description||('มีงานค้าง '+count+' รายการ');badge.setAttribute('aria-label',badge.title);return badge;
 }
-async function refreshStudentProgressIndicators_(){
- if(!currentDashboard||currentDashboard.user.roleId!=='STUDENT')return;
- const menuButton=[...$('sideMenu').querySelectorAll('.menu-item')].find(x=>x.dataset.menuLabel==='ความก้าวหน้า');
- if(!menuButton)return;
+function createWeekTaskMarker_(weekNo,status){
+ const wrap=document.createElement('span');wrap.className='progress-week-marker';
+ wrap.append(createProgressBadge_(weekNo,status+' · สัปดาห์ที่ '+weekNo));
+ const label=document.createElement('span');label.className='progress-week-status';label.textContent=status;wrap.append(label);return wrap;
+}
+function setMenuTaskCount_(label,count,description){
+ const item=[...$('sideMenu').querySelectorAll('.menu-item')].find(x=>normalizeMenuLabel_(x.dataset.menuLabel)===normalizeMenuLabel_(label));
+ if(!item)return;
+ const old=item.querySelector('.progress-task-badge');if(old)old.remove();
+ const n=Number(count)||0;if(n>0)item.append(createProgressBadge_(n,description||('มีงานค้าง '+n+' รายการในเมนู '+label)));
+}
+async function refreshMenuTaskIndicators_(){
+ if(!currentDashboard||!sessionToken)return;
  try{
-  const d=await getStudentResearchDataOrNoGroup();
-  const weeks=Array.isArray(d.openProgressWeeks)?d.openProgressWeeks:[];
-  const progress=Array.isArray(d.progress)?d.progress:[];
-  let newCount=0,revisionCount=0;
-  weeks.forEach(w=>{
-   const status=progressSubmissionState_(progress,w.week);
-   if(status==='REVISION_REQUIRED')revisionCount++;
-   else if(!['SUBMITTED','RESUBMITTED','APPROVED'].includes(status))newCount++;
-  });
-  const old=menuButton.querySelector('.progress-task-badge');if(old)old.remove();
-  if(newCount||revisionCount){
-   const label=revisionCount&&newCount?'งานใหม่ '+newCount+' · แก้ไข '+revisionCount:revisionCount?'ต้องแก้ไข '+revisionCount:'งานใหม่ '+newCount;
-   menuButton.append(createProgressBadge_(label,revisionCount?'revision':'new'));
+  const counts=await callApi('apiGetMenuTaskCounts',sessionToken);
+  document.querySelectorAll('#sideMenu .menu-item .progress-task-badge').forEach(x=>x.remove());
+  const role=currentDashboard.user.roleId;
+  if(role==='STUDENT'){
+   const c=counts.student||{};
+   setMenuTaskCount_('ความก้าวหน้า',c.progress,'รายงานความก้าวหน้าที่ต้องส่งหรือแก้ไข '+(c.progress||0)+' สัปดาห์');
+   setMenuTaskCount_('งานกลุ่ม',c.taskBoard,'งานกลุ่มที่ยังไม่เสร็จและเกี่ยวข้องกับบัญชีนี้ '+(c.taskBoard||0)+' รายการ');
+   setMenuTaskCount_('หัวข้อวิจัย',c.topics,'หัวข้อวิจัยที่อาจารย์ส่งกลับให้แก้ไข '+(c.topics||0)+' รายการ');
+   setMenuTaskCount_('ประเมินเพื่อน A5',c.peerAssessment,'สมาชิกที่ยังต้องประเมิน A5 '+(c.peerAssessment||0)+' คน');
+  }else if(role==='ADVISOR'||(role==='ADMIN'&&activeWorkspace==='ADVISOR')){
+   const c=counts.advisor||{};
+   setMenuTaskCount_('กลุ่มที่ได้รับมอบหมาย',c.groups,'กลุ่มที่มีหัวข้อหรือรายงานรอตรวจ '+(c.groups||0)+' กลุ่ม');
+   setMenuTaskCount_('ภาพรวมการให้คำปรึกษ',Number(c.groups||0),'กลุ่มที่มีงานรอตรวจ '+(c.groups||0)+' กลุ่ม');
+   setMenuTaskCount_('ประเมิน A4',c.a4,'กลุ่มที่ยังประเมิน A4 ไม่ครบ '+(c.a4||0)+' กลุ่ม');
+  }else if(role==='ADMIN'){
+   const c=counts.admin||{};
+   setMenuTaskCount_('จัดการกลุ่มวิจัย',c.groupsNeedsLeader,'กลุ่มที่ยังไม่ได้กำหนดหัวหน้ากลุ่ม '+(c.groupsNeedsLeader||0)+' กลุ่ม');
+   setMenuTaskCount_('กำหนดอาจารย์ที่ปรึกษา',c.advisorAssignment,'กลุ่มที่รอแต่งตั้ง/ยืนยันอาจารย์ที่ปรึกษา '+(c.advisorAssignment||0)+' กลุ่ม');
+   setMenuTaskCount_('จัดการรายงานความก้าวหน้า',c.progressManagement,'รายงานความก้าวหน้าที่รอตรวจ '+(c.progressManagement||0)+' รายงาน');
+   setMenuTaskCount_('จัดการงานกลุ่ม',c.taskBoard,'งานกลุ่มที่ยังไม่เสร็จ '+(c.taskBoard||0)+' รายการ');
+   setMenuTaskCount_('ติดตามจริยธรรม',c.ethics,'กลุ่มที่ยังไม่ได้กำหนดแผนจริยธรรม '+(c.ethics||0)+' กลุ่ม');
+   setMenuTaskCount_('สัญญาณเตือนความเสี่ยง',c.risk,'สัญญาณเตือนที่ยังไม่ปิด '+(c.risk||0)+' รายการ');
+   setMenuTaskCount_('ประเมินผล A1–A6',c.assessment,'กลุ่มที่คะแนน A1–A4 ยังไม่ครบ '+(c.assessment||0)+' กลุ่ม');
+   setMenuTaskCount_('บัญชีผู้ใช้',c.users,'คำเชิญบัญชีที่ยังดำเนินการ '+(c.users||0)+' รายการ');
   }
- }catch(e){console.warn('โหลดสถานะงานใหม่ไม่สำเร็จ',e);}
+ }catch(e){console.warn('โหลดจำนวนงานค้างของเมนูไม่สำเร็จ',e);}
 }
 function renderDashboard(d,metricsOverride){
   const isAdmin=d.user.roleId==='ADMIN';const isAdvisorWorkspace=isAdmin&&activeWorkspace==='ADVISOR';const menu=isAdvisorWorkspace?ADVISOR_WORKSPACE_MENU:d.menu;
@@ -261,7 +281,7 @@ function renderDashboard(d,metricsOverride){
     });
     $('sideMenu').appendChild(b);
   });
-  refreshStudentProgressIndicators_();
+  refreshMenuTaskIndicators_();
   const metrics=Object.entries(metricsOverride||d.metrics||{});
   $('metricGrid').innerHTML='';
   metrics.forEach(([k,v])=>{
@@ -828,7 +848,7 @@ async function renderProgressReports(){
     const card=el('div',{className:'notice'});
     const weekHeading=el('div',{className:'progress-week-heading'});weekHeading.append(el('h3',{},'สัปดาห์ที่ '+w.week+' · '+w.title));
     const weekStatus=latest&&latest.status==='REVISION_REQUIRED'?'ต้องแก้ไข':!latest?'งานใหม่':'';
-    if(weekStatus)weekHeading.append(createProgressBadge_(weekStatus,weekStatus==='ต้องแก้ไข'?'revision':'new'));
+    if(weekStatus)weekHeading.append(createWeekTaskMarker_(w.week,weekStatus));
     card.append(weekHeading);
     if(w.description)card.append(el('p',{},'รายละเอียด: '+w.description));
     if(w.deliverable)card.append(el('p',{},'ผลผลิตที่ต้องส่ง: '+w.deliverable));
