@@ -1324,3 +1324,13 @@ Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migrat
 - Do not run `SNC_ExactIdInventory_READONLY_TEST()` yet: its current output contains exact primary IDs and linked User IDs. PF-19 restricted storage location and PF-20 disposition must be approved first, and the output must remain restricted—not pasted into chat or GitHub.
 - Next action is owner review of `appsscript.json` deployment settings and approval of restricted evidence storage/access/retention plus `PRESERVE` file disposition. Then prepare exact-ID and Drive inventory read-only, using restricted local evidence and sanitized summary only.
 - No GAS execution, Runner, Cleanup, Drive/Sheet/Script Property write, permission change, upload, migration, trigger, deployment, LINE/UrlFetch, or external call was performed.
+
+
+## WP-SUB-2 owner confirmation of appsscript.json settings — 25 Nov 2026
+
+- Owner confirmed the exported `appsscript.json` values `webapp.executeAs=USER_DEPLOYING` and `webapp.access=ANYONE_ANONYMOUS` are intentional/current for this project. This resolves the owner-review item for the exported manifest configuration; no settings were changed.
+- Combined with the fresh GAS export comparison (31/32 tracked code files exact after newline normalization; the only variance is three non-executable trailing comments in Cleanup; the owner-created temporary folder-property utility is explained), the **source-manifest reconciliation PF-02 is owner-reviewed and PASS with documented variance**.
+- This confirmation is about the exported manifest configuration. It does not independently inspect or verify a deployed Web App's effective access/runtime settings, and it does not authorize deployment or access changes.
+- PF-01, PF-03, and PF-08..PF-20 remain BLOCKED except PF-04..PF-07 already PASS. Current overall Preflight remains BLOCKED; no Runner or Cleanup is authorized.
+- Next safe gate: owner must approve PF-19 restricted evidence storage (location, access list, retention/backup) and PF-20 file disposition. Default disposition remains PRESERVE. Exact-ID/Drive inventory must not run until these are approved and the inventory output can be kept restricted.
+- No GAS execution, exact-ID inventory, Drive/Sheet/Properties write, permission change, upload, Runner, Cleanup, migration, trigger, deployment, LINE/UrlFetch, or external call was performed during this checkpoint.
