@@ -1340,3 +1340,21 @@ Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migrat
 - The owner-evidence register marks PF-02 PASS based on the external fresh-export comparison and owner review described above.
 - The current GAS Preflight source still hardcodes its own PF-02 check as BLOCKED because it cannot inspect its own source/deployment manifest. Therefore the earlier GAS log remains exactly as supplied (overall BLOCKED, 4 PASS/16 BLOCKED); this documentation decision does not retroactively alter runtime evidence or make Preflight READY.
 - Any future change to make Preflight consume external PF-02 evidence requires separate source review. No GAS code or runtime result was changed.
+
+
+## WP-SUB-2 PF-19/PF-20 owner approval — 25 Nov 2026
+
+### Owner decision
+- PF-19 APPROVED in principle: exact-ID evidence must be stored in an encrypted, owner-only restricted evidence location; access to GAS Execution Logs containing sensitive inventory output must be restricted to the owner/authorized custodian only.
+- PF-20 APPROVED: file disposition is `PRESERVE`. Do not run Cleanup, delete, move, rename, overwrite, or otherwise alter existing test files as part of WP-SUB-2.
+- No raw exact IDs, actor mappings, emails, Drive File IDs, or file contents are added to this checkpoint or GitHub.
+
+### Operational safety gate
+- The approval establishes the storage and access policy; it does not itself verify encryption, the actual local destination, the GAS project editor list, or Execution Log visibility. Do not claim those controls are enforced until verified.
+- The current exact-ID inventory function logs its full output to GAS Execution Logs. **Do not run it yet** until the owner confirms that the execution log is owner-only/authorized-only and the encrypted evidence destination is identified and ready. If the log cannot be restricted, first prepare a separately reviewed safe-output method that suppresses raw IDs from Logger output; do not modify or execute the existing function without review.
+- After that control verification, run only the read-only Exact-ID Inventory and Drive inventory, capture raw output in the approved restricted encrypted location, and provide only sanitized counts/hashes/status in chat/GitHub.
+
+### Current status
+- PF-19: APPROVED POLICY; operational enforcement/destination verification pending.
+- PF-20: PASS — PRESERVE.
+- Overall WP-SUB-2 remains BLOCKED. No Runner, Cleanup, file disposition action, GAS execution, permission change, or inventory was performed in this checkpoint.
