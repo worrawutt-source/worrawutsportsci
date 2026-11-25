@@ -183,7 +183,7 @@ async function loadDashboard(forcePasswordChange, isSessionRestore=false){
 }
 function roleLabel(role){return ({ADMIN:'อาจารย์ประจำวิชา / ผู้ดูแลระบบ',ADVISOR:'Research Advisor',STUDENT:'Student',SYSTEM_ADMIN:'อาจารย์ประจำวิชา / ผู้ดูแลระบบ',RESEARCH_ADVISOR:'Research Advisor'})[role]||role}
 function normalizeMenuLabel_(value){
-  return String(value||'').normalize('NFC').replace(/[\\u200B-\\u200D\\uFEFF\\u00A0]/g,' ').replace(/\\s+/g,' ').trim();
+  return String(value||'').normalize('NFC').replace(/[\u200B-\u200D\uFEFF\u00A0]/g,' ').replace(/\s+/g,' ').trim();
 }
 function renderDashboard(d){
   $('sideMenu').innerHTML='';
