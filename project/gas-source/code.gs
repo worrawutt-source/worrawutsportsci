@@ -501,6 +501,63 @@ function apiGetAdvisorWorkspaceSummary(token){
   });
 }
 
+/** Read-only task counts for numeric workspace menu badges. */
+function apiGetMenuTaskCounts(token){
+  const ctx=requireSession_(token,null,true),role=ctx.user.ROLE_ID;
+  const out={role,admin:{},advisor:{},student:{}};
+  const activeGroups=readObjectsFresh_('RESEARCH_GROUPS').filter(g=>String(g.STATUS||'').toUpperCase()==='ACTIVE');
+  const groupIds=new Set(activeGroups.map(g=>String(g.GROUP_ID)));
+  const assignments=readObjectsFresh_('ADVISOR_ASSIGNMENTS').filter(a=>groupIds.has(String(a.GROUP_ID||'')));
+  const approvedIds=new Set(assignments.filter(a=>String(a.STATUS||'').toUpperCase()==='APPROVED').map(a=>String(a.GROUP_ID)));
+  if(role===ROLE.ADMIN){
+    out.admin.groupsNeedsLeader=activeGroups.filter(g=>!String(g.GROUP_LEADER_USER_ID||'').trim()).length;
+    const pendingAdvisorIds=new Set(assignments.filter(a=>String(a.STATUS||'').toUpperCase()==='PENDING'&&!approvedIds.has(String(a.GROUP_ID))).map(a=>String(a.GROUP_ID)));
+    readObjectsFresh_('ADVISOR_INVITATIONS').filter(x=>String(x.STATUS||'').toUpperCase()==='ACCEPTED'&&groupIds.has(String(x.GROUP_ID||''))&&!approvedIds.has(String(x.GROUP_ID||''))).forEach(x=>pendingAdvisorIds.add(String(x.GROUP_ID)));
+    out.admin.advisorAssignment=pendingAdvisorIds.size;
+    out.admin.progressManagement=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>groupIds.has(String(r.GROUP_ID||''))&&['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').toUpperCase())).length;
+    out.admin.taskBoard=readObjectsFresh_('GROUP_TASKS').filter(t=>groupIds.has(String(t.GROUP_ID||''))&&!['DONE','CANCELLED','DELETED'].includes(String(t.STATUS||'').toUpperCase())).length;
+    const ethics=readObjectsFresh_('ETHICS_TRACKING');
+    out.admin.ethics=activeGroups.filter(g=>{const e=ethics.find(x=>String(x.GROUP_ID)===String(g.GROUP_ID));return !e||!String(e.ETHICS_PLAN||'').trim()||String(e.ETHICS_PLAN||'').toUpperCase()==='UNDECIDED';}).length;
+    const flags=readObjectsFresh_('EARLY_WARNING_FLAGS');
+    out.admin.risk=flags.filter(x=>!['RESOLVED','CLOSED','DISMISSED','COMPLETED'].includes(String(x.STATUS||'').toUpperCase())).length;
+    out.admin.users=readObjectsFresh_('SYS_INVITATIONS').filter(x=>['PENDING','PREPARING'].includes(String(x.STATUS||'').toUpperCase())&&(!x.EXPIRES_AT||new Date(x.EXPIRES_AT)>new Date())).length;
+    const scores=readObjectsFresh_('GROUP_SCORES');
+    out.admin.assessment=activeGroups.filter(g=>{const x=scores.find(r=>String(r.GROUP_ID)===String(g.GROUP_ID))||{};return ['A1_SCORE','A2_SCORE','A3_SCORE','A4_GROUP_SCORE'].some(k=>x[k]===''||x[k]===null||x[k]===undefined);}).length;
+  }
+  if(role===ROLE.ADVISOR||role===ROLE.ADMIN){
+    const assigned=getAdvisorAssignedGroups_(ctx.user.USER_ID),ids=new Set(assigned.map(g=>String(g.groupId)));
+    const reports=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>ids.has(String(r.GROUP_ID||''))&&['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').toUpperCase()));
+    const topics=readObjectsFresh_('RESEARCH_TOPIC_VERSIONS').filter(r=>ids.has(String(r.GROUP_ID||''))&&String(r.REVIEW_STATUS||'').toUpperCase()==='PENDING');
+    out.advisor.groups=new Set([...reports,...topics].map(r=>String(r.GROUP_ID))).size;
+    const a4Open=String(assessmentSettingsFresh_().WINDOW_A4||'CLOSED').toUpperCase()==='OPEN';
+    if(a4Open){
+      const scores=readObjectsFresh_('GROUP_SCORES'),individual=readObjectsFresh_('INDIVIDUAL_SCORES'),members=readObjectsFresh_('GROUP_MEMBERS').filter(m=>ids.has(String(m.GROUP_ID))&&String(m.STATUS||'').toUpperCase()==='ACTIVE');
+      out.advisor.a4=assigned.filter(g=>{const gs=scores.find(x=>String(x.GROUP_ID)===String(g.groupId))||{};const ms=members.filter(m=>String(m.GROUP_ID)===String(g.groupId));return gs.A4_GROUP_SCORE===''||gs.A4_GROUP_SCORE===null||gs.A4_GROUP_SCORE===undefined||ms.some(m=>{const x=individual.find(y=>String(y.STUDENT_ID)===String(m.STUDENT_ID))||{};return x.A4_INDIVIDUAL_SCORE===''||x.A4_INDIVIDUAL_SCORE===null||x.A4_INDIVIDUAL_SCORE===undefined;});}).length;
+    }else out.advisor.a4=0;
+  }
+  if(role===ROLE.STUDENT){
+    const user=readObjectsFresh_('SYS_USERS').find(u=>String(u.USER_ID)===String(ctx.user.USER_ID))||ctx.user;
+    const sid=normalizeStudentId_(user.STUDENT_ID||ctx.user.STUDENT_ID);
+    const member=readObjectsFresh_('GROUP_MEMBERS').find(m=>(String(m.USER_ID)===String(ctx.user.USER_ID)||(sid&&normalizeStudentId_(m.STUDENT_ID)===sid))&&String(m.STATUS||'').toUpperCase()==='ACTIVE');
+    if(member){
+      const gid=String(member.GROUP_ID);
+      const weeks=readObjectsFresh_('PROGRESS_WEEK_SETTINGS').filter(w=>String(w.IS_OPEN||'').toUpperCase()==='TRUE'||String(w.IS_OPEN||'').toUpperCase()==='1');
+      const reports=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>String(r.GROUP_ID)===gid);
+      out.student.progress=weeks.filter(w=>{const rows=reports.filter(r=>Number(r.WEEK_NO)===Number(w.WEEK_NO)).sort((a,b)=>new Date(b.SUBMITTED_AT||0)-new Date(a.SUBMITTED_AT||0));const status=String(rows[0]&&rows[0].STATUS||'').toUpperCase();return status==='REVISION_REQUIRED'||!['SUBMITTED','RESUBMITTED','APPROVED'].includes(status);}).length;
+      const topicRows=readObjectsFresh_('RESEARCH_TOPIC_VERSIONS').filter(r=>String(r.GROUP_ID)===gid).sort((a,b)=>Number(b.VERSION_NO||0)-Number(a.VERSION_NO||0));
+      out.student.topics=topicRows[0]&&String(topicRows[0].REVIEW_STATUS||'').toUpperCase()==='REVISION_REQUIRED'?1:0;
+      const tasks=readObjectsFresh_('GROUP_TASKS').filter(t=>String(t.GROUP_ID)===gid&&!['DONE','CANCELLED','DELETED'].includes(String(t.STATUS||'').toUpperCase()));
+      out.student.taskBoard=tasks.filter(t=>!String(t.ASSIGNED_TO_USER_ID||'').trim()||String(t.ASSIGNED_TO_USER_ID)===String(ctx.user.USER_ID)).length;
+      if(String(assessmentSettingsFresh_().WINDOW_A5||'CLOSED').toUpperCase()==='OPEN'){
+        const members=readObjectsFresh_('GROUP_MEMBERS').filter(m=>String(m.GROUP_ID)===gid&&String(m.STATUS||'').toUpperCase()==='ACTIVE'&&String(m.STUDENT_ID)!==String(member.STUDENT_ID));
+        const submitted=readObjectsFresh_('PEER_ASSESSMENTS').filter(p=>String(p.GROUP_ID)===gid&&String(p.EVALUATOR_STUDENT_ID)===String(member.STUDENT_ID));
+        out.student.peerAssessment=Math.max(0,members.length-submitted.length);
+      }else out.student.peerAssessment=0;
+    }
+  }
+  return sanitizeForClient_(out);
+}
+
 /** Dashboard bootstrap: all authorization is performed on the server. */
 function apiGetDashboard(token) {
   const ctx = requireSession_(token, null, true);
