@@ -1334,3 +1334,9 @@ Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migrat
 - PF-01, PF-03, and PF-08..PF-20 remain BLOCKED except PF-04..PF-07 already PASS. Current overall Preflight remains BLOCKED; no Runner or Cleanup is authorized.
 - Next safe gate: owner must approve PF-19 restricted evidence storage (location, access list, retention/backup) and PF-20 file disposition. Default disposition remains PRESERVE. Exact-ID/Drive inventory must not run until these are approved and the inventory output can be kept restricted.
 - No GAS execution, exact-ID inventory, Drive/Sheet/Properties write, permission change, upload, Runner, Cleanup, migration, trigger, deployment, LINE/UrlFetch, or external call was performed during this checkpoint.
+
+
+### PF-02 evidence-register vs runtime Preflight distinction
+- The owner-evidence register marks PF-02 PASS based on the external fresh-export comparison and owner review described above.
+- The current GAS Preflight source still hardcodes its own PF-02 check as BLOCKED because it cannot inspect its own source/deployment manifest. Therefore the earlier GAS log remains exactly as supplied (overall BLOCKED, 4 PASS/16 BLOCKED); this documentation decision does not retroactively alter runtime evidence or make Preflight READY.
+- Any future change to make Preflight consume external PF-02 evidence requires separate source review. No GAS code or runtime result was changed.
