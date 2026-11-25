@@ -1368,3 +1368,13 @@ Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migrat
 - PF-19 owner policy approval remains recorded; actual destination and effective access controls are not verified. PF-08 (effective/inherited folder ACL), PF-09 (approved execution identity), and PF-18 (quiet TEST window) remain open.
 - Safer next design is to separate a **sanitized execution report** (counts/check IDs/status only; no exact identifiers in Logger or return) from a restricted exact-evidence artifact. Any code change to implement this separation must be reviewed before use. Do not write raw evidence to Drive or add encryption code without a separately reviewed design and explicit confirmation of the destination/key handling.
 - No GAS execution or code change was performed in this static review.
+
+
+## WP-SUB-2 sanitized Exact-ID Inventory source patch — 25 Nov 2026
+
+- Updated `backend/tests/SNC_ExactIdInventory_READONLY_TEST.gs` on `development` in commit `a5d5ccb6098dd4062c6e93b3b63b8989a200d642`.
+- Change is limited to the read-only inventory function's output boundary: exact primary-ID set comparisons, row resolution, relationships, Submission dependency check, synthetic-prefix check, and AuditLog preservation count remain internal; Logger and returned object now contain only sanitized check statuses/counts. Raw Assignment/Group/GroupMember/User/Submission identifiers and ID relationships are not included in the report. Exception detail is generic to avoid data-dependent leakage.
+- Static source review confirmed the changed function contains no direct Sheets/Properties/Drive/Trigger/UrlFetch write calls and logs the sanitized report only. The local comparison arrays still hold IDs during execution but are not assigned to the returned report.
+- **Not runtime-tested.** No GAS function was executed and no TEST data was read/written by this patch. A GAS-side syntax/runtime test and code review in the TEST project are still required before executing the inventory.
+- This patch reduces output exposure but does not verify GAS project editor access, Script Properties access, effective Drive ACLs, execution identity, or the quiet TEST window. PF-08/PF-09/PF-18 remain unresolved. PF-19 policy is approved; actual control verification remains pending. PF-20 remains PASS — PRESERVE.
+- Next safe action: owner verifies GAS project editor list and who can view execution results; confirms restricted encrypted evidence destination; confirms TEST quiet window. Then sync this exact source to TEST GAS, review the diff, and run only the sanitized read-only inventory if all gates pass. Do not run any Runner or Cleanup.
