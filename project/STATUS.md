@@ -555,3 +555,31 @@ Verified: `Index.html` และ `Client.html` สามารถ fetch จา�
 - Correct Frontend commit pin: `260d13d634bd86161b189c77f93f4587dad1ba52`
 
 ต้องอัปเดต/Deploy เฉพาะ `Code.gs` จาก Feature Branch ไปยัง TEST deployment เดิม แล้วทดสอบเปิด URL เดิม; ยังไม่ได้ Deploy หรือ runtime-test hotfix นี้. ห้ามนำไป Production ก่อน UAT.
+
+
+## 15. Student Progress New-Task Indicator
+
+ดำเนินการตามการอนุมัติของผู้รับผิดชอบโครงการ วันที่ 25 พฤศจิกายน 2026 — Source change ใน Feature Branch; ยังไม่ Merge/Deploy
+
+พฤติกรรม:
+- เมนู `ความก้าวหน้า` ของ STUDENT แสดง Badge `งานใหม่ N` สำหรับสัปดาห์ที่เปิดรับและกลุ่มยังไม่มีรายงานส่งสำเร็จ
+- หากรายงานล่าสุดมีสถานะ `REVISION_REQUIRED` แสดง `ต้องแก้ไข N` (หรือแสดงทั้งงานใหม่และแก้ไขเมื่อมีทั้งสองสถานะ)
+- หน้ารายงานความก้าวหน้าแสดง Badge `งานใหม่` หรือ `ต้องแก้ไข` ข้างหัวข้อสัปดาห์
+- Badge คำนวณจาก `openProgressWeeks` และรายงานล่าสุดของกลุ่มผ่าน API เดิม `apiGetStudentResearchData`; ไม่ใช้ read/dismiss state
+- บันทึกร่างไม่ทำให้ Badge หาย; Badge จะ refresh หลัง `apiStudentSubmitProgress` สำเร็จเท่านั้น
+- สถานะ `SUBMITTED`, `RESUBMITTED`, `APPROVED` ไม่แสดง New Task Badge
+
+ไฟล์ที่เปลี่ยน:
+- `project/frontend/Client.html`
+- `project/frontend/Styles.html`
+- `project/gas-source/code.gs` (Frontend commit pin เท่านั้น)
+
+Frontend commit: `776726ea01ebb87a04cac717e29ee51990799702`
+Frontend content SHA: `f3e0ee2d1d2782911fc0b2934ab132dfd69a6ec7`
+Styles content SHA: `a3f1522784ddc4bb4e97b6a3bfb8ce116ef21f12`
+Backend commit: `1786a57f1911772abf47feca287d24ee4a05c934`
+Backend content SHA: `2badb0de6ec1c0aba6f25b1111f42a17fb189161`
+
+Static verification: 11 checks ผ่าน — student-only menu badge, open-week/status calculation, submitted statuses clear badge, revision badge, refresh after successful submit, week-level badge, CSS and pinned frontend SHA.
+
+Runtime / browser UAT: PENDING. No schema change; no deployment performed.
