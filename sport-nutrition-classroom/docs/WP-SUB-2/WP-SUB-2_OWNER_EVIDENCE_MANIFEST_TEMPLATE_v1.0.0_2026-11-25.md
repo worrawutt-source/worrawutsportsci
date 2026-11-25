@@ -57,6 +57,7 @@ Do not place raw User IDs, emails, Assignment/Group/Submission IDs, Drive File I
 - `SNC_SetFolderProperty_TEMP.js` is an owner-created temporary utility to correct `SNC_SUBMISSION_FOLDER_ID`. Its presence in GAS is expected and explained; the property was previously verified by owner log. Do not rerun it unless the owner specifically needs to correct the property again.
 - `appsscript.json` is not versioned in this repository. The export declares `webapp.executeAs=USER_DEPLOYING` and `webapp.access=ANYONE_ANONYMOUS`. The owner confirmed these values are intentional/current for this project. No setting was changed.
 - Source code reconciliation is **owner-reviewed with one documented comment-only variance and one owner-created temporary utility**. PF-02 is now **PASS** for the source-manifest comparison and exported manifest review. This does not independently verify the effective settings of an already deployed Web App; no deployment was inspected or changed.
+- Runtime distinction: the current GAS Preflight source intentionally hardcodes its PF-02 result as `BLOCKED` because it cannot inspect its own source/deployment manifest. The PASS above is the **external owner evidence-register status** after export comparison and owner review; it does not change the already supplied GAS Preflight log or make the overall Preflight READY. A code refinement to consume external evidence would require separate review.
 
 | File | Exported normalized blob SHA | GitHub development blob SHA | Disposition |
 |---|---|---|---|
