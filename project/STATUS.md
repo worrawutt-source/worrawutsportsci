@@ -499,3 +499,28 @@ Backend source commit: `3fc1c5135cccc59a9f4722096a9dadbb1a264e56`
 - ยังไม่ได้ทดสอบ UAT ด้วย Admin ที่ได้รับ assignment และ Advisor ปกติ
 - ยังไม่ได้ Deploy TEST snapshot นี้; URL เดิมจะคงเดิมเมื่ออัปเดต deployment เดิม แต่การใช้งานโค้ดนี้ยังต้อง Deploy TEST โดยผู้รับผิดชอบ
 - การเปลี่ยนแปลงยังอยู่ใน Feature Branch และรอ Review/Merge
+
+
+## 12. Admin Group Overview — Pending Review and Advisor Status
+
+ปรับปรุง Admin Overview ตามคำสั่งวันที่ 25 พฤศจิกายน 2026 (ยังอยู่ใน Feature Branch; ยังไม่ Merge/Deploy)
+
+แสดงข้อมูล 4 หมวดจากข้อมูลจริง:
+1. กลุ่มวิจัยทั้งหมด — นับกลุ่ม `RESEARCH_GROUPS` สถานะ `ACTIVE`
+2. กลุ่มที่มีงานค้างรอตรวจ — นับกลุ่มไม่ซ้ำที่มี `PROGRESS_REPORTS` สถานะ `SUBMITTED` หรือ `RESUBMITTED`; แสดงจำนวนรายงานและสัปดาห์ที่รอตรวจ
+3. เสนอชื่ออาจารย์ที่ปรึกษาแต่ยังรอยืนยัน — รวม `ADVISOR_ASSIGNMENTS` สถานะ `PENDING` และ `ADVISOR_INVITATIONS` สถานะ `ACCEPTED` โดยไม่นับกลุ่มที่มี assignment `APPROVED` ซ้ำ
+4. แต่งตั้งอาจารย์ที่ปรึกษาแล้ว — นับกลุ่มไม่ซ้ำที่มี `ADVISOR_ASSIGNMENTS` สถานะ `APPROVED`; แสดงชื่ออาจารย์
+
+ไฟล์ที่เปลี่ยนเพิ่มใน Feature Branch:
+- `project/frontend/Client.html`
+- `project/gas-source/code.gs`
+
+API ใหม่: `apiGetAdminGroupOverview(token)` — Admin-only, read-only, ใช้ชีตเดิมและ `readObjectsFresh_`; ไม่มีการสร้าง/แก้ Schema หรือข้อมูล
+
+Frontend commit: `92c95433cdb09c9899ceefd719b8f053c844c09d`
+Backend commit: `d36eb59b3002928ffde43862eb112bf05b5ea7c9`
+Backend Frontend SHA pin: `92c95433cdb09c9899ceefd719b8f053c844c09d`
+
+Static source verification: 12 checks ผ่าน — ตรวจหมวดข้อมูลทั้ง 4, กลุ่มค้างตรวจ/สัปดาห์, ชื่อผู้ถูกเสนอ/ผู้ได้รับแต่งตั้ง, Admin-only guard, status filters, no-schema read-only และ frontend pin
+
+Runtime / browser UAT: **PENDING**. ยังไม่ได้ Deploy TEST หรือ Production.
