@@ -127,7 +127,7 @@ function doPost(e){
 const FRONTEND_CONFIG = Object.freeze({
   OWNER: 'worrawutt-source',
   REPOSITORY: 'worrawutsportsci',
-  COMMIT_SHA: '91da1c393b4a515f6366cec14d09549a1703bb04',
+  COMMIT_SHA: 'ec100c82daad257ff088c8effd1fece7a0b07202',
   BASE_PATH: 'project/frontend/',
   CACHE_SECONDS: 21600,
   CACHE_CHUNK_SIZE: 20000
@@ -437,7 +437,7 @@ function getAdvisorAssignedGroups_(advisorUserId){
 
 /** Advisor-only: list groups with an approved assignment to the current advisor. */
 function apiGetAdvisorAssignedGroups(token){
-  const ctx=requireSession_(token,[ROLE.ADVISOR]);
+  const ctx=requireAdvisorWorkspaceSession_(token);
   return sanitizeForClient_(getAdvisorAssignedGroups_(ctx.user.USER_ID));
 }
 
@@ -454,7 +454,7 @@ function advisorWorkspaceSummary_(advisorUserId){
 
 /** Advisor workspace summary: one server round-trip for dashboard and group monitoring. */
 function apiGetAdvisorWorkspaceSummary(token){
-  const ctx=requireSession_(token,[ROLE.ADVISOR]);
+  const ctx=requireAdvisorWorkspaceSession_(token);
   const summary=advisorWorkspaceSummary_(ctx.user.USER_ID);
   const groups=summary.groups;
   const ids=new Set(groups.map(g=>String(g.groupId)));
@@ -514,6 +514,7 @@ function apiGetDashboard(token) {
   };
   if (role === ROLE.ADMIN) {
     base.metrics = {users:readObjects_('SYS_USERS').length, sessions:readObjects_('SYS_SESSIONS').filter(s=>!s.REVOKED_AT && new Date(s.EXPIRES_AT)>new Date()).length, roster:readObjects_('STUDENTS').length};
+    base.advisorWorkspaceAvailable = getAdvisorAssignedGroups_(ctx.user.USER_ID).length > 0;
     base.menu = ['ภาพรวมระบบ','จัดการกลุ่มวิจัย','กำหนดอาจารย์ที่ปรึกษา','บันทึกการเข้าพบ','จัดการรายงานความก้าวหน้า','จัดการงานกลุ่ม','ติดตามจริยธรรม','สัญญาณเตือนความเสี่ยง','ประเมินผล A1–A6','บัญชีผู้ใช้','นำเข้ารายชื่อนักศึกษา','บันทึกระบบ','การตั้งค่าระบบ'];
     } else if (role === ROLE.ADVISOR) {
     const advisorSummary=advisorWorkspaceSummary_(ctx.user.USER_ID);
@@ -1359,7 +1360,7 @@ function apiAdminReviewAdvisorInvitation(token,invitationId,decision){
     }
 
     let user=readObjectsFresh_('SYS_USERS').find(u=>normalizeEmail_(u.EMAIL)===normalizeEmail_(row.ADVISOR_EMAIL));
-    if(user&&user.ROLE_ID!==ROLE.ADVISOR)throw new Error('อีเมลนี้ถูกใช้กับบัญชีบทบาทอื่น ไม่สามารถสร้างบัญชี Advisor ซ้ำได้');
+    if(user&&![ROLE.ADVISOR,ROLE.ADMIN].includes(user.ROLE_ID))throw new Error('อีเมลนี้ถูกใช้กับบัญชีบทบาทอื่น ไม่สามารถสร้างบัญชี Advisor ซ้ำได้');
     if(!user){
       if(!row.PASSWORD_SALT||!row.PASSWORD_HASH)throw new Error('คำเชิญนี้ยังไม่มีรหัสผ่านที่อาจารย์ตั้งไว้ กรุณาตรวจสอบข้อมูลก่อนอนุมัติ');
       user=createUser_({email:row.ADVISOR_EMAIL,displayName:row.ADVISOR_NAME,roleId:ROLE.ADVISOR,passwordSalt:row.PASSWORD_SALT,passwordHash:row.PASSWORD_HASH,emailVerified:true,status:'ACTIVE',createdBy:ctx.user.USER_ID});
@@ -1448,7 +1449,7 @@ function apiAdminReviewAdvisorNomination(token,assignmentId,decision){
 function apiAdminAssignAdvisor(token,groupId,advisorUserId){
   const ctx=requireSession_(token,[ROLE.ADMIN]);
   const group=readObjects_('RESEARCH_GROUPS').find(g=>g.GROUP_ID===groupId&&g.STATUS==='ACTIVE');if(!group)throw new Error('ไม่พบกลุ่มวิจัย');
-  const advisor=readObjects_('SYS_USERS').find(u=>u.USER_ID===advisorUserId&&u.ROLE_ID===ROLE.ADVISOR&&u.STATUS==='ACTIVE');if(!advisor)throw new Error('บัญชีอาจารย์ที่ปรึกษาไม่ถูกต้องหรือไม่ได้เปิดใช้งาน');
+  const advisor=readObjects_('SYS_USERS').find(u=>u.USER_ID===advisorUserId&&[ROLE.ADVISOR,ROLE.ADMIN].includes(u.ROLE_ID)&&u.STATUS==='ACTIVE');if(!advisor)throw new Error('บัญชีอาจารย์ที่ปรึกษาไม่ถูกต้องหรือไม่ได้เปิดใช้งาน');
   const lock=LockService.getScriptLock();lock.waitLock(60000);
   try{
     const sh=sheet_('ADVISOR_ASSIGNMENTS');
@@ -1573,7 +1574,7 @@ function apiAdminGetMeetingMonitoring(token){
 
 /** Advisor verifies or requests revision of the latest group submission. */
 function apiAdvisorReviewMeetingSubmission(token,fileRecordId,decision,comment){
-  const ctx=requireSession_(token,[ROLE.ADVISOR]);
+  const ctx=requireAdvisorWorkspaceSession_(token);
   if(!['VERIFIED','REVISION_REQUIRED'].includes(String(decision)))throw new Error('สถานะตรวจสอบไม่ถูกต้อง');
   const allFiles=readObjectsFresh_('MEETING_FILES');const row=allFiles.find(f=>String(f.FILE_RECORD_ID)===String(fileRecordId));
   if(!row)throw new Error('ไม่พบเอกสารที่ส่ง'); assertGroupAccess_(ctx,String(row.GROUP_ID));
@@ -1604,8 +1605,8 @@ function apiAdminSetAssessmentWindow(token,type,isOpen){
   logSystem_('ASSESSMENT_WINDOW_CHANGED','ASSESSMENT',type,{status:isOpen?'OPEN':'CLOSED'},ctx.user.USER_ID); return {ok:true,message:(isOpen?'เปิด':'ปิด')+'การประเมิน '+type+' แล้ว'};
 }
 function apiAdvisorSaveA4(token,payload){
-  const ctx=requireSession_(token,[ROLE.ADMIN,ROLE.ADVISOR]);assertGradeEditable_(); payload=payload||{}; const groupId=String(payload.groupId||''); assertGroupAccess_(ctx,groupId);
-  if(ctx.user.ROLE_ID===ROLE.ADVISOR && assessmentSettingsFresh_().WINDOW_A4!=='OPEN') throw new Error('Admin ยังไม่ได้เปิดช่วงประเมิน A4');
+  const ctx=requireAdvisorWorkspaceSession_(token);assertGradeEditable_(); payload=payload||{}; const groupId=String(payload.groupId||''); assertGroupAccess_(ctx,groupId);
+  if((ctx.user.ROLE_ID===ROLE.ADVISOR||ctx.advisorRestricted) && assessmentSettingsFresh_().WINDOW_A4!=='OPEN') throw new Error('Admin ยังไม่ได้เปิดช่วงประเมิน A4');
   const groupScore=Number(payload.groupScore); if(!Number.isFinite(groupScore)||groupScore<0||groupScore>10) throw new Error('คะแนน A4 ระดับกลุ่มต้องอยู่ระหว่าง 0–10');
   const members=readObjects_('GROUP_MEMBERS').filter(m=>m.GROUP_ID===groupId&&m.STATUS==='ACTIVE'); const individual=payload.individualScores||{};
   const validated=members.map(m=>{const v=Number(individual[String(m.STUDENT_ID)]);if(!Number.isFinite(v)||v<0||v>10)throw new Error('กรุณากรอกคะแนน A4 รายบุคคล 0–10 ให้ครบ: '+m.STUDENT_ID);return {studentId:m.STUDENT_ID,score:v};});
@@ -1992,7 +1993,7 @@ function apiStudentSaveResearchTopic(token,payload){
   }finally{lock.releaseLock();}
 }
 function apiAdvisorReviewResearchTopic(token,versionId,decision,comment){
-  const ctx=requireSession_(token,[ROLE.ADMIN,ROLE.ADVISOR]);
+  const ctx=requireAdvisorWorkspaceSession_(token);
   if(!['APPROVED','REVISION_REQUIRED','REJECTED'].includes(decision))throw new Error('สถานะการพิจารณาไม่ถูกต้อง');
   const note=String(comment||'').trim();
   if(['REVISION_REQUIRED','REJECTED'].includes(decision)&&note.length<5)throw new Error('กรุณาระบุข้อเสนอแนะอย่างน้อย 5 ตัวอักษรสำหรับผลการพิจารณานี้');
@@ -2130,7 +2131,7 @@ function migrateCollaborativeWorkspaceSchema_(){
 }
 
 function apiAdvisorAddFeedback(token,payload){
-  const ctx=requireSession_(token,[ROLE.ADVISOR,ROLE.ADMIN]);payload=payload||{};const groupId=String(payload.groupId||'');assertGroupAccess_(ctx,groupId);
+  const ctx=requireAdvisorWorkspaceSession_(token);payload=payload||{};const groupId=String(payload.groupId||'');assertGroupAccess_(ctx,groupId);
   const comment=String(payload.comment||'').trim();if(comment.length<5)throw new Error('กรุณาระบุข้อเสนอแนะอย่างน้อย 5 ตัวอักษร');
   const id=Utilities.getUuid();appendObject_('ADVISOR_FEEDBACK',{FEEDBACK_ID:id,GROUP_ID:groupId,RELATED_TYPE:String(payload.relatedType||'GENERAL'),RELATED_ID:String(payload.relatedId||''),COMMENT:comment,CREATED_BY:ctx.user.USER_ID,CREATED_AT:new Date(),STATUS:'ACTIVE'});
   logSystem_('ADVISOR_FEEDBACK_ADDED','GROUP',groupId,{feedbackId:id},ctx.user.USER_ID);return {ok:true,message:'บันทึกข้อเสนอแนะแล้ว'};
@@ -2332,13 +2333,21 @@ function migrateResearchWorkflowSchema_(){
   };
 }
 
+function requireAdvisorWorkspaceSession_(token){
+  const ctx=requireSession_(token,[ROLE.ADMIN,ROLE.ADVISOR]);
+  if(ctx.user.ROLE_ID===ROLE.ADMIN){
+    if(!getAdvisorAssignedGroups_(ctx.user.USER_ID).length)throw new Error('บัญชี Admin นี้ยังไม่ได้รับแต่งตั้งเป็น Advisor');
+    ctx.advisorRestricted=true;
+  }
+  return ctx;
+}
 function assertGroupAccess_(ctx,groupId){
   const targetGroupId=String(groupId||'').trim();
   const groups=readObjectsFresh_('RESEARCH_GROUPS');
   const group=groups.find(g=>String(g.GROUP_ID||'').trim()===targetGroupId&&String(g.STATUS||'').trim().toUpperCase()==='ACTIVE');
   if(!group)throw new Error('ไม่พบกลุ่มวิจัย');
-  if(ctx.user.ROLE_ID===ROLE.ADMIN)return true;
-  if(ctx.user.ROLE_ID===ROLE.ADVISOR){
+  if(ctx.user.ROLE_ID===ROLE.ADMIN&&!ctx.advisorRestricted)return true;
+  if(ctx.user.ROLE_ID===ROLE.ADVISOR||ctx.advisorRestricted){
     const advisorId=String(ctx.user.USER_ID||'').trim();
     const assigned=readObjectsFresh_('ADVISOR_ASSIGNMENTS').some(a=>
       String(a.GROUP_ID||'').trim()===targetGroupId&&
