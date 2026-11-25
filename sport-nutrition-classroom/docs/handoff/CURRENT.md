@@ -1259,3 +1259,29 @@ Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migrat
 - Owner must manually update the existing TEST GAS Script Property `SNC_SUBMISSION_FOLDER_ID` to `1qkSUK8nEOw_bZqEIEkpM4VJQYZEZjK56`, save, and verify it. The assistant did not and cannot confirm that property has been changed.
 - Do not rerun Preflight until the owner has manually synced the updated Preflight source and aligned the Script Property. Then run only `SNC_WP_SUB_2_Preflight_READONLY_TEST()` once and provide the complete sanitized log.
 - No GAS execution, Script Property write, Drive mutation, Sheet write, Runner, Cleanup, migration, trigger, deployment, or external call was performed by the assistant. The latest Preflight remains BLOCKED pending owner configuration and the remaining evidence gates.
+
+
+## WP-SUB-2 owner Preflight PF-04 PASS and source manifest comparison — 25 Nov 2026
+
+### Owner-run Preflight evidence — 25 Nov 2026, 12:59 (Asia/Bangkok)
+- Owner supplied the latest execution of `SNC_WP_SUB_2_Preflight_READONLY_TEST()`.
+- Result: `success=true`, `status=BLOCKED`, checksTotal=20, PASS=4, FAIL=0, BLOCKED=16, NOT_RUN=0.
+- PF-04 is now PASS: `folderConfigMatch=true`; PF-05, PF-06 and PF-07 also PASS (folder name/parent, four child folders, PRIVATE sharing access).
+- Transient row counts: SubmissionFiles=2, Submissions=12, Groups=3, GroupMembers=7, AuditLogs=102, Assignments=26, CourseOfferings=4, Users=24. These are counts only, not exact-ID reconciliation.
+- Safety fields: writesExpected=0, externalCallsExpected=0, driveMutationsExpected=0, sheetWritesExpected=0, propertiesWritesExpected=0, triggersExpected=0, cleanupPerformed=false.
+- PF-01..PF-03 and PF-08..PF-20 remain BLOCKED. PF-04 folder configuration issue is resolved; no Runner or Cleanup is authorized.
+
+### GAS Export vs GitHub development — static Source Manifest comparison
+- Compared owner-provided `SNC_GAS_EXPORT_20261125.zip` (33 files: 32 code files plus `appsscript.json`) against the current `development` source tree. Exported code files were compared as Git blobs after accounting for the export's missing final newline.
+- **30 of 32 code files match** GitHub `development` exactly after newline normalization.
+- Two code-file differences remain:
+  1. `SNC_ApprovedCleanup_EXACT14_TEST.js`: the GAS export contains three trailing commented invocation lines; GitHub's `SNC_ApprovedCleanup_EXACT14_TEST.gs` does not. The exported lines are comments, not an executable top-level call. Keep Cleanup unrun.
+  2. `SNC_AuditLogReconciliation_READONLY_TEST.js`: GAS export blob (normalized) `0e3dedbd94ad67b850cea8bc8bf3a0fa7877bd3a` differs from GitHub `development` blob `afc868148b568d2ed524c1fe66a2723b715e4dc5`. GitHub's version includes pre-batch AuditLog baseline validation, exact post-baseline delta/untracked-ID checks, and required-header validation absent from the exported version. This is a substantive source-sync gap.
+- `appsscript.json` is present in the export but is not versioned in the repository, so it cannot be included in the GitHub blob comparison. Exported manifest declares `webapp.executeAs=USER_DEPLOYING` and `webapp.access=ANYONE_ANONYMOUS`; treat this as deployment configuration requiring owner review. No deployment was inspected or changed.
+- Therefore PF-02 remains BLOCKED. Do not mark Source Manifest reconciled until the owner syncs/reviews the two differences and the GAS manifest configuration is accounted for.
+
+### Next safe step
+1. Owner syncs the current read-only `SNC_AuditLogReconciliation_READONLY_TEST.gs` from `development` into the same TEST GAS project, and confirms the Cleanup file has no executable top-level invocation (do not run it).
+2. Re-export the GAS project and recompare all code files plus the separately reviewed `appsscript.json`.
+3. Prepare the exact-ID baseline from the existing WP-SUB-1 manifest and current TEST rows, plus a read-only Drive inventory. This requires an owner-approved Manifest location/disposition (PF-19/PF-20); do not write or persist a manifest yet.
+- No GAS execution by the assistant, no Sheet/Script Property/Drive writes, no file upload/permission change, no Runner, Cleanup, migration, trigger, deployment, LINE/UrlFetch, or external call was performed.
