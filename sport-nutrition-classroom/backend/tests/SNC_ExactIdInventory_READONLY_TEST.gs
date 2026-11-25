@@ -18,16 +18,18 @@ var SNC_EID_CONFIG_TEST = Object.freeze({
 });
 
 function SNC_ExactIdInventory_READONLY_TEST() {
+  // SAFE OUTPUT: exact IDs are compared only in memory and are never placed in
+  // Logger output or the returned report. This function is still READ ONLY.
   var out={
     runner:'SNC_ExactIdInventory_READONLY_TEST',
     version:SNC_EID_CONFIG_TEST.VERSION,
-    evidenceLevel:'READ_ONLY_EXACT_PRIMARY_ID_AND_DEPENDENCY_INVENTORY',
+    evidenceLevel:'READ_ONLY_EXACT_SET_RECONCILIATION_SANITIZED',
     mode:'READ_ONLY',
     writesExpected:0,
     externalCallsExpected:0,
     status:'BLOCKED',
     checks:[],
-    inventory:null
+    inventorySummary:null
   };
   function check(id,ok,detail){
     out.checks.push({id:id,status:ok?'PASS':'BLOCKED',detail:detail});
@@ -38,7 +40,8 @@ function SNC_ExactIdInventory_READONLY_TEST() {
       pass:out.checks.filter(function(x){return x.status==='PASS';}).length,
       blocked:out.checks.filter(function(x){return x.status!=='PASS';}).length
     };
-    Logger.log('SNC_EXACT_ID_INVENTORY='+JSON.stringify(out));
+    // Only sanitized counts/status leave this function. No raw IDs or mappings.
+    Logger.log('SNC_EXACT_ID_INVENTORY_SANITIZED='+JSON.stringify(out));
     return out;
   }
   try {
@@ -48,7 +51,7 @@ function SNC_ExactIdInventory_READONLY_TEST() {
     var ss=SpreadsheetApp.getActiveSpreadsheet();
     var envOk=env==='TEST'&&configured===SNC_EID_CONFIG_TEST.TEST_SPREADSHEET_ID&&
       Boolean(ss)&&ss.getId()===SNC_EID_CONFIG_TEST.TEST_SPREADSHEET_ID;
-    check('ENV-01',envOk,'Exact approved TEST environment and active Spreadsheet identity.');
+    check('ENV-01',envOk,'Exact approved TEST environment and active Spreadsheet identity verified.');
     if(!envOk)return finish();
 
     var core=SNC_GetSyntheticFixtureManifest_TEST();
@@ -61,8 +64,8 @@ function SNC_ExactIdInventory_READONLY_TEST() {
       a.status==='IN_PROGRESS'&&a.continuation&&
       a.continuation.status==='COMPLETE_WITH_HISTORICAL_FAILURE';
     check('MANIFEST-01',Boolean(manifestOk),
-      manifestOk?'Core, Assignment/Group and completed continuation manifests resolve.':
-      'Required manifests or expected completed continuation state are missing/inconsistent.');
+      manifestOk?'Core and Assignment/Group manifests resolve with expected continuation state.':
+      'Required manifests or expected continuation state are missing/inconsistent.');
     if(!manifestOk)return finish();
 
     var expectedAssignments=Object.keys(a.assignments).map(function(k){return String(a.assignments[k]);});
@@ -87,8 +90,8 @@ function SNC_ExactIdInventory_READONLY_TEST() {
       sameSet(groupDelta,expectedGroups)&&sameSet(memberDelta,expectedMembers)&&
       expectedAssignments.length===4&&expectedGroups.length===3&&expectedMembers.length===7;
     check('PRIMARY-IDS-01',idsOk,
-      idsOk?'Current post-baseline primary IDs exactly match the manifest: 4 Assignments, 3 Groups, 7 GroupMembers.':
-      'Current post-baseline primary IDs do not exactly match the manifest; cleanup candidate list must not be used.');
+      idsOk?'Exact primary-ID sets match manifests (4 Assignments, 3 Groups, 7 GroupMembers); identifiers withheld.':
+      'Exact primary-ID set comparison failed; identifiers withheld and no cleanup candidates produced.');
 
     var assignmentRows=sncAGR_rows_TEST_(ss,'Assignments');
     var groupRows=sncAGR_rows_TEST_(ss,'Groups');
@@ -107,7 +110,7 @@ function SNC_ExactIdInventory_READONLY_TEST() {
         submissionType:String(r.SubmissionType||''),
         status:String(r.Status||''),
         maxGroupMembers:String(r.MaxGroupMembers||'')
-      }:{primaryKey:id,recordStatus:'MISSING_OR_DUPLICATE'};
+      }:{recordStatus:'MISSING_OR_DUPLICATE'};
     });
     var groupRecords=expectedGroups.map(function(id){
       var r=exactlyOne(groupRows,'GroupID',id);
@@ -117,7 +120,7 @@ function SNC_ExactIdInventory_READONLY_TEST() {
         groupName:String(r.GroupName||''),
         status:String(r.Status||''),
         membershipLocked:Boolean(r.MembershipLockedAt)
-      }:{primaryKey:id,recordStatus:'MISSING_OR_DUPLICATE'};
+      }:{recordStatus:'MISSING_OR_DUPLICATE'};
     });
     var memberRecords=expectedMembers.map(function(id){
       var r=exactlyOne(memberRows,'GroupMemberID',id);
@@ -128,14 +131,14 @@ function SNC_ExactIdInventory_READONLY_TEST() {
         memberRole:String(r.MemberRole||''),
         status:String(r.Status||''),
         leftAt:Boolean(r.LeftAt)
-      }:{primaryKey:id,recordStatus:'MISSING_OR_DUPLICATE'};
+      }:{recordStatus:'MISSING_OR_DUPLICATE'};
     });
     var rowResolution=assignmentRecords.every(function(r){return !r.recordStatus;})&&
       groupRecords.every(function(r){return !r.recordStatus;})&&
       memberRecords.every(function(r){return !r.recordStatus;});
     check('ROW-RESOLUTION-01',rowResolution,
-      rowResolution?'Every manifest primary ID resolves to exactly one current row.':
-      'One or more manifest IDs resolve to zero or multiple rows.');
+      rowResolution?'All manifest IDs resolve to exactly one row; identifiers withheld.':
+      'One or more manifest IDs resolve to zero or multiple rows; identifiers withheld.');
 
     var expectedGroupIdSet=expectedGroups;
     var groupMembersLinked=memberRecords.every(function(m){
@@ -147,57 +150,49 @@ function SNC_ExactIdInventory_READONLY_TEST() {
     var groupOfferingOk=groupRecords.every(function(r){
       return !r.recordStatus&&r.offeringId===String(core.offeringId);
     });
-    check('RELATIONSHIPS-01',groupMembersLinked&&assignmentOfferingOk&&groupOfferingOk,
-      groupMembersLinked&&assignmentOfferingOk&&groupOfferingOk?
-      'All Assignment/Group rows point to the fixture Offering and all GroupMembers point to manifest Groups.':
-      'A fixture relationship does not match the manifests.');
+    var relationshipOk=groupMembersLinked&&assignmentOfferingOk&&groupOfferingOk;
+    check('RELATIONSHIPS-01',relationshipOk,
+      relationshipOk?'Assignment/Group offering and GroupMember relationships match manifests; identifiers withheld.':
+      'One or more relationships do not match manifests; identifiers withheld.');
 
     var foreignSubmissions=submissionRows.filter(function(r){
       return expectedAssignments.indexOf(String(r.AssignmentID))>=0||
         expectedGroupIdSet.indexOf(String(r.GroupID))>=0;
-    }).map(function(r){
-      return {submissionId:String(r.SubmissionID||''),assignmentId:String(r.AssignmentID||''),groupId:String(r.GroupID||'')};
     });
-    check('SUBMISSION-DEPENDENCY-01',foreignSubmissions.length===0,
-      foreignSubmissions.length===0?'No Submission row references the candidate Assignments or Groups.':
-      'Submission references exist; do not remove any referenced Assignment/Group.');
+    var noSubmissionDependencies=foreignSubmissions.length===0;
+    check('SUBMISSION-DEPENDENCY-01',noSubmissionDependencies,
+      noSubmissionDependencies?'No Submission row references candidate Assignments or Groups.':
+      'Submission dependencies exist; no file disposition or cleanup is permitted.');
 
     var prefixOk=assignmentRecords.every(function(r){return String(r.title||'').indexOf(SNC_EID_CONFIG_TEST.PREFIX)===0;})&&
       groupRecords.every(function(r){return String(r.groupName||'').indexOf(SNC_EID_CONFIG_TEST.PREFIX)===0;});
     check('SYNTHETIC-IDENTITY-01',prefixOk,
-      prefixOk?'All candidate Assignment titles and Group names carry the reserved synthetic prefix.':
-      'One or more candidate rows do not carry the expected synthetic prefix.');
+      prefixOk?'Candidate Assignment titles and Group names use reserved synthetic prefix.':
+      'Synthetic identity check failed; identifiers withheld.');
 
-    var memberGroupSummary={};
-    memberRecords.forEach(function(r){
-      if(!r.recordStatus){
-        if(!memberGroupSummary[r.groupId])memberGroupSummary[r.groupId]=[];
-        memberGroupSummary[r.groupId].push(r.primaryKey);
-      }
-    });
     var auditIds=(sncAGR_ids_TEST_(ss).AuditLogs||[]).map(String);
     var auditDelta=auditIds.filter(function(id){return (base.AuditLogs||[]).map(String).indexOf(id)<0;});
-    var expectedAuditCount=19;
-    check('AUDIT-PRESERVATION-01',auditDelta.length===expectedAuditCount,
-      auditDelta.length===expectedAuditCount?
-      '19 post-baseline AuditLog IDs remain present; inventory does not propose deleting them.':
-      'Post-baseline AuditLog count differs from the reconciled value 19; review before cleanup.');
+    var auditPreserved=auditDelta.length===19;
+    check('AUDIT-PRESERVATION-01',auditPreserved,
+      auditPreserved?'Expected 19 post-baseline AuditLog IDs remain present; identifiers withheld.':
+      'Post-baseline AuditLog count differs from expected 19; review required.');
 
-    out.inventory={
-      offeringId:String(core.offeringId),
+    out.inventorySummary={
       assignmentCount:assignmentRecords.length,
-      assignments:assignmentRecords,
       groupCount:groupRecords.length,
-      groups:groupRecords,
       groupMemberCount:memberRecords.length,
-      groupMembers:memberRecords,
-      groupMemberIdsByGroup:memberGroupSummary,
-      submissionReferences:foreignSubmissions,
-      auditLogPreservation:{currentCount:auditIds.length,postBaselineCount:auditDelta.length,disposition:'PRESERVE_ALL'},
-      coreFixtureDisposition:'NOT_INCLUDED_IN_THIS_INVENTORY'
+      exactPrimaryIdSetMatch:idsOk,
+      allRowsResolveExactlyOnce:rowResolution,
+      relationshipsMatch:relationshipOk,
+      submissionDependencyCount:foreignSubmissions.length,
+      auditLogCurrentCount:auditIds.length,
+      auditLogPostBaselineCount:auditDelta.length,
+      auditLogDisposition:'PRESERVE_ALL',
+      rawIdentifiersIncluded:false
     };
   } catch(e) {
-    out.checks.push({id:'INVENTORY-ERROR',status:'BLOCKED',detail:String(e&&e.message||e).slice(0,240)});
+    // Avoid leaking identifiers through exception text or data-dependent messages.
+    out.checks.push({id:'INVENTORY-ERROR',status:'BLOCKED',detail:'Inventory halted; error details withheld to prevent identifier disclosure.'});
   }
   return finish();
 }
