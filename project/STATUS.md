@@ -540,3 +540,18 @@ Runtime / browser UAT: **PENDING**. ยังไม่ได้ Deploy TEST ห�
 Static verification: duplicate async removed, function declaration correct, frontend pin matches, Admin overview API call remains.
 
 Deployment/Runtime: Source hotfix committed to `feature/admin-advisor-workspace`; not yet re-deployed or runtime-tested. The reported HTTP 401 may be a separate session/auth response and should be rechecked after correcting the syntax and deploying matching Client/Backend snapshots.
+
+
+## 14. Frontend Loader HTTP 404 — SHA Pin Correction
+
+ผู้ใช้รายงาน `โหลดไฟล์ Index.html จาก GitHub ไม่สำเร็จ (HTTP 404)` ที่ `getFrontendAsset_` line 201. ตรวจสอบพบว่า `FRONTEND_CONFIG.COMMIT_SHA` ถูกตั้งเป็น Client content/blob SHA `33b465c17de4166fd2cfde4557cf33a4e8191207` แทน Git commit SHA ที่ raw.githubusercontent.com ต้องใช้ เป็นความผิดพลาดในการตั้งค่า pin จากการแก้ Hotfix ก่อนหน้า
+
+แก้ `project/gas-source/code.gs` ให้ pin ไปยัง immutable Client commit `260d13d634bd86161b189c77f93f4587dad1ba52`.
+
+Verified: `Index.html` และ `Client.html` สามารถ fetch จาก repository ณ commit ที่ pin ได้; Backend pin ตรงกับ commit SHA นี้.
+
+- Backend source commit: `b8063ce877de620855b0ad38d6d388665e22cd5a`
+- Backend content SHA: `da178acebf0d81a64b74daa161c1ee5f7450b3ae`
+- Correct Frontend commit pin: `260d13d634bd86161b189c77f93f4587dad1ba52`
+
+ต้องอัปเดต/Deploy เฉพาะ `Code.gs` จาก Feature Branch ไปยัง TEST deployment เดิม แล้วทดสอบเปิด URL เดิม; ยังไม่ได้ Deploy หรือ runtime-test hotfix นี้. ห้ามนำไป Production ก่อน UAT.
