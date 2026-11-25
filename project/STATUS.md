@@ -469,3 +469,143 @@ Static verification:
 - ยังไม่ได้ Deploy เวอร์ชันนี้ไปยัง TEST Web App
 - Advisor index fallback อาศัยลำดับเมนูที่ Backend ส่งมา จึงต้องรักษาลำดับ 4 เมนูของ Advisor ให้ตรงกับที่กำหนด
 - Runtime Test/UAT: **PENDING**
+
+
+## 11. Admin + Advisor Multi-Workspace — Feature Branch
+
+ปรับปรุงตามคำสั่งผู้รับผิดชอบโครงการ วันที่ 25 พฤศจิกายน 2026 (ยังไม่ Merge และยังไม่ Deploy)
+
+Branch: `feature/admin-advisor-workspace`
+
+ขอบเขตการเปลี่ยนแปลง:
+- Admin Overview แยกจาก Advisor Overview เพื่อไม่เรียก `apiGetAdvisorWorkspaceSummary` ในหน้า Admin Dashboard
+- Admin ที่ได้รับการแต่งตั้งเป็น Advisor ผ่านรายการ `ADVISOR_ASSIGNMENTS` สถานะ `APPROVED` สามารถใช้บัญชีและอีเมลเดิม สลับ Admin Workspace / Advisor Workspace ได้
+- หน้ากำหนดอาจารย์ที่ปรึกษาอนุญาตให้เลือกบัญชี ADMIN ที่เปิดใช้งาน และ Backend อนุญาตการกำหนด ADMIN เป็น Advisor ใน assignment ได้
+- Advisor Workspace ของ Admin ใช้กลุ่มที่ได้รับมอบหมายและอนุมัติแล้ว; Advisor-facing APIs ที่แก้ไขใช้ `requireAdvisorWorkspaceSession_` และตรวจขอบเขตกลุ่มผ่าน `assertGroupAccess_`
+- A4 report ใน Advisor Workspace กรองกลุ่มตาม assignment; การบันทึก A4 ยังคงต้องเปิดช่วงประเมิน
+- ไม่มีการเพิ่มชีต/Schema, ไม่มีการเปลี่ยนคะแนน, ไม่มีการแก้ DB_ID หรือ APP_SECRET และไม่มีการ Deploy
+
+ไฟล์ที่เปลี่ยน:
+- `project/frontend/Client.html`
+- `project/gas-source/code.gs`
+
+Frontend pinned commit: `85ebf91fa30cc0268bfb850bbbd13041e10ed2f5`
+Backend source commit: `3fc1c5135cccc59a9f4722096a9dadbb1a264e56`
+
+การตรวจสอบ Source แบบ Static: 18 checks ผ่าน (routing, workspace selector, pinned SHA, assignment availability, Advisor API guards, group restriction และ A4 filtering)
+
+ข้อจำกัด/งานที่ยังค้าง:
+- ยังไม่ได้ทดสอบ JavaScript/GAS Runtime ใน Apps Script
+- ยังไม่ได้ทดสอบ UAT ด้วย Admin ที่ได้รับ assignment และ Advisor ปกติ
+- ยังไม่ได้ Deploy TEST snapshot นี้; URL เดิมจะคงเดิมเมื่ออัปเดต deployment เดิม แต่การใช้งานโค้ดนี้ยังต้อง Deploy TEST โดยผู้รับผิดชอบ
+- การเปลี่ยนแปลงยังอยู่ใน Feature Branch และรอ Review/Merge
+
+
+## 12. Admin Group Overview — Pending Review and Advisor Status
+
+ปรับปรุง Admin Overview ตามคำสั่งวันที่ 25 พฤศจิกายน 2026 (ยังอยู่ใน Feature Branch; ยังไม่ Merge/Deploy)
+
+แสดงข้อมูล 4 หมวดจากข้อมูลจริง:
+1. กลุ่มวิจัยทั้งหมด — นับกลุ่ม `RESEARCH_GROUPS` สถานะ `ACTIVE`
+2. กลุ่มที่มีงานค้างรอตรวจ — นับกลุ่มไม่ซ้ำที่มี `PROGRESS_REPORTS` สถานะ `SUBMITTED` หรือ `RESUBMITTED`; แสดงจำนวนรายงานและสัปดาห์ที่รอตรวจ
+3. เสนอชื่ออาจารย์ที่ปรึกษาแต่ยังรอยืนยัน — รวม `ADVISOR_ASSIGNMENTS` สถานะ `PENDING` และ `ADVISOR_INVITATIONS` สถานะ `ACCEPTED` โดยไม่นับกลุ่มที่มี assignment `APPROVED` ซ้ำ
+4. แต่งตั้งอาจารย์ที่ปรึกษาแล้ว — นับกลุ่มไม่ซ้ำที่มี `ADVISOR_ASSIGNMENTS` สถานะ `APPROVED`; แสดงชื่ออาจารย์
+
+ไฟล์ที่เปลี่ยนเพิ่มใน Feature Branch:
+- `project/frontend/Client.html`
+- `project/gas-source/code.gs`
+
+API ใหม่: `apiGetAdminGroupOverview(token)` — Admin-only, read-only, ใช้ชีตเดิมและ `readObjectsFresh_`; ไม่มีการสร้าง/แก้ Schema หรือข้อมูล
+
+Frontend commit: `92c95433cdb09c9899ceefd719b8f053c844c09d`
+Backend commit: `d36eb59b3002928ffde43862eb112bf05b5ea7c9`
+Backend Frontend SHA pin: `92c95433cdb09c9899ceefd719b8f053c844c09d`
+
+Static source verification: 12 checks ผ่าน — ตรวจหมวดข้อมูลทั้ง 4, กลุ่มค้างตรวจ/สัปดาห์, ชื่อผู้ถูกเสนอ/ผู้ได้รับแต่งตั้ง, Admin-only guard, status filters, no-schema read-only และ frontend pin
+
+Runtime / browser UAT: **PENDING**. ยังไม่ได้ Deploy TEST หรือ Production.
+
+
+## 13. Admin Overview Syntax Hotfix
+
+ตรวจพบจาก Browser Console หลัง Deploy TEST: `Unexpected token 'async'` ที่บรรทัดประกาศ Admin Overview ซึ่งเกิดจาก `async async function renderAdminOverview()` ซ้ำคำว่า `async` ทำให้ Client Script parse ไม่ผ่านและหน้า Session Restoration ค้าง
+
+แก้เป็น `async function renderAdminOverview()` และปรับ Frontend SHA pin ใน `code.gs` ให้ตรงกับ Client snapshot ใหม่
+
+- Client commit: `260d13d634bd86161b189c77f93f4587dad1ba52`
+- Client content SHA pin: `33b465c17de4166fd2cfde4557cf33a4e8191207`
+- Backend commit: `387a0fb03211aad4eaba0455cc3af059a252e440`
+- Backend content SHA: `390e58d74da4b7a2199cc144934921cc3b32dd66`
+
+Static verification: duplicate async removed, function declaration correct, frontend pin matches, Admin overview API call remains.
+
+Deployment/Runtime: Source hotfix committed to `feature/admin-advisor-workspace`; not yet re-deployed or runtime-tested. The reported HTTP 401 may be a separate session/auth response and should be rechecked after correcting the syntax and deploying matching Client/Backend snapshots.
+
+
+## 14. Frontend Loader HTTP 404 — SHA Pin Correction
+
+ผู้ใช้รายงาน `โหลดไฟล์ Index.html จาก GitHub ไม่สำเร็จ (HTTP 404)` ที่ `getFrontendAsset_` line 201. ตรวจสอบพบว่า `FRONTEND_CONFIG.COMMIT_SHA` ถูกตั้งเป็น Client content/blob SHA `33b465c17de4166fd2cfde4557cf33a4e8191207` แทน Git commit SHA ที่ raw.githubusercontent.com ต้องใช้ เป็นความผิดพลาดในการตั้งค่า pin จากการแก้ Hotfix ก่อนหน้า
+
+แก้ `project/gas-source/code.gs` ให้ pin ไปยัง immutable Client commit `260d13d634bd86161b189c77f93f4587dad1ba52`.
+
+Verified: `Index.html` และ `Client.html` สามารถ fetch จาก repository ณ commit ที่ pin ได้; Backend pin ตรงกับ commit SHA นี้.
+
+- Backend source commit: `b8063ce877de620855b0ad38d6d388665e22cd5a`
+- Backend content SHA: `da178acebf0d81a64b74daa161c1ee5f7450b3ae`
+- Correct Frontend commit pin: `260d13d634bd86161b189c77f93f4587dad1ba52`
+
+ต้องอัปเดต/Deploy เฉพาะ `Code.gs` จาก Feature Branch ไปยัง TEST deployment เดิม แล้วทดสอบเปิด URL เดิม; ยังไม่ได้ Deploy หรือ runtime-test hotfix นี้. ห้ามนำไป Production ก่อน UAT.
+
+
+## 15. Student Progress New-Task Indicator
+
+ดำเนินการตามการอนุมัติของผู้รับผิดชอบโครงการ วันที่ 25 พฤศจิกายน 2026 — Source change ใน Feature Branch; ยังไม่ Merge/Deploy
+
+พฤติกรรม:
+- เมนู `ความก้าวหน้า` ของ STUDENT แสดง Badge `งานใหม่ N` สำหรับสัปดาห์ที่เปิดรับและกลุ่มยังไม่มีรายงานส่งสำเร็จ
+- หากรายงานล่าสุดมีสถานะ `REVISION_REQUIRED` แสดง `ต้องแก้ไข N` (หรือแสดงทั้งงานใหม่และแก้ไขเมื่อมีทั้งสองสถานะ)
+- หน้ารายงานความก้าวหน้าแสดง Badge `งานใหม่` หรือ `ต้องแก้ไข` ข้างหัวข้อสัปดาห์
+- Badge คำนวณจาก `openProgressWeeks` และรายงานล่าสุดของกลุ่มผ่าน API เดิม `apiGetStudentResearchData`; ไม่ใช้ read/dismiss state
+- บันทึกร่างไม่ทำให้ Badge หาย; Badge จะ refresh หลัง `apiStudentSubmitProgress` สำเร็จเท่านั้น
+- สถานะ `SUBMITTED`, `RESUBMITTED`, `APPROVED` ไม่แสดง New Task Badge
+
+ไฟล์ที่เปลี่ยน:
+- `project/frontend/Client.html`
+- `project/frontend/Styles.html`
+- `project/gas-source/code.gs` (Frontend commit pin เท่านั้น)
+
+Frontend commit: `776726ea01ebb87a04cac717e29ee51990799702`
+Frontend content SHA: `f3e0ee2d1d2782911fc0b2934ab132dfd69a6ec7`
+Styles content SHA: `a3f1522784ddc4bb4e97b6a3bfb8ce116ef21f12`
+Backend commit: `1786a57f1911772abf47feca287d24ee4a05c934`
+Backend content SHA: `2badb0de6ec1c0aba6f25b1111f42a17fb189161`
+
+Static verification: 11 checks ผ่าน — student-only menu badge, open-week/status calculation, submitted statuses clear badge, revision badge, refresh after successful submit, week-level badge, CSS and pinned frontend SHA.
+
+Runtime / browser UAT: PENDING. No schema change; no deployment performed.
+
+
+## 16. Role-Based Numeric Menu Task Badges
+
+ดำเนินการตามคำยืนยันของผู้รับผิดชอบโครงการ: ให้ทุกเมนูที่มีรายการค้างแสดงวงกลมขอบแดง พื้นขาว เลขสีแดง (numeric badge) และไม่แสดงเมื่อจำนวนค้างเป็นศูนย์
+
+### UI behavior
+- เมนูแสดงจำนวนรายการค้างเป็นวงกลม 25 px ขอบแดง ตัวเลขแดง; ใช้ title/aria-label อธิบายรายการที่นับ
+- เมนูความก้าวหน้ารายสัปดาห์แสดงวงกลมเลขสัปดาห์พร้อมสถานะ งานใหม่/ต้องแก้ไข
+- การ restore เมนูหลัง F5 ใช้ `data-menu-label` แทน `textContent` เพื่อไม่ให้เลข Badge ทำให้หาเมนูที่บันทึกไว้ไม่พบ
+
+### Read-only API
+เพิ่ม `apiGetMenuTaskCounts(token)` ใน `project/gas-source/code.gs` เพื่อคำนวณจำนวนจากชีตเดิมโดยไม่เปลี่ยนข้อมูล/Schema:
+- ADMIN: กลุ่มยังไม่มีหัวหน้ากลุ่ม, กลุ่มรอแต่งตั้ง Advisor, รายงานรอตรวจ, งานกลุ่มยังไม่เสร็จ, กลุ่มยังไม่กำหนดแผนจริยธรรม, สัญญาณเตือนยังไม่ปิด, คะแนน A1–A4 ไม่ครบ, คำเชิญบัญชีที่ยังดำเนินการ
+- ADVISOR (รวม Admin ที่สลับ Advisor Workspace): กลุ่มที่มีหัวข้อ/รายงานรอตรวจ และกลุ่ม A4 ยังไม่ครบเมื่อช่วง A4 เปิด
+- STUDENT: รายงานความก้าวหน้าที่ต้องส่ง/แก้ไข, งานกลุ่มที่เกี่ยวข้องกับบัญชี, หัวข้อที่ถูกส่งกลับแก้ไข, A5 ที่ยังต้องประเมินเมื่อเปิดช่วง A5
+
+### Files / commits
+- `project/frontend/Client.html`: commit `4dc71c4505305745d67cdb1ca06d99373d1ecf1f`, blob `2347f292c27c529cc70e14df3a62cd8b74515e7c`
+- `project/frontend/Styles.html`: commit `426f85744abec9f83c8886d122305d26782cee32`, blob `c511ad5fe763e1a692f8e37efbb4baa6752d26d9`
+- `project/gas-source/code.gs`: API commit `9a3d3a1a550babe8e30abf34d5ed624ee6550756`; pin update commit `0e30eb927144b21b27a68c2182158f95a6b4caa5`
+- Immutable Frontend pin: `4dc71c4505305745d67cdb1ca06d99373d1ecf1f`
+
+Static verification: Index.html and Client.html are fetchable at pinned commit; pin matches; API exists; numeric circle CSS and mappings for Admin/Advisor/Student exist; saved-menu restoration uses dataset; weekly marker uses numeric circle.
+
+Runtime/browser UAT: PENDING. No TEST deployment performed. This is source-only; no schema, score, role or permission changes.

@@ -127,7 +127,7 @@ function doPost(e){
 const FRONTEND_CONFIG = Object.freeze({
   OWNER: 'worrawutt-source',
   REPOSITORY: 'worrawutsportsci',
-  COMMIT_SHA: '91da1c393b4a515f6366cec14d09549a1703bb04',
+  COMMIT_SHA: '4dc71c4505305745d67cdb1ca06d99373d1ecf1f',
   BASE_PATH: 'project/frontend/',
   CACHE_SECONDS: 21600,
   CACHE_CHUNK_SIZE: 20000
@@ -437,7 +437,7 @@ function getAdvisorAssignedGroups_(advisorUserId){
 
 /** Advisor-only: list groups with an approved assignment to the current advisor. */
 function apiGetAdvisorAssignedGroups(token){
-  const ctx=requireSession_(token,[ROLE.ADVISOR]);
+  const ctx=requireAdvisorWorkspaceSession_(token);
   return sanitizeForClient_(getAdvisorAssignedGroups_(ctx.user.USER_ID));
 }
 
@@ -454,7 +454,7 @@ function advisorWorkspaceSummary_(advisorUserId){
 
 /** Advisor workspace summary: one server round-trip for dashboard and group monitoring. */
 function apiGetAdvisorWorkspaceSummary(token){
-  const ctx=requireSession_(token,[ROLE.ADVISOR]);
+  const ctx=requireAdvisorWorkspaceSession_(token);
   const summary=advisorWorkspaceSummary_(ctx.user.USER_ID);
   const groups=summary.groups;
   const ids=new Set(groups.map(g=>String(g.groupId)));
@@ -501,6 +501,63 @@ function apiGetAdvisorWorkspaceSummary(token){
   });
 }
 
+/** Read-only task counts for numeric workspace menu badges. */
+function apiGetMenuTaskCounts(token){
+  const ctx=requireSession_(token,null,true),role=ctx.user.ROLE_ID;
+  const out={role,admin:{},advisor:{},student:{}};
+  const activeGroups=readObjectsFresh_('RESEARCH_GROUPS').filter(g=>String(g.STATUS||'').toUpperCase()==='ACTIVE');
+  const groupIds=new Set(activeGroups.map(g=>String(g.GROUP_ID)));
+  const assignments=readObjectsFresh_('ADVISOR_ASSIGNMENTS').filter(a=>groupIds.has(String(a.GROUP_ID||'')));
+  const approvedIds=new Set(assignments.filter(a=>String(a.STATUS||'').toUpperCase()==='APPROVED').map(a=>String(a.GROUP_ID)));
+  if(role===ROLE.ADMIN){
+    out.admin.groupsNeedsLeader=activeGroups.filter(g=>!String(g.GROUP_LEADER_USER_ID||'').trim()).length;
+    const pendingAdvisorIds=new Set(assignments.filter(a=>String(a.STATUS||'').toUpperCase()==='PENDING'&&!approvedIds.has(String(a.GROUP_ID))).map(a=>String(a.GROUP_ID)));
+    readObjectsFresh_('ADVISOR_INVITATIONS').filter(x=>String(x.STATUS||'').toUpperCase()==='ACCEPTED'&&groupIds.has(String(x.GROUP_ID||''))&&!approvedIds.has(String(x.GROUP_ID||''))).forEach(x=>pendingAdvisorIds.add(String(x.GROUP_ID)));
+    out.admin.advisorAssignment=pendingAdvisorIds.size;
+    out.admin.progressManagement=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>groupIds.has(String(r.GROUP_ID||''))&&['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').toUpperCase())).length;
+    out.admin.taskBoard=readObjectsFresh_('GROUP_TASKS').filter(t=>groupIds.has(String(t.GROUP_ID||''))&&!['DONE','CANCELLED','DELETED'].includes(String(t.STATUS||'').toUpperCase())).length;
+    const ethics=readObjectsFresh_('ETHICS_TRACKING');
+    out.admin.ethics=activeGroups.filter(g=>{const e=ethics.find(x=>String(x.GROUP_ID)===String(g.GROUP_ID));return !e||!String(e.ETHICS_PLAN||'').trim()||String(e.ETHICS_PLAN||'').toUpperCase()==='UNDECIDED';}).length;
+    const flags=readObjectsFresh_('EARLY_WARNING_FLAGS');
+    out.admin.risk=flags.filter(x=>!['RESOLVED','CLOSED','DISMISSED','COMPLETED'].includes(String(x.STATUS||'').toUpperCase())).length;
+    out.admin.users=readObjectsFresh_('SYS_INVITATIONS').filter(x=>['PENDING','PREPARING'].includes(String(x.STATUS||'').toUpperCase())&&(!x.EXPIRES_AT||new Date(x.EXPIRES_AT)>new Date())).length;
+    const scores=readObjectsFresh_('GROUP_SCORES');
+    out.admin.assessment=activeGroups.filter(g=>{const x=scores.find(r=>String(r.GROUP_ID)===String(g.GROUP_ID))||{};return ['A1_SCORE','A2_SCORE','A3_SCORE','A4_GROUP_SCORE'].some(k=>x[k]===''||x[k]===null||x[k]===undefined);}).length;
+  }
+  if(role===ROLE.ADVISOR||role===ROLE.ADMIN){
+    const assigned=getAdvisorAssignedGroups_(ctx.user.USER_ID),ids=new Set(assigned.map(g=>String(g.groupId)));
+    const reports=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>ids.has(String(r.GROUP_ID||''))&&['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').toUpperCase()));
+    const topics=readObjectsFresh_('RESEARCH_TOPIC_VERSIONS').filter(r=>ids.has(String(r.GROUP_ID||''))&&String(r.REVIEW_STATUS||'').toUpperCase()==='PENDING');
+    out.advisor.groups=new Set([...reports,...topics].map(r=>String(r.GROUP_ID))).size;
+    const a4Open=String(assessmentSettingsFresh_().WINDOW_A4||'CLOSED').toUpperCase()==='OPEN';
+    if(a4Open){
+      const scores=readObjectsFresh_('GROUP_SCORES'),individual=readObjectsFresh_('INDIVIDUAL_SCORES'),members=readObjectsFresh_('GROUP_MEMBERS').filter(m=>ids.has(String(m.GROUP_ID))&&String(m.STATUS||'').toUpperCase()==='ACTIVE');
+      out.advisor.a4=assigned.filter(g=>{const gs=scores.find(x=>String(x.GROUP_ID)===String(g.groupId))||{};const ms=members.filter(m=>String(m.GROUP_ID)===String(g.groupId));return gs.A4_GROUP_SCORE===''||gs.A4_GROUP_SCORE===null||gs.A4_GROUP_SCORE===undefined||ms.some(m=>{const x=individual.find(y=>String(y.STUDENT_ID)===String(m.STUDENT_ID))||{};return x.A4_INDIVIDUAL_SCORE===''||x.A4_INDIVIDUAL_SCORE===null||x.A4_INDIVIDUAL_SCORE===undefined;});}).length;
+    }else out.advisor.a4=0;
+  }
+  if(role===ROLE.STUDENT){
+    const user=readObjectsFresh_('SYS_USERS').find(u=>String(u.USER_ID)===String(ctx.user.USER_ID))||ctx.user;
+    const sid=normalizeStudentId_(user.STUDENT_ID||ctx.user.STUDENT_ID);
+    const member=readObjectsFresh_('GROUP_MEMBERS').find(m=>(String(m.USER_ID)===String(ctx.user.USER_ID)||(sid&&normalizeStudentId_(m.STUDENT_ID)===sid))&&String(m.STATUS||'').toUpperCase()==='ACTIVE');
+    if(member){
+      const gid=String(member.GROUP_ID);
+      const weeks=readObjectsFresh_('PROGRESS_WEEK_SETTINGS').filter(w=>String(w.IS_OPEN||'').toUpperCase()==='TRUE'||String(w.IS_OPEN||'').toUpperCase()==='1');
+      const reports=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>String(r.GROUP_ID)===gid);
+      out.student.progress=weeks.filter(w=>{const rows=reports.filter(r=>Number(r.WEEK_NO)===Number(w.WEEK_NO)).sort((a,b)=>new Date(b.SUBMITTED_AT||0)-new Date(a.SUBMITTED_AT||0));const status=String(rows[0]&&rows[0].STATUS||'').toUpperCase();return status==='REVISION_REQUIRED'||!['SUBMITTED','RESUBMITTED','APPROVED'].includes(status);}).length;
+      const topicRows=readObjectsFresh_('RESEARCH_TOPIC_VERSIONS').filter(r=>String(r.GROUP_ID)===gid).sort((a,b)=>Number(b.VERSION_NO||0)-Number(a.VERSION_NO||0));
+      out.student.topics=topicRows[0]&&String(topicRows[0].REVIEW_STATUS||'').toUpperCase()==='REVISION_REQUIRED'?1:0;
+      const tasks=readObjectsFresh_('GROUP_TASKS').filter(t=>String(t.GROUP_ID)===gid&&!['DONE','CANCELLED','DELETED'].includes(String(t.STATUS||'').toUpperCase()));
+      out.student.taskBoard=tasks.filter(t=>!String(t.ASSIGNED_TO_USER_ID||'').trim()||String(t.ASSIGNED_TO_USER_ID)===String(ctx.user.USER_ID)).length;
+      if(String(assessmentSettingsFresh_().WINDOW_A5||'CLOSED').toUpperCase()==='OPEN'){
+        const members=readObjectsFresh_('GROUP_MEMBERS').filter(m=>String(m.GROUP_ID)===gid&&String(m.STATUS||'').toUpperCase()==='ACTIVE'&&String(m.STUDENT_ID)!==String(member.STUDENT_ID));
+        const submitted=readObjectsFresh_('PEER_ASSESSMENTS').filter(p=>String(p.GROUP_ID)===gid&&String(p.EVALUATOR_STUDENT_ID)===String(member.STUDENT_ID));
+        out.student.peerAssessment=Math.max(0,members.length-submitted.length);
+      }else out.student.peerAssessment=0;
+    }
+  }
+  return sanitizeForClient_(out);
+}
+
 /** Dashboard bootstrap: all authorization is performed on the server. */
 function apiGetDashboard(token) {
   const ctx = requireSession_(token, null, true);
@@ -514,6 +571,7 @@ function apiGetDashboard(token) {
   };
   if (role === ROLE.ADMIN) {
     base.metrics = {users:readObjects_('SYS_USERS').length, sessions:readObjects_('SYS_SESSIONS').filter(s=>!s.REVOKED_AT && new Date(s.EXPIRES_AT)>new Date()).length, roster:readObjects_('STUDENTS').length};
+    base.advisorWorkspaceAvailable = getAdvisorAssignedGroups_(ctx.user.USER_ID).length > 0;
     base.menu = ['ภาพรวมระบบ','จัดการกลุ่มวิจัย','กำหนดอาจารย์ที่ปรึกษา','บันทึกการเข้าพบ','จัดการรายงานความก้าวหน้า','จัดการงานกลุ่ม','ติดตามจริยธรรม','สัญญาณเตือนความเสี่ยง','ประเมินผล A1–A6','บัญชีผู้ใช้','นำเข้ารายชื่อนักศึกษา','บันทึกระบบ','การตั้งค่าระบบ'];
     } else if (role === ROLE.ADVISOR) {
     const advisorSummary=advisorWorkspaceSummary_(ctx.user.USER_ID);
@@ -543,6 +601,54 @@ function apiGetDashboard(token) {
     throw new Error('บัญชีนี้ไม่มี Role ที่ระบบรองรับ');
   }
   return base;
+}
+
+/**
+ * Admin overview: summarize active research groups, pending progress-report reviews,
+ * advisor nominations awaiting confirmation, and approved advisor assignments.
+ * Read-only endpoint; uses existing sheets only.
+ */
+function apiGetAdminGroupOverview(token){
+  requireSession_(token,[ROLE.ADMIN]);
+  const groups=readObjectsFresh_('RESEARCH_GROUPS').filter(g=>String(g.STATUS||'').toUpperCase()==='ACTIVE');
+  const groupMap=new Map(groups.map(g=>[String(g.GROUP_ID),g]));
+  const users=readObjectsFresh_('SYS_USERS').filter(u=>String(u.STATUS||'').toUpperCase()==='ACTIVE');
+  const userMap=new Map(users.map(u=>[String(u.USER_ID),u]));
+  const reports=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').toUpperCase())&&groupMap.has(String(r.GROUP_ID||'')));
+  const pendingReviewMap=new Map();
+  reports.forEach(r=>{
+    const id=String(r.GROUP_ID||'');if(!pendingReviewMap.has(id))pendingReviewMap.set(id,[]);
+    pendingReviewMap.get(id).push(Number(r.WEEK_NO||0));
+  });
+  const pendingReviewGroups=[...pendingReviewMap.entries()].map(([id,weeks])=>{
+    const g=groupMap.get(id);
+    return {groupId:id,groupName:String(g.GROUP_NAME||'ไม่ระบุชื่อกลุ่ม'),pendingCount:weeks.length,weeks:[...new Set(weeks.filter(Boolean))].sort((a,b)=>a-b)};
+  }).sort((a,b)=>a.groupName.localeCompare(b.groupName,'th'));
+  const assignments=readObjectsFresh_('ADVISOR_ASSIGNMENTS').filter(a=>groupMap.has(String(a.GROUP_ID||'')));
+  const approvedByGroup=new Map();
+  assignments.filter(a=>String(a.STATUS||'').toUpperCase()==='APPROVED').forEach(a=>{
+    if(!approvedByGroup.has(String(a.GROUP_ID)))approvedByGroup.set(String(a.GROUP_ID),a);
+  });
+  const pendingAdvisorByGroup=new Map();
+  assignments.filter(a=>String(a.STATUS||'').toUpperCase()==='PENDING'&&!approvedByGroup.has(String(a.GROUP_ID))).forEach(a=>{
+    const id=String(a.GROUP_ID),u=userMap.get(String(a.ADVISOR_USER_ID||''));
+    pendingAdvisorByGroup.set(id,{groupId:id,groupName:String(groupMap.get(id).GROUP_NAME||'ไม่ระบุชื่อกลุ่ม'),advisorName:String(u&&(u.DISPLAY_NAME||u.EMAIL)||'ไม่พบข้อมูลอาจารย์'),source:'NOMINATION'});
+  });
+  readObjectsFresh_('ADVISOR_INVITATIONS').filter(x=>String(x.STATUS||'').toUpperCase()==='ACCEPTED'&&groupMap.has(String(x.GROUP_ID||''))&&!approvedByGroup.has(String(x.GROUP_ID||''))).forEach(x=>{
+    const id=String(x.GROUP_ID);
+    pendingAdvisorByGroup.set(id,{groupId:id,groupName:String(groupMap.get(id).GROUP_NAME||'ไม่ระบุชื่อกลุ่ม'),advisorName:String(x.ADVISOR_NAME||x.ADVISOR_EMAIL||'ไม่ระบุชื่อ'),source:'INVITATION'});
+  });
+  const appointedGroups=[...approvedByGroup.entries()].map(([id,a])=>{
+    const g=groupMap.get(id),u=userMap.get(String(a.ADVISOR_USER_ID||''));
+    return {groupId:id,groupName:String(g.GROUP_NAME||'ไม่ระบุชื่อกลุ่ม'),advisorName:String(u&&(u.DISPLAY_NAME||u.EMAIL)||'ไม่พบข้อมูลอาจารย์')};
+  }).sort((a,b)=>a.groupName.localeCompare(b.groupName,'th'));
+  const pendingAdvisorGroups=[...pendingAdvisorByGroup.values()].sort((a,b)=>a.groupName.localeCompare(b.groupName,'th'));
+  return sanitizeForClient_({
+    totalGroups:{count:groups.length,groups:groups.map(g=>({groupId:String(g.GROUP_ID),groupName:String(g.GROUP_NAME||'ไม่ระบุชื่อกลุ่ม')})).sort((a,b)=>a.groupName.localeCompare(b.groupName,'th'))},
+    pendingReview:{count:pendingReviewGroups.length,groups:pendingReviewGroups},
+    pendingAdvisorConfirmation:{count:pendingAdvisorGroups.length,groups:pendingAdvisorGroups},
+    appointedAdvisor:{count:appointedGroups.length,groups:appointedGroups}
+  });
 }
 
 /** Admin-only: create/invite a Course Coordinator or Research Advisor. */
@@ -1359,7 +1465,7 @@ function apiAdminReviewAdvisorInvitation(token,invitationId,decision){
     }
 
     let user=readObjectsFresh_('SYS_USERS').find(u=>normalizeEmail_(u.EMAIL)===normalizeEmail_(row.ADVISOR_EMAIL));
-    if(user&&user.ROLE_ID!==ROLE.ADVISOR)throw new Error('อีเมลนี้ถูกใช้กับบัญชีบทบาทอื่น ไม่สามารถสร้างบัญชี Advisor ซ้ำได้');
+    if(user&&![ROLE.ADVISOR,ROLE.ADMIN].includes(user.ROLE_ID))throw new Error('อีเมลนี้ถูกใช้กับบัญชีบทบาทอื่น ไม่สามารถสร้างบัญชี Advisor ซ้ำได้');
     if(!user){
       if(!row.PASSWORD_SALT||!row.PASSWORD_HASH)throw new Error('คำเชิญนี้ยังไม่มีรหัสผ่านที่อาจารย์ตั้งไว้ กรุณาตรวจสอบข้อมูลก่อนอนุมัติ');
       user=createUser_({email:row.ADVISOR_EMAIL,displayName:row.ADVISOR_NAME,roleId:ROLE.ADVISOR,passwordSalt:row.PASSWORD_SALT,passwordHash:row.PASSWORD_HASH,emailVerified:true,status:'ACTIVE',createdBy:ctx.user.USER_ID});
@@ -1448,7 +1554,7 @@ function apiAdminReviewAdvisorNomination(token,assignmentId,decision){
 function apiAdminAssignAdvisor(token,groupId,advisorUserId){
   const ctx=requireSession_(token,[ROLE.ADMIN]);
   const group=readObjects_('RESEARCH_GROUPS').find(g=>g.GROUP_ID===groupId&&g.STATUS==='ACTIVE');if(!group)throw new Error('ไม่พบกลุ่มวิจัย');
-  const advisor=readObjects_('SYS_USERS').find(u=>u.USER_ID===advisorUserId&&u.ROLE_ID===ROLE.ADVISOR&&u.STATUS==='ACTIVE');if(!advisor)throw new Error('บัญชีอาจารย์ที่ปรึกษาไม่ถูกต้องหรือไม่ได้เปิดใช้งาน');
+  const advisor=readObjects_('SYS_USERS').find(u=>u.USER_ID===advisorUserId&&[ROLE.ADVISOR,ROLE.ADMIN].includes(u.ROLE_ID)&&u.STATUS==='ACTIVE');if(!advisor)throw new Error('บัญชีอาจารย์ที่ปรึกษาไม่ถูกต้องหรือไม่ได้เปิดใช้งาน');
   const lock=LockService.getScriptLock();lock.waitLock(60000);
   try{
     const sh=sheet_('ADVISOR_ASSIGNMENTS');
@@ -1459,7 +1565,7 @@ function apiAdminAssignAdvisor(token,groupId,advisorUserId){
 }
 
 function apiRecordMeetingAttendance(token,payload){
-  const ctx=requireSession_(token,[ROLE.ADMIN,ROLE.ADVISOR]);assertGradeEditable_();payload=payload||{};
+  const ctx=requireAdvisorWorkspaceSession_(token);assertGradeEditable_();payload=payload||{};
   const groupId=String(payload.groupId||''),no=Number(payload.meetingNo),week=[2,4,6,8,10,12,14][no-1];
   if(!week||Number(payload.meetingWeek)!==week)throw new Error('ครั้งที่พบอาจารย์ต้องตรงกับสัปดาห์ที่กำหนด 2,4,6,8,10,12,14');
   assertGroupAccess_(ctx,groupId);
@@ -1573,7 +1679,7 @@ function apiAdminGetMeetingMonitoring(token){
 
 /** Advisor verifies or requests revision of the latest group submission. */
 function apiAdvisorReviewMeetingSubmission(token,fileRecordId,decision,comment){
-  const ctx=requireSession_(token,[ROLE.ADVISOR]);
+  const ctx=requireAdvisorWorkspaceSession_(token);
   if(!['VERIFIED','REVISION_REQUIRED'].includes(String(decision)))throw new Error('สถานะตรวจสอบไม่ถูกต้อง');
   const allFiles=readObjectsFresh_('MEETING_FILES');const row=allFiles.find(f=>String(f.FILE_RECORD_ID)===String(fileRecordId));
   if(!row)throw new Error('ไม่พบเอกสารที่ส่ง'); assertGroupAccess_(ctx,String(row.GROUP_ID));
@@ -1604,8 +1710,8 @@ function apiAdminSetAssessmentWindow(token,type,isOpen){
   logSystem_('ASSESSMENT_WINDOW_CHANGED','ASSESSMENT',type,{status:isOpen?'OPEN':'CLOSED'},ctx.user.USER_ID); return {ok:true,message:(isOpen?'เปิด':'ปิด')+'การประเมิน '+type+' แล้ว'};
 }
 function apiAdvisorSaveA4(token,payload){
-  const ctx=requireSession_(token,[ROLE.ADMIN,ROLE.ADVISOR]);assertGradeEditable_(); payload=payload||{}; const groupId=String(payload.groupId||''); assertGroupAccess_(ctx,groupId);
-  if(ctx.user.ROLE_ID===ROLE.ADVISOR && assessmentSettingsFresh_().WINDOW_A4!=='OPEN') throw new Error('Admin ยังไม่ได้เปิดช่วงประเมิน A4');
+  const ctx=requireAdvisorWorkspaceSession_(token);assertGradeEditable_(); payload=payload||{}; const groupId=String(payload.groupId||''); assertGroupAccess_(ctx,groupId);
+  if((ctx.user.ROLE_ID===ROLE.ADVISOR||ctx.advisorRestricted) && assessmentSettingsFresh_().WINDOW_A4!=='OPEN') throw new Error('Admin ยังไม่ได้เปิดช่วงประเมิน A4');
   const groupScore=Number(payload.groupScore); if(!Number.isFinite(groupScore)||groupScore<0||groupScore>10) throw new Error('คะแนน A4 ระดับกลุ่มต้องอยู่ระหว่าง 0–10');
   const members=readObjects_('GROUP_MEMBERS').filter(m=>m.GROUP_ID===groupId&&m.STATUS==='ACTIVE'); const individual=payload.individualScores||{};
   const validated=members.map(m=>{const v=Number(individual[String(m.STUDENT_ID)]);if(!Number.isFinite(v)||v<0||v>10)throw new Error('กรุณากรอกคะแนน A4 รายบุคคล 0–10 ให้ครบ: '+m.STUDENT_ID);return {studentId:m.STUDENT_ID,score:v};});
@@ -1992,7 +2098,7 @@ function apiStudentSaveResearchTopic(token,payload){
   }finally{lock.releaseLock();}
 }
 function apiAdvisorReviewResearchTopic(token,versionId,decision,comment){
-  const ctx=requireSession_(token,[ROLE.ADMIN,ROLE.ADVISOR]);
+  const ctx=requireAdvisorWorkspaceSession_(token);
   if(!['APPROVED','REVISION_REQUIRED','REJECTED'].includes(decision))throw new Error('สถานะการพิจารณาไม่ถูกต้อง');
   const note=String(comment||'').trim();
   if(['REVISION_REQUIRED','REJECTED'].includes(decision)&&note.length<5)throw new Error('กรุณาระบุข้อเสนอแนะอย่างน้อย 5 ตัวอักษรสำหรับผลการพิจารณานี้');
@@ -2130,7 +2236,7 @@ function migrateCollaborativeWorkspaceSchema_(){
 }
 
 function apiAdvisorAddFeedback(token,payload){
-  const ctx=requireSession_(token,[ROLE.ADVISOR,ROLE.ADMIN]);payload=payload||{};const groupId=String(payload.groupId||'');assertGroupAccess_(ctx,groupId);
+  const ctx=requireAdvisorWorkspaceSession_(token);payload=payload||{};const groupId=String(payload.groupId||'');assertGroupAccess_(ctx,groupId);
   const comment=String(payload.comment||'').trim();if(comment.length<5)throw new Error('กรุณาระบุข้อเสนอแนะอย่างน้อย 5 ตัวอักษร');
   const id=Utilities.getUuid();appendObject_('ADVISOR_FEEDBACK',{FEEDBACK_ID:id,GROUP_ID:groupId,RELATED_TYPE:String(payload.relatedType||'GENERAL'),RELATED_ID:String(payload.relatedId||''),COMMENT:comment,CREATED_BY:ctx.user.USER_ID,CREATED_AT:new Date(),STATUS:'ACTIVE'});
   logSystem_('ADVISOR_FEEDBACK_ADDED','GROUP',groupId,{feedbackId:id},ctx.user.USER_ID);return {ok:true,message:'บันทึกข้อเสนอแนะแล้ว'};
@@ -2332,13 +2438,21 @@ function migrateResearchWorkflowSchema_(){
   };
 }
 
+function requireAdvisorWorkspaceSession_(token){
+  const ctx=requireSession_(token,[ROLE.ADMIN,ROLE.ADVISOR]);
+  if(ctx.user.ROLE_ID===ROLE.ADMIN){
+    if(!getAdvisorAssignedGroups_(ctx.user.USER_ID).length)throw new Error('บัญชี Admin นี้ยังไม่ได้รับแต่งตั้งเป็น Advisor');
+    ctx.advisorRestricted=true;
+  }
+  return ctx;
+}
 function assertGroupAccess_(ctx,groupId){
   const targetGroupId=String(groupId||'').trim();
   const groups=readObjectsFresh_('RESEARCH_GROUPS');
   const group=groups.find(g=>String(g.GROUP_ID||'').trim()===targetGroupId&&String(g.STATUS||'').trim().toUpperCase()==='ACTIVE');
   if(!group)throw new Error('ไม่พบกลุ่มวิจัย');
-  if(ctx.user.ROLE_ID===ROLE.ADMIN)return true;
-  if(ctx.user.ROLE_ID===ROLE.ADVISOR){
+  if(ctx.user.ROLE_ID===ROLE.ADMIN&&!ctx.advisorRestricted)return true;
+  if(ctx.user.ROLE_ID===ROLE.ADVISOR||ctx.advisorRestricted){
     const advisorId=String(ctx.user.USER_ID||'').trim();
     const assigned=readObjectsFresh_('ADVISOR_ASSIGNMENTS').some(a=>
       String(a.GROUP_ID||'').trim()===targetGroupId&&
