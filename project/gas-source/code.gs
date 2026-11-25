@@ -1582,6 +1582,10 @@ function apiSubmitMeetingRecord(token, payload) {
       .sort((a,b)=>Number(b.VERSION_NO||0)-Number(a.VERSION_NO||0));
     const latest=all[0]||null;
     if(latest&&String(latest.STATUS||'')!=='REVISION_REQUIRED') throw new Error('รายการนี้ส่งแล้วและอยู่ระหว่างตรวจหรือได้รับอนุมัติ หากต้องการแก้ไขต้องรออาจารย์ส่งกลับก่อน');
+    const assignment=readObjectsFresh_('ADVISOR_ASSIGNMENTS').find(a=>String(a.GROUP_ID)===groupId&&String(a.STATUS||'').toUpperCase()==='APPROVED');
+    const advisor=assignment&&readObjectsFresh_('SYS_USERS').find(u=>String(u.USER_ID)===String(assignment.ADVISOR_USER_ID)&&u.STATUS==='ACTIVE');
+    if(!advisor||!advisor.EMAIL) throw new Error('กลุ่มนี้ยังไม่มีอาจารย์ที่ปรึกษาที่ได้รับอนุมัติและมีอีเมลในระบบ กรุณาติดต่อ Course Coordinator');
+    if(!db_().getSheetByName('NOTIFICATION_QUEUE')) throw new Error('ไม่พบ NOTIFICATION_QUEUE ในฐานข้อมูล TEST ระบบหยุดก่อนบันทึกข้อมูล');
     const id=Utilities.getUuid(),now=new Date(),version=latest?Number(latest.VERSION_NO||1)+1:1;
     appendObject_('MEETING_SUBMISSIONS',{
       SUBMISSION_ID:id,GROUP_ID:groupId,MEETING_NO:meetingNo,MEETING_WEEK:meetingWeek,
@@ -1592,20 +1596,14 @@ function apiSubmitMeetingRecord(token, payload) {
       SUBMITTED_AT:now,STATUS:'SUBMITTED',REVIEWED_BY:'',REVIEWED_AT:'',
       REVIEW_COMMENT:'',VERSION_NO:version,PREVIOUS_SUBMISSION_ID:latest?latest.SUBMISSION_ID:''
     });
-    const assignment=readObjectsFresh_('ADVISOR_ASSIGNMENTS').find(a=>String(a.GROUP_ID)===groupId&&String(a.STATUS||'').toUpperCase()==='APPROVED');
-    const advisor=assignment&&readObjectsFresh_('SYS_USERS').find(u=>String(u.USER_ID)===String(assignment.ADVISOR_USER_ID)&&u.STATUS==='ACTIVE');
-    if(advisor&&advisor.EMAIL){
-      const ss=db_();
-      if(!ss.getSheetByName('NOTIFICATION_QUEUE')) throw new Error('ไม่พบ NOTIFICATION_QUEUE ในฐานข้อมูล TEST; บันทึกถูกส่งแล้ว แต่ระบบแจ้งเตือนอีเมลยังไม่พร้อม');
-      const subject='มีบันทึกการเข้าพบอาจารย์ที่ปรึกษารอพิจารณา';
-      const body='มีบันทึกการเข้าพบครั้งที่ '+meetingNo+' (สัปดาห์ '+meetingWeek+') ของกลุ่มวิจัยรอพิจารณา กรุณาเข้าสู่ระบบ SPORT SCIENCE RESEARCH LAB เพื่ออ่านรายละเอียดและตรวจสอบ';
-      appendObject_('NOTIFICATION_QUEUE',{
-        QUEUE_ID:Utilities.getUuid(),EVENT_KEY:'MEETING_SUBMISSION:'+id+':'+advisor.USER_ID,
-        RECIPIENT_EMAIL:advisor.EMAIL,RECIPIENT_USER_ID:advisor.USER_ID,SUBJECT:subject,BODY:body,
-        STATUS:'PENDING',ATTEMPTS:0,NEXT_ATTEMPT_AT:now,LEASE_UNTIL:'',LAST_ERROR:'',
-        CREATED_AT:now,SENT_AT:''
-      });
-    }
+    const subject='มีบันทึกการเข้าพบอาจารย์ที่ปรึกษารอพิจารณา';
+    const body='มีบันทึกการเข้าพบครั้งที่ '+meetingNo+' (สัปดาห์ '+meetingWeek+') ของกลุ่มวิจัยรอพิจารณา กรุณาเข้าสู่ระบบ SPORT SCIENCE RESEARCH LAB เพื่ออ่านรายละเอียดและตรวจสอบ';
+    appendObject_('NOTIFICATION_QUEUE',{
+      QUEUE_ID:Utilities.getUuid(),EVENT_KEY:'MEETING_SUBMISSION:'+id+':'+advisor.USER_ID,
+      RECIPIENT_EMAIL:advisor.EMAIL,RECIPIENT_USER_ID:advisor.USER_ID,SUBJECT:subject,BODY:body,
+      STATUS:'PENDING',ATTEMPTS:0,NEXT_ATTEMPT_AT:now,LEASE_UNTIL:'',LAST_ERROR:'',
+      CREATED_AT:now,SENT_AT:''
+    });
     logSystem_('MEETING_RECORD_SUBMITTED','GROUP',groupId,{submissionId:id,meetingNo,meetingWeek,version},ctx.user.USER_ID);
     SpreadsheetApp.flush();
     return {ok:true,message:'ส่งบันทึกการเข้าพบให้อาจารย์ที่ปรึกษาแล้ว',submissionId:id,versionNo:version};
