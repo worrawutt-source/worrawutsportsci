@@ -100,3 +100,11 @@ PF-02 source-manifest review is **PASS** with the documented comment-only Cleanu
 - PF-20 approved disposition: `PRESERVE`. Do not run Cleanup or delete/move/rename/overwrite existing test files.
 - This approval does not prove the encrypted destination is configured or the GAS Execution Log ACL is already restricted. Because the current Exact-ID Inventory function logs raw exact IDs, do not run it until both controls are verified. If the log cannot be restricted, use a separately reviewed safe-output approach before any inventory execution.
 - Keep raw IDs and actor/file mappings out of chat and GitHub. Record only sanitized counts, hashes, and status in the repository.
+
+
+## Sanitized inventory method update — 25 Nov 2026
+
+- The inventory source was revised on `development` (commit `a5d5ccb6098dd4062c6e93b3b63b8989a200d642`) so exact-set comparison runs in memory and only sanitized check statuses/counts are logged and returned. Raw primary IDs and ID-to-user/group relationships are no longer part of the function's output.
+- This reduces the need to expose raw exact IDs through the execution result. However, the existing core and Assignment/Group manifests still contain IDs in Script Properties; project editor/access review remains necessary. Do not run the inventory until the owner confirms authorized project editors/execution viewers, effective relevant Drive ACLs, the approved encrypted evidence destination, and the quiet TEST window.
+- PF-16 remains BLOCKED until the sanitized exact-set inventory and read-only Drive inventory are actually completed and reviewed. The source patch itself is not runtime evidence.
+- PF-19 remains APPROVED POLICY — VERIFY CONTROLS. PF-20 remains PASS — PRESERVE.
