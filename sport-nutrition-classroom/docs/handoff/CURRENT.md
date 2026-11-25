@@ -1246,3 +1246,16 @@ Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migrat
 - Static diff confirms the only code change is the expected folder ID constant. No GAS execution, Runner, Cleanup, Drive mutation, Sheet write, or Script Property write was performed by the assistant.
 - Owner's Preflight execution on 25 Nov 2026 completed with `cleanupPerformed=false`, `writesExpected=0`, `externalCallsExpected=0`, and transient counts matching the recorded WP-SUB-1/WP-SUB-2 context; however PF-04 had FAIL because the prior expected ID did not match the owner-confirmed TEST folder. Other 19 checks remained BLOCKED.
 - Next: owner manually syncs the updated Preflight file into the existing TEST GAS project, verifies the Cleanup top-level invocation remains commented, saves, and runs only `SNC_WP_SUB_2_Preflight_READONLY_TEST()` once. Review the complete sanitized log before considering any next gate. No Runner or Cleanup authorized.
+
+
+## WP-SUB-2 TEST folder ID reconciliation — owner confirmation — 25 Nov 2026
+
+- Owner explicitly confirmed that the Google Drive folder opened in the supplied URL is the intended primary TEST folder:
+  `1qkSUK8nEOw_bZqEIEkpM4VJQYZEZjK56`.
+- Owner screenshots show the folder named `SNC_TEST_SUBMISSION_FILES` directly under `ProjectLine`, with the four expected direct child folders: `01_VALID_FILES`, `02_INVALID_FILES`, `03_UPLOADED_TEST_FILES`, and `04_ROLLBACK_TEST`.
+- Corrected `EXPECTED_FOLDER_ID` in `backend/tests/WP-SUB-2/SNC_WP_SUB_2_Preflight_TEST.gs` to the exact owner-confirmed URL ID above. Only that constant changed in the code file.
+- Source commit: `740346171add8e41a40da764a08f470db6538ac2`; updated Preflight blob SHA: `1b9de41bc326d521c6139ed037ac02c3aa61d947`.
+- The Script Properties screenshot shows the property name `SNC_SUBMISSION_FOLDER_ID` with the prior value `1LmHuJKetRb6K8zyifpjvcKIYiMzUU7tj`. It does **not** match the owner-confirmed URL ID. Previous checkpoint wording that said the property matched the confirmed folder was incorrect; this entry supersedes that statement.
+- Owner must manually update the existing TEST GAS Script Property `SNC_SUBMISSION_FOLDER_ID` to `1qkSUK8nEOw_bZqEIEkpM4VJQYZEZjK56`, save, and verify it. The assistant did not and cannot confirm that property has been changed.
+- Do not rerun Preflight until the owner has manually synced the updated Preflight source and aligned the Script Property. Then run only `SNC_WP_SUB_2_Preflight_READONLY_TEST()` once and provide the complete sanitized log.
+- No GAS execution, Script Property write, Drive mutation, Sheet write, Runner, Cleanup, migration, trigger, deployment, or external call was performed by the assistant. The latest Preflight remains BLOCKED pending owner configuration and the remaining evidence gates.
