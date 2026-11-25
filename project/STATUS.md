@@ -583,3 +583,29 @@ Backend content SHA: `2badb0de6ec1c0aba6f25b1111f42a17fb189161`
 Static verification: 11 checks ผ่าน — student-only menu badge, open-week/status calculation, submitted statuses clear badge, revision badge, refresh after successful submit, week-level badge, CSS and pinned frontend SHA.
 
 Runtime / browser UAT: PENDING. No schema change; no deployment performed.
+
+
+## 16. Role-Based Numeric Menu Task Badges
+
+ดำเนินการตามคำยืนยันของผู้รับผิดชอบโครงการ: ให้ทุกเมนูที่มีรายการค้างแสดงวงกลมขอบแดง พื้นขาว เลขสีแดง (numeric badge) และไม่แสดงเมื่อจำนวนค้างเป็นศูนย์
+
+### UI behavior
+- เมนูแสดงจำนวนรายการค้างเป็นวงกลม 25 px ขอบแดง ตัวเลขแดง; ใช้ title/aria-label อธิบายรายการที่นับ
+- เมนูความก้าวหน้ารายสัปดาห์แสดงวงกลมเลขสัปดาห์พร้อมสถานะ งานใหม่/ต้องแก้ไข
+- การ restore เมนูหลัง F5 ใช้ `data-menu-label` แทน `textContent` เพื่อไม่ให้เลข Badge ทำให้หาเมนูที่บันทึกไว้ไม่พบ
+
+### Read-only API
+เพิ่ม `apiGetMenuTaskCounts(token)` ใน `project/gas-source/code.gs` เพื่อคำนวณจำนวนจากชีตเดิมโดยไม่เปลี่ยนข้อมูล/Schema:
+- ADMIN: กลุ่มยังไม่มีหัวหน้ากลุ่ม, กลุ่มรอแต่งตั้ง Advisor, รายงานรอตรวจ, งานกลุ่มยังไม่เสร็จ, กลุ่มยังไม่กำหนดแผนจริยธรรม, สัญญาณเตือนยังไม่ปิด, คะแนน A1–A4 ไม่ครบ, คำเชิญบัญชีที่ยังดำเนินการ
+- ADVISOR (รวม Admin ที่สลับ Advisor Workspace): กลุ่มที่มีหัวข้อ/รายงานรอตรวจ และกลุ่ม A4 ยังไม่ครบเมื่อช่วง A4 เปิด
+- STUDENT: รายงานความก้าวหน้าที่ต้องส่ง/แก้ไข, งานกลุ่มที่เกี่ยวข้องกับบัญชี, หัวข้อที่ถูกส่งกลับแก้ไข, A5 ที่ยังต้องประเมินเมื่อเปิดช่วง A5
+
+### Files / commits
+- `project/frontend/Client.html`: commit `4dc71c4505305745d67cdb1ca06d99373d1ecf1f`, blob `2347f292c27c529cc70e14df3a62cd8b74515e7c`
+- `project/frontend/Styles.html`: commit `426f85744abec9f83c8886d122305d26782cee32`, blob `c511ad5fe763e1a692f8e37efbb4baa6752d26d9`
+- `project/gas-source/code.gs`: API commit `9a3d3a1a550babe8e30abf34d5ed624ee6550756`; pin update commit `0e30eb927144b21b27a68c2182158f95a6b4caa5`
+- Immutable Frontend pin: `4dc71c4505305745d67cdb1ca06d99373d1ecf1f`
+
+Static verification: Index.html and Client.html are fetchable at pinned commit; pin matches; API exists; numeric circle CSS and mappings for Admin/Advisor/Student exist; saved-menu restoration uses dataset; weekly marker uses numeric circle.
+
+Runtime/browser UAT: PENDING. No TEST deployment performed. This is source-only; no schema, score, role or permission changes.
