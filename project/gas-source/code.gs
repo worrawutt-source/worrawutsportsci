@@ -127,7 +127,7 @@ function doPost(e){
 const FRONTEND_CONFIG = Object.freeze({
   OWNER: 'worrawutt-source',
   REPOSITORY: 'worrawutsportsci',
-  COMMIT_SHA: 'ada41b9f2ce321d3f190ed092a1629c497ebeff0',
+  COMMIT_SHA: '91da1c393b4a515f6366cec14d09549a1703bb04',
   BASE_PATH: 'project/frontend/',
   CACHE_SECONDS: 21600,
   CACHE_CHUNK_SIZE: 20000
@@ -401,6 +401,106 @@ function apiLogout(token) {
   return {ok:true};
 }
 
+/**
+ * Returns active research groups assigned to the authenticated advisor.
+ * Uses fresh reads and normalized IDs/status values so the advisor dashboard
+ * and assigned-group list are based on the same source of truth.
+ */
+function getAdvisorAssignedGroups_(advisorUserId){
+  const targetUserId=String(advisorUserId||'').trim();
+  if(!targetUserId)return [];
+  const assignments=readObjectsFresh_('ADVISOR_ASSIGNMENTS')
+    .filter(a=>String(a.ADVISOR_USER_ID||'').trim()===targetUserId&&String(a.STATUS||'').trim().toUpperCase()==='APPROVED');
+  const groupIds=[...new Set(assignments.map(a=>String(a.GROUP_ID||'').trim()).filter(Boolean))];
+  if(!groupIds.length)return [];
+  const groups=readObjectsFresh_('RESEARCH_GROUPS')
+    .filter(g=>groupIds.includes(String(g.GROUP_ID||'').trim())&&String(g.STATUS||'').trim().toUpperCase()==='ACTIVE');
+  const members=readObjectsFresh_('GROUP_MEMBERS');
+  const students=readObjectsFresh_('STUDENTS');
+  return groups.map(group=>{
+    const groupId=String(group.GROUP_ID||'').trim();
+    const groupMembers=members.filter(m=>String(m.GROUP_ID||'').trim()===groupId&&String(m.STATUS||'').trim().toUpperCase()==='ACTIVE');
+    return {
+      groupId,
+      groupName:String(group.GROUP_NAME||'ไม่ระบุชื่อกลุ่ม'),
+      topicTh:String(group.TOPIC_TITLE_TH||''),
+      topicEn:String(group.TOPIC_TITLE_EN||''),
+      members:groupMembers.map(m=>{
+        const studentId=normalizeStudentId_(m.STUDENT_ID);
+        const student=students.find(x=>normalizeStudentId_(x.STUDENT_ID)===studentId)||{};
+        const fullName=String(student.FULL_NAME||[student.TITLE,student.FIRST_NAME,student.LAST_NAME].filter(Boolean).join(' ')).trim();
+        return {studentId,name:fullName||'ไม่พบชื่อในทะเบียน'};
+      })
+    };
+  });
+}
+
+/** Advisor-only: list groups with an approved assignment to the current advisor. */
+function apiGetAdvisorAssignedGroups(token){
+  const ctx=requireSession_(token,[ROLE.ADVISOR]);
+  return sanitizeForClient_(getAdvisorAssignedGroups_(ctx.user.USER_ID));
+}
+
+function advisorWorkspaceSummary_(advisorUserId){
+  const groups=getAdvisorAssignedGroups_(advisorUserId),ids=new Set(groups.map(g=>String(g.groupId)));
+  const reports=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>ids.has(String(r.GROUP_ID||'')));
+  const topics=readObjectsFresh_('RESEARCH_TOPIC_VERSIONS').filter(r=>ids.has(String(r.GROUP_ID||'')));
+  const meetings=readObjectsFresh_('MEETING_RECORDS').filter(r=>ids.has(String(r.GROUP_ID||'')));
+  const feedback=readObjectsFresh_('ADVISOR_FEEDBACK').filter(r=>ids.has(String(r.GROUP_ID||''))&&String(r.STATUS||'ACTIVE').toUpperCase()==='ACTIVE');
+  const pendingReports=reports.filter(r=>['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').toUpperCase()));
+  const pendingTopics=topics.filter(r=>String(r.REVIEW_STATUS||'').toUpperCase()==='PENDING');
+  return {groups,metrics:{assignedGroups:groups.length,pendingReports:pendingReports.length,pendingTopics:pendingTopics.length,meetingsRecorded:new Set(meetings.map(r=>String(r.GROUP_ID)+'|'+String(r.MEETING_NO))).size,feedbackProvided:feedback.length}};
+}
+
+/** Advisor workspace summary: one server round-trip for dashboard and group monitoring. */
+function apiGetAdvisorWorkspaceSummary(token){
+  const ctx=requireSession_(token,[ROLE.ADVISOR]);
+  const summary=advisorWorkspaceSummary_(ctx.user.USER_ID);
+  const groups=summary.groups;
+  const ids=new Set(groups.map(g=>String(g.groupId)));
+  const reports=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>ids.has(String(r.GROUP_ID||'')));
+  const topics=readObjectsFresh_('RESEARCH_TOPIC_VERSIONS').filter(r=>ids.has(String(r.GROUP_ID||'')));
+  const files=readObjectsFresh_('PROPOSAL_FILES').filter(r=>ids.has(String(r.GROUP_ID||''))&&String(r.STATUS||'').toUpperCase()==='ACTIVE');
+  const feedback=readObjectsFresh_('ADVISOR_FEEDBACK').filter(r=>ids.has(String(r.GROUP_ID||''))&&String(r.STATUS||'ACTIVE').toUpperCase()==='ACTIVE');
+  const meetings=readObjectsFresh_('MEETING_RECORDS').filter(r=>ids.has(String(r.GROUP_ID||'')));
+  const tasks=readObjectsFresh_('GROUP_TASKS').filter(r=>ids.has(String(r.GROUP_ID||''))&&!['DONE','CANCELLED','DELETED'].includes(String(r.STATUS||'').toUpperCase()));
+  const groupSummaries=groups.map(g=>{
+    const gr=reports.filter(r=>String(r.GROUP_ID)===String(g.groupId)).sort((a,b)=>new Date(b.SUBMITTED_AT||0)-new Date(a.SUBMITTED_AT||0));
+    const gt=topics.filter(r=>String(r.GROUP_ID)===String(g.groupId)).sort((a,b)=>Number(b.VERSION_NO||0)-Number(a.VERSION_NO||0));
+    const gm=meetings.filter(r=>String(r.GROUP_ID)===String(g.groupId));
+    return {
+      groupId:g.groupId,groupName:g.groupName,topicTh:g.topicTh,topicEn:g.topicEn,members:g.members,
+      pendingReports:gr.filter(r=>['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').toUpperCase())).length,
+      totalReports:gr.length,latestReport:gr[0]?{weekNo:gr[0].WEEK_NO,status:gr[0].STATUS,submittedAt:gr[0].SUBMITTED_AT}:null,
+      proposalFiles:files.filter(r=>String(r.GROUP_ID)===String(g.groupId)).length,
+      feedbackCount:feedback.filter(r=>String(r.GROUP_ID)===String(g.groupId)).length,
+      meetingCount:[...new Set(gm.map(r=>String(r.MEETING_NO)))].filter(Boolean).length,
+      openTasks:tasks.filter(r=>String(r.GROUP_ID)===String(g.groupId)).length,
+      latestTopic:gt[0]?{versionNo:gt[0].VERSION_NO,reviewStatus:gt[0].REVIEW_STATUS,status:gt[0].STATUS}:null
+    };
+  });
+  const pendingReports=reports.filter(r=>['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').toUpperCase())).map(r=>{
+    const g=groups.find(x=>String(x.groupId)===String(r.GROUP_ID));
+    return {groupId:r.GROUP_ID,groupName:g?g.groupName:'',weekNo:r.WEEK_NO,status:r.STATUS,submittedAt:r.SUBMITTED_AT,reportId:r.REPORT_ID};
+  }).sort((a,b)=>new Date(b.submittedAt||0)-new Date(a.submittedAt||0));
+  const pendingTopics=topics.filter(r=>String(r.REVIEW_STATUS||'').toUpperCase()==='PENDING').map(r=>{
+    const g=groups.find(x=>String(x.groupId)===String(r.GROUP_ID));
+    return {groupId:r.GROUP_ID,groupName:g?g.groupName:'',versionNo:r.VERSION_NO,titleTh:r.TITLE_TH,submittedAt:r.SUBMITTED_AT,versionId:r.VERSION_ID};
+  });
+  return sanitizeForClient_({
+    metrics:{
+      assignedGroups:groups.length,
+      pendingReports:pendingReports.length,
+      pendingTopics:pendingTopics.length,
+      meetingsRecorded:meetings.length,
+      feedbackProvided:feedback.length,
+      openTasks:tasks.length
+    },
+    groups:groupSummaries,pendingReports,pendingTopics,
+    assessmentWindowA4:assessmentSettingsFresh_().WINDOW_A4||'CLOSED'
+  });
+}
+
 /** Dashboard bootstrap: all authorization is performed on the server. */
 function apiGetDashboard(token) {
   const ctx = requireSession_(token, null, true);
@@ -408,6 +508,7 @@ function apiGetDashboard(token) {
   const base = {
     appName:APP.NAME, version:APP.VERSION, courseCode:APP.COURSE_CODE,
     term:APP.TERM, section:APP.SECTION,
+    expiresAt:new Date(ctx.session.EXPIRES_AT).toISOString(),
     forcePasswordChange: String(ctx.user.PASSWORD_CHANGE_REQUIRED).toUpperCase() === 'TRUE',
     user:{userId:ctx.user.USER_ID,username:ctx.user.USERNAME || ctx.user.EMAIL,email:ctx.user.EMAIL,displayName:ctx.user.DISPLAY_NAME,roleId:role}
   };
@@ -415,7 +516,8 @@ function apiGetDashboard(token) {
     base.metrics = {users:readObjects_('SYS_USERS').length, sessions:readObjects_('SYS_SESSIONS').filter(s=>!s.REVOKED_AT && new Date(s.EXPIRES_AT)>new Date()).length, roster:readObjects_('STUDENTS').length};
     base.menu = ['ภาพรวมระบบ','จัดการกลุ่มวิจัย','กำหนดอาจารย์ที่ปรึกษา','บันทึกการเข้าพบ','จัดการรายงานความก้าวหน้า','จัดการงานกลุ่ม','ติดตามจริยธรรม','สัญญาณเตือนความเสี่ยง','ประเมินผล A1–A6','บัญชีผู้ใช้','นำเข้ารายชื่อนักศึกษา','บันทึกระบบ','การตั้งค่าระบบ'];
     } else if (role === ROLE.ADVISOR) {
-    const advisorGroupIds=readObjectsFresh_('ADVISOR_ASSIGNMENTS').filter(a=>a.ADVISOR_USER_ID===ctx.user.USER_ID&&a.STATUS==='APPROVED').map(a=>String(a.GROUP_ID));const advisorReports=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>advisorGroupIds.includes(String(r.GROUP_ID))&&['SUBMITTED','RESUBMITTED','APPROVED','REVISION_REQUIRED'].includes(String(r.STATUS)));const feedback=readObjectsFresh_('ADVISOR_FEEDBACK').filter(f=>advisorGroupIds.includes(String(f.GROUP_ID))&&String(f.STATUS||'ACTIVE')==='ACTIVE');const meetings=readObjectsFresh_('MEETING_RECORDS').filter(m=>advisorGroupIds.includes(String(m.GROUP_ID)));base.metrics = {assignedGroups:advisorGroupIds.length, reportsAvailable:advisorReports.length, feedbackProvided:feedback.length, meetings:meetings.length};
+    const advisorSummary=advisorWorkspaceSummary_(ctx.user.USER_ID);
+    base.metrics={assignedGroups:advisorSummary.metrics.assignedGroups,pendingReports:advisorSummary.metrics.pendingReports,pendingTopics:advisorSummary.metrics.pendingTopics,meetingsRecorded:advisorSummary.metrics.meetingsRecorded};
     base.menu = ['ภาพรวมการให้คำปรึกษา','กลุ่มที่ได้รับมอบหมาย','บันทึกการพบอาจารย์','ประเมิน A4'];
   } else if (role === ROLE.STUDENT) {
     // Derive dashboard group status from the active membership relationship.
@@ -1503,7 +1605,7 @@ function apiAdminSetAssessmentWindow(token,type,isOpen){
 }
 function apiAdvisorSaveA4(token,payload){
   const ctx=requireSession_(token,[ROLE.ADMIN,ROLE.ADVISOR]);assertGradeEditable_(); payload=payload||{}; const groupId=String(payload.groupId||''); assertGroupAccess_(ctx,groupId);
-  if(ctx.user.ROLE_ID===ROLE.ADVISOR && assessmentSettings_().WINDOW_A4!=='OPEN') throw new Error('Admin ยังไม่ได้เปิดช่วงประเมิน A4');
+  if(ctx.user.ROLE_ID===ROLE.ADVISOR && assessmentSettingsFresh_().WINDOW_A4!=='OPEN') throw new Error('Admin ยังไม่ได้เปิดช่วงประเมิน A4');
   const groupScore=Number(payload.groupScore); if(!Number.isFinite(groupScore)||groupScore<0||groupScore>10) throw new Error('คะแนน A4 ระดับกลุ่มต้องอยู่ระหว่าง 0–10');
   const members=readObjects_('GROUP_MEMBERS').filter(m=>m.GROUP_ID===groupId&&m.STATUS==='ACTIVE'); const individual=payload.individualScores||{};
   const validated=members.map(m=>{const v=Number(individual[String(m.STUDENT_ID)]);if(!Number.isFinite(v)||v<0||v>10)throw new Error('กรุณากรอกคะแนน A4 รายบุคคล 0–10 ให้ครบ: '+m.STUDENT_ID);return {studentId:m.STUDENT_ID,score:v};});
@@ -1569,16 +1671,22 @@ function apiAdminSaveCoreScores(token,payload){
 }
 function apiGetAssessmentReport(token){
   const ctx=requireSession_(token,null); const role=ctx.user.ROLE_ID;
-  const allGroups=readObjects_('RESEARCH_GROUPS'), allMembers=readObjects_('GROUP_MEMBERS'), assignments=readObjects_('ADVISOR_ASSIGNMENTS');
-  let groups=allGroups.filter(g=>g.STATUS==='ACTIVE');
-  if(role===ROLE.ADVISOR){const ids=assignments.filter(a=>a.ADVISOR_USER_ID===ctx.user.USER_ID&&a.STATUS==='APPROVED').map(a=>a.GROUP_ID);groups=groups.filter(g=>ids.includes(g.GROUP_ID));}
+  const allGroups=readObjectsFresh_('RESEARCH_GROUPS'), allMembers=readObjectsFresh_('GROUP_MEMBERS'), assignments=readObjectsFresh_('ADVISOR_ASSIGNMENTS');
+  let groups=allGroups.filter(g=>String(g.STATUS||'').trim().toUpperCase()==='ACTIVE');
+  if(role===ROLE.ADVISOR){
+    const ids=new Set(getAdvisorAssignedGroups_(ctx.user.USER_ID).map(g=>String(g.groupId)));
+    groups=groups.filter(g=>ids.has(String(g.GROUP_ID)));
+  }
   let studentMember=null;
-  if(role===ROLE.STUDENT){studentMember=allMembers.find(x=>(x.USER_ID===ctx.user.USER_ID||String(x.STUDENT_ID)===String(ctx.user.STUDENT_ID))&&x.STATUS==='ACTIVE');groups=groups.filter(g=>studentMember&&g.GROUP_ID===studentMember.GROUP_ID);}
-  const gs=readObjects_('GROUP_SCORES'), individual=readObjects_('INDIVIDUAL_SCORES'), meetings=readObjects_('MEETING_RECORDS'), peers=readObjects_('PEER_ASSESSMENTS'), students=readObjects_('STUDENTS'), users=readObjects_('SYS_USERS');
+  if(role===ROLE.STUDENT){
+    studentMember=allMembers.find(x=>(String(x.USER_ID||'')===String(ctx.user.USER_ID||'')||String(x.STUDENT_ID||'')===String(ctx.user.STUDENT_ID||''))&&String(x.STATUS||'').trim().toUpperCase()==='ACTIVE');
+    groups=groups.filter(g=>studentMember&&String(g.GROUP_ID)===String(studentMember.GROUP_ID));
+  }
+  const gs=readObjectsFresh_('GROUP_SCORES'), individual=readObjectsFresh_('INDIVIDUAL_SCORES'), meetings=readObjectsFresh_('MEETING_RECORDS'), peers=readObjectsFresh_('PEER_ASSESSMENTS'), students=readObjectsFresh_('STUDENTS'), users=readObjectsFresh_('SYS_USERS');
   const releaseStatus=gradeReleaseStatus_(),studentCanSeeScores=role!=='STUDENT'||releaseStatus==='RELEASED';
   return sanitizeForClient_(groups.map(g=>{
-    const ms=allMembers.filter(m=>m.GROUP_ID===g.GROUP_ID&&m.STATUS==='ACTIVE');
-    const assignment=assignments.find(x=>x.GROUP_ID===g.GROUP_ID&&x.STATUS==='APPROVED');
+    const ms=allMembers.filter(m=>String(m.GROUP_ID)===String(g.GROUP_ID)&&String(m.STATUS||'').trim().toUpperCase()==='ACTIVE');
+    const assignment=assignments.find(x=>String(x.GROUP_ID)===String(g.GROUP_ID)&&String(x.STATUS||'').trim().toUpperCase()==='APPROVED');
     const advisor=assignment&&users.find(x=>x.USER_ID===assignment.ADVISOR_USER_ID);
     const groupScore=studentCanSeeScores?(gs.find(x=>x.GROUP_ID===g.GROUP_ID)||{}):{};
     let outputMembers=ms;
@@ -1612,15 +1720,15 @@ function apiGetStudentResearchData(token,requestedGroupId){
     if(!m)return {group:null,topics:[],files:[],progress:[],feedback:[],milestones:studentMilestonePlan_()};
     groupId=m.GROUP_ID;
   } else if(ctx.user.ROLE_ID===ROLE.ADVISOR){
-    const assigned=readObjects_('ADVISOR_ASSIGNMENTS').filter(x=>x.ADVISOR_USER_ID===ctx.user.USER_ID&&x.STATUS==='APPROVED');
-    groupId=String(requestedGroupId|| (assigned.length?assigned[0].GROUP_ID:''));
+    const assigned=getAdvisorAssignedGroups_(ctx.user.USER_ID);
+    groupId=String(requestedGroupId|| (assigned.length?assigned[0].groupId:''));
     if(!groupId)return {group:null,topics:[],files:[],progress:[],feedback:[],milestones:studentMilestonePlan_()};
   } else {
     groupId=String(requestedGroupId||'');
   }
   if(!groupId) throw new Error('กรุณาระบุกลุ่มผ่านพื้นที่ทำงานหรือรายการกลุ่มที่ได้รับมอบหมาย');
   assertGroupAccess_(ctx,groupId);
-  const group=readObjects_('RESEARCH_GROUPS').find(x=>x.GROUP_ID===groupId&&x.STATUS==='ACTIVE');
+  const group=readObjectsFresh_('RESEARCH_GROUPS').find(x=>String(x.GROUP_ID)===String(groupId)&&String(x.STATUS||'').trim().toUpperCase()==='ACTIVE');
   const groupExtensions=readObjectsFresh_('GROUP_DEADLINE_EXTENSIONS');
   const progressWeeks=progressWeekSettings_().map(w=>{const ext=groupExtensions.filter(x=>String(x.GROUP_ID)===String(groupId)&&Number(x.WEEK_NO)===Number(w.week)&&x.STATUS==='APPROVED').sort((a,b)=>new Date(b.APPROVED_AT)-new Date(a.APPROVED_AT))[0];return {...w,effectiveDueDate:ext?formatDateOnly_(ext.NEW_DUE_DATE):w.dueDate};});
   const activeGroupMembers=readObjectsFresh_('GROUP_MEMBERS').filter(m=>String(m.GROUP_ID)===String(groupId)&&m.STATUS==='ACTIVE');
@@ -1809,69 +1917,102 @@ function assertStudentGroupLeader_(ctx){
     throw new Error('เฉพาะหัวหน้ากลุ่มที่ Admin กำหนดเท่านั้นที่บันทึกร่างหรือส่งหัวข้อวิจัยได้');
   return {groupId,g};
 }
+function enqueueResearchTopicNotification_(groupId,type,title,message,relatedId){
+  // Use the existing notification tables only. Never create sheets or run migrations here.
+  const ss=db_();
+  if(!ss.getSheetByName('NOTIFICATIONS')||!ss.getSheetByName('NOTIFICATION_QUEUE'))throw new Error('ไม่พบตารางแจ้งเตือนที่เตรียมไว้แล้ว กรุณาตรวจสอบ TEST schema โดยไม่รัน migration อัตโนมัติ');
+  const members=readObjectsFresh_('GROUP_MEMBERS').filter(m=>String(m.GROUP_ID)===String(groupId)&&m.STATUS==='ACTIVE');
+  const users=readObjectsFresh_('SYS_USERS'),recipientIds=[];
+  members.forEach(m=>{let userId=String(m.USER_ID||'');if(!userId){const linked=users.find(u=>u.ROLE_ID===ROLE.STUDENT&&String(u.STUDENT_ID)===String(m.STUDENT_ID)&&u.STATUS==='ACTIVE');if(linked)userId=String(linked.USER_ID);}if(userId)recipientIds.push(userId);});
+  readObjectsFresh_('ADVISOR_ASSIGNMENTS').filter(a=>String(a.GROUP_ID)===String(groupId)&&a.STATUS==='APPROVED').forEach(a=>recipientIds.push(String(a.ADVISOR_USER_ID)));
+  const existing=readObjectsFresh_('NOTIFICATIONS');
+  [...new Set(recipientIds)].forEach(userId=>{
+    const user=users.find(u=>String(u.USER_ID)===userId);if(!user)return;
+    const eventKey=[type,relatedId,user.USER_ID].join(':');
+    if(existing.some(n=>String(n.NOTIFICATION_ID)===eventKey))return;
+    appendObject_('NOTIFICATIONS',{NOTIFICATION_ID:eventKey,USER_ID:user.USER_ID,GROUP_ID:groupId,TYPE:type,TITLE:title,MESSAGE:message,RELATED_TYPE:'RESEARCH_TOPIC',RELATED_ID:relatedId,IS_READ:'FALSE',CREATED_AT:new Date(),READ_AT:''});
+    if(user.EMAIL)appendObject_('NOTIFICATION_QUEUE',{QUEUE_ID:Utilities.getUuid(),EVENT_KEY:eventKey,RECIPIENT_EMAIL:user.EMAIL,RECIPIENT_USER_ID:user.USER_ID,SUBJECT:title,BODY:message,STATUS:'PENDING',ATTEMPTS:0,NEXT_ATTEMPT_AT:new Date(),LEASE_UNTIL:'',LAST_ERROR:'',CREATED_AT:new Date(),SENT_AT:''});
+  });
+}
+function latestResearchTopicVersion_(groupId){
+  return findObjectsByColumnValue_('RESEARCH_TOPIC_VERSIONS','GROUP_ID',groupId).sort((a,b)=>Number(b.VERSION_NO||0)-Number(a.VERSION_NO||0))[0]||null;
+}
+function assertResearchTopicEditable_(latest){
+  if(!latest)return;
+  const status=String(latest.REVIEW_STATUS||'');
+  if(status==='PENDING')throw new Error('หัวข้อวิจัยอยู่ระหว่างการพิจารณาของอาจารย์ที่ปรึกษา ไม่สามารถส่งซ้ำได้');
+  if(status==='APPROVED'||String(latest.STATUS)==='ADVISOR_APPROVED')throw new Error('อาจารย์ที่ปรึกษาเห็นชอบแล้ว ขั้นตอน RW-01 สิ้นสุดในระดับที่ปรึกษา');
+  if(status==='REJECTED')throw new Error('หัวข้อวิจัยไม่ผ่านความเห็นชอบ การเริ่มส่งหัวข้อใหม่ต้องได้รับการดำเนินการตามแนวทางที่ผู้รับผิดชอบรายวิชากำหนด');
+  if(status!=='REVISION_REQUIRED')throw new Error('สถานะหัวข้อวิจัยไม่อนุญาตให้ส่งฉบับใหม่');
+}
 function apiGetResearchTopicDraft(token){
-  const ctx=requireSession_(token,[ROLE.STUDENT]);
-  const {groupId}=assertStudentGroupLeader_(ctx);
+  const ctx=requireSession_(token,[ROLE.STUDENT]);const {groupId}=assertStudentGroupLeader_(ctx);
   const row=readObjectsFresh_('RESEARCH_TOPIC_DRAFTS').find(x=>String(x.GROUP_ID)===String(groupId)&&x.STATUS==='DRAFT');
-  if(!row)return {draft:null};
-  return {draft:{titleTh:row.TITLE_TH||'',titleEn:row.TITLE_EN||'',problem:row.PROBLEM_STATEMENT||'',objectives:row.OBJECTIVES||'',significance:row.RESEARCH_SIGNIFICANCE||'',updatedAt:row.UPDATED_AT||''}};
+  if(row)return {draft:{titleTh:row.TITLE_TH||'',titleEn:row.TITLE_EN||'',problem:row.PROBLEM_STATEMENT||'',objectives:row.OBJECTIVES||'',significance:row.RESEARCH_SIGNIFICANCE||'',updatedAt:row.UPDATED_AT||'',source:'DRAFT'}};
+  const latest=latestResearchTopicVersion_(groupId);
+  if(latest&&latest.REVIEW_STATUS==='REVISION_REQUIRED')return {draft:{titleTh:latest.TITLE_TH||'',titleEn:latest.TITLE_EN||'',problem:latest.PROBLEM_STATEMENT||'',objectives:latest.OBJECTIVES||'',significance:latest.RESEARCH_SIGNIFICANCE||'',updatedAt:latest.SUBMITTED_AT||'',source:'REVISION_REQUIRED',versionNo:Number(latest.VERSION_NO)||0,reviewComment:latest.REVIEW_COMMENT||''}};
+  return {draft:null};
 }
 function apiSaveResearchTopicDraft(token,payload){
-  const ctx=requireSession_(token,[ROLE.STUDENT]);payload=payload||{};
-  const {groupId}=assertStudentGroupLeader_(ctx);
-  const values={
-    TITLE_TH:String(payload.titleTh||'').slice(0,500),
-    TITLE_EN:String(payload.titleEn||'').slice(0,500),
-    PROBLEM_STATEMENT:String(payload.problem||'').slice(0,10000),
-    OBJECTIVES:String(payload.objectives||'').slice(0,5000),
-    RESEARCH_SIGNIFICANCE:String(payload.significance||'').slice(0,5000)
-  };
+  const ctx=requireSession_(token,[ROLE.STUDENT]);payload=payload||{};const {groupId}=assertStudentGroupLeader_(ctx);
+  const values={TITLE_TH:String(payload.titleTh||'').slice(0,500),TITLE_EN:String(payload.titleEn||'').slice(0,500),PROBLEM_STATEMENT:String(payload.problem||'').slice(0,10000),OBJECTIVES:String(payload.objectives||'').slice(0,5000),RESEARCH_SIGNIFICANCE:String(payload.significance||'').slice(0,5000)};
   const lock=LockService.getScriptLock();lock.waitLock(60000);
   try{
-    const sh=ensureWorkflowSheet_('RESEARCH_TOPIC_DRAFTS');
-    const rows=readObjectsFresh_('RESEARCH_TOPIC_DRAFTS');
-    const current=rows.find(x=>String(x.GROUP_ID)===String(groupId)&&x.STATUS==='DRAFT');
-    const now=new Date();
-    if(current){
-      const headers=SCHEMA.RESEARCH_TOPIC_DRAFTS;
-      Object.keys(values).forEach(k=>sh.getRange(current._row,headers.indexOf(k)+1).setValue(values[k]));
-      sh.getRange(current._row,headers.indexOf('UPDATED_BY')+1).setValue(ctx.user.USER_ID);
-      sh.getRange(current._row,headers.indexOf('UPDATED_AT')+1).setValue(now);
-    }else{
-      appendObject_('RESEARCH_TOPIC_DRAFTS',Object.assign({DRAFT_ID:Utilities.getUuid(),GROUP_ID:groupId},values,{STATUS:'DRAFT',UPDATED_BY:ctx.user.USER_ID,UPDATED_AT:now}));
-    }
+    const latest=latestResearchTopicVersion_(groupId);if(latest)assertResearchTopicEditable_(latest);
+    const sh=sheet_('RESEARCH_TOPIC_DRAFTS'),rows=readObjectsFresh_('RESEARCH_TOPIC_DRAFTS');
+    const current=rows.find(x=>String(x.GROUP_ID)===String(groupId)&&x.STATUS==='DRAFT'),now=new Date();
+    if(current){const headers=SCHEMA.RESEARCH_TOPIC_DRAFTS;Object.keys(values).forEach(k=>sh.getRange(current._row,headers.indexOf(k)+1).setValue(values[k]));sh.getRange(current._row,headers.indexOf('UPDATED_BY')+1).setValue(ctx.user.USER_ID);sh.getRange(current._row,headers.indexOf('UPDATED_AT')+1).setValue(now);}
+    else appendObject_('RESEARCH_TOPIC_DRAFTS',Object.assign({DRAFT_ID:Utilities.getUuid(),GROUP_ID:groupId},values,{STATUS:'DRAFT',UPDATED_BY:ctx.user.USER_ID,UPDATED_AT:now}));
     return {ok:true,message:'บันทึกร่างหัวข้อวิจัยแล้ว ยังไม่ส่งให้อาจารย์พิจารณา',updatedAt:now};
   }finally{lock.releaseLock();}
 }
-
 function apiStudentSaveResearchTopic(token,payload){
-  const ctx=requireSession_(token,[ROLE.STUDENT]);payload=payload||{};
-  const groupId=studentGroupForUser_(ctx),g=readObjects_('RESEARCH_GROUPS').find(x=>x.GROUP_ID===groupId&&x.STATUS==='ACTIVE');
-  if(!g||String(g.GROUP_LEADER_USER_ID||'')!==String(ctx.user.USER_ID))throw new Error('เฉพาะหัวหน้ากลุ่มที่ Admin กำหนดเท่านั้นที่ส่งหรือปรับปรุงหัวข้อวิจัยได้');
+  const ctx=requireSession_(token,[ROLE.STUDENT]);payload=payload||{};const {groupId}=assertStudentGroupLeader_(ctx);
   const titleTh=String(payload.titleTh||'').trim(),titleEn=String(payload.titleEn||'').trim();
   if(!titleTh)throw new Error('กรุณาระบุชื่อเรื่องวิจัยภาษาไทย');
+  if(titleTh.length>500||titleEn.length>500)throw new Error('ชื่อเรื่องต้องมีความยาวไม่เกิน 500 ตัวอักษร');
   const problem=String(payload.problem||'').trim(),objectives=String(payload.objectives||'').trim(),significance=String(payload.significance||'').trim();
-  if(problem.length<20)throw new Error('ช่องปัญหาวิจัยต้องมีอย่างน้อย 20 ตัวอักษร (ปัจจุบัน '+problem.length+' ตัวอักษร)');
-  if(objectives.length<10)throw new Error('ช่องวัตถุประสงค์ต้องมีอย่างน้อย 10 ตัวอักษร (ปัจจุบัน '+objectives.length+' ตัวอักษร)');
+  if(problem.length<20||problem.length>10000)throw new Error('ช่องปัญหาวิจัยต้องมี 20–10,000 ตัวอักษร');
+  if(objectives.length<10||objectives.length>5000)throw new Error('ช่องวัตถุประสงค์ต้องมี 10–5,000 ตัวอักษร');
+  if(significance.length>5000)throw new Error('ช่องความสำคัญของการวิจัยต้องมีความยาวไม่เกิน 5,000 ตัวอักษร');
   const lock=LockService.getScriptLock();lock.waitLock(60000);
   try{
-    const versions=findObjectsByColumnValue_('RESEARCH_TOPIC_VERSIONS','GROUP_ID',groupId),versionNo=versions.reduce((n,x)=>Math.max(n,Number(x.VERSION_NO)||0),0)+1,now=new Date();
-    const id=Utilities.getUuid();
+    const group=readObjectsFresh_('RESEARCH_GROUPS').find(x=>String(x.GROUP_ID)===String(groupId)&&x.STATUS==='ACTIVE');
+    if(!group||String(group.GROUP_LEADER_USER_ID||'')!==String(ctx.user.USER_ID))throw new Error('เฉพาะหัวหน้ากลุ่มที่ Admin กำหนดเท่านั้นที่ส่งหรือปรับปรุงหัวข้อวิจัยได้');
+    const latest=latestResearchTopicVersion_(groupId);if(latest)assertResearchTopicEditable_(latest);
+    const versions=findObjectsByColumnValue_('RESEARCH_TOPIC_VERSIONS','GROUP_ID',groupId),versionNo=versions.reduce((n,x)=>Math.max(n,Number(x.VERSION_NO)||0),0)+1,now=new Date(),id=Utilities.getUuid();
     appendObject_('RESEARCH_TOPIC_VERSIONS',{VERSION_ID:id,GROUP_ID:groupId,VERSION_NO:versionNo,TITLE_TH:titleTh,TITLE_EN:titleEn,PROBLEM_STATEMENT:problem,OBJECTIVES:objectives,RESEARCH_SIGNIFICANCE:significance,STATUS:'SUBMITTED',REVIEW_STATUS:'PENDING',SUBMITTED_BY:ctx.user.USER_ID,SUBMITTED_AT:now,REVIEWED_BY:'',REVIEWED_AT:'',REVIEW_COMMENT:''});
-    const sh=sheet_('RESEARCH_GROUPS');sh.getRange(g._row,3).setValue(titleTh);sh.getRange(g._row,4).setValue(titleEn);sh.getRange(g._row,8).setValue(now);
+    const groupSheet=sheet_('RESEARCH_GROUPS');groupSheet.getRange(group._row,3).setValue(titleTh);groupSheet.getRange(group._row,4).setValue(titleEn);groupSheet.getRange(group._row,8).setValue(now);
     const draft=readObjectsFresh_('RESEARCH_TOPIC_DRAFTS').find(x=>String(x.GROUP_ID)===String(groupId)&&x.STATUS==='DRAFT');
-    if(draft){const draftSh=sheet_('RESEARCH_TOPIC_DRAFTS');draftSh.getRange(draft._row,SCHEMA.RESEARCH_TOPIC_DRAFTS.indexOf('STATUS')+1).setValue('SUBMITTED');}
+    if(draft){const draftSheet=sheet_('RESEARCH_TOPIC_DRAFTS');draftSheet.getRange(draft._row,SCHEMA.RESEARCH_TOPIC_DRAFTS.indexOf('STATUS')+1).setValue('SUBMITTED');}
     logSystem_('RESEARCH_TOPIC_SUBMITTED','GROUP',groupId,{versionNo,titleTh},ctx.user.USER_ID);
-    return {ok:true,message:'บันทึกหัวข้อวิจัยเวอร์ชัน '+versionNo+' และส่งให้อาจารย์พิจารณาแล้ว'};
+    try{enqueueResearchTopicNotification_(groupId,'RESEARCH_TOPIC_SUBMITTED','ส่งหัวข้อวิจัยให้อาจารย์พิจารณา','กลุ่มของท่านส่งหัวข้อวิจัยเวอร์ชัน '+versionNo+' ให้อาจารย์ที่ปรึกษาพิจารณาแล้ว',id);}
+    catch(notificationError){logSystem_('RESEARCH_TOPIC_NOTIFICATION_FAILED','GROUP',groupId,{versionId:id,error:String(notificationError.message||notificationError)},ctx.user.USER_ID);}
+    return {ok:true,versionId:id,versionNo,message:'บันทึกหัวข้อวิจัยเวอร์ชัน '+versionNo+' และส่งให้อาจารย์พิจารณาแล้ว'};
   }finally{lock.releaseLock();}
 }
 function apiAdvisorReviewResearchTopic(token,versionId,decision,comment){
   const ctx=requireSession_(token,[ROLE.ADMIN,ROLE.ADVISOR]);
   if(!['APPROVED','REVISION_REQUIRED','REJECTED'].includes(decision))throw new Error('สถานะการพิจารณาไม่ถูกต้อง');
-  const row=readObjects_('RESEARCH_TOPIC_VERSIONS').find(x=>x.VERSION_ID===versionId);if(!row)throw new Error('ไม่พบหัวข้อวิจัยเวอร์ชันนี้');assertGroupAccess_(ctx,row.GROUP_ID);
-  const sh=sheet_('RESEARCH_TOPIC_VERSIONS');[['REVIEW_STATUS',decision],['REVIEWED_BY',ctx.user.USER_ID],['REVIEWED_AT',new Date()],['REVIEW_COMMENT',String(comment||'').slice(0,3000)]].forEach(([k,v])=>sh.getRange(row._row,SCHEMA.RESEARCH_TOPIC_VERSIONS.indexOf(k)+1).setValue(v));
-  logSystem_('RESEARCH_TOPIC_REVIEWED','GROUP',row.GROUP_ID,{versionId,decision},ctx.user.USER_ID);return {ok:true,message:'บันทึกผลการพิจารณาหัวข้อวิจัยแล้ว'};
+  const note=String(comment||'').trim();
+  if(['REVISION_REQUIRED','REJECTED'].includes(decision)&&note.length<5)throw new Error('กรุณาระบุข้อเสนอแนะอย่างน้อย 5 ตัวอักษรสำหรับผลการพิจารณานี้');
+  if(note.length>3000)throw new Error('ข้อเสนอแนะต้องมีความยาวไม่เกิน 3,000 ตัวอักษร');
+  const lock=LockService.getScriptLock();lock.waitLock(60000);
+  try{
+    const row=readObjectsFresh_('RESEARCH_TOPIC_VERSIONS').find(x=>String(x.VERSION_ID)===String(versionId));
+    if(!row)throw new Error('ไม่พบหัวข้อวิจัยเวอร์ชันนี้');assertGroupAccess_(ctx,row.GROUP_ID);
+    if(String(row.REVIEW_STATUS)!=='PENDING')throw new Error('หัวข้อวิจัยเวอร์ชันนี้ได้รับการพิจารณาแล้ว ไม่สามารถบันทึกผลซ้ำได้');
+    const sh=sheet_('RESEARCH_TOPIC_VERSIONS'),headers=SCHEMA.RESEARCH_TOPIC_VERSIONS,status=decision==='APPROVED'?'ADVISOR_APPROVED':decision;
+    [['STATUS',status],['REVIEW_STATUS',decision],['REVIEWED_BY',ctx.user.USER_ID],['REVIEWED_AT',new Date()],['REVIEW_COMMENT',note]].forEach(([k,v])=>sh.getRange(row._row,headers.indexOf(k)+1).setValue(v));
+    logSystem_('RESEARCH_TOPIC_REVIEWED','GROUP',row.GROUP_ID,{versionId,decision,status},ctx.user.USER_ID);
+    const titles={APPROVED:'อาจารย์ที่ปรึกษาเห็นชอบหัวข้อวิจัย',REVISION_REQUIRED:'อาจารย์ที่ปรึกษาให้ปรับปรุงหัวข้อวิจัย',REJECTED:'อาจารย์ที่ปรึกษาไม่เห็นชอบหัวข้อวิจัย'};
+    const messages={APPROVED:'หัวข้อวิจัยเวอร์ชัน '+row.VERSION_NO+' ได้รับความเห็นชอบจากอาจารย์ที่ปรึกษาแล้ว ขั้นตอน RW-01 สิ้นสุดในระดับที่ปรึกษา',REVISION_REQUIRED:'หัวข้อวิจัยเวอร์ชัน '+row.VERSION_NO+' ต้องปรับปรุง กรุณาอ่านข้อเสนอแนะและแก้ไขเพื่อส่งเป็นเวอร์ชันใหม่',REJECTED:'หัวข้อวิจัยเวอร์ชัน '+row.VERSION_NO+' ไม่ได้รับความเห็นชอบ กรุณาติดต่อผู้รับผิดชอบรายวิชาเพื่อพิจารณาแนวทางดำเนินการ'};
+    try{enqueueResearchTopicNotification_(row.GROUP_ID,'RESEARCH_TOPIC_'+decision,titles[decision],messages[decision],String(versionId)+':'+decision);}
+    catch(notificationError){logSystem_('RESEARCH_TOPIC_NOTIFICATION_FAILED','GROUP',row.GROUP_ID,{versionId,decision,error:String(notificationError.message||notificationError)},ctx.user.USER_ID);}
+    return {ok:true,message:'บันทึกผลการพิจารณาหัวข้อวิจัยแล้ว'};
+  }finally{lock.releaseLock();}
 }
+
 function apiUploadProposalPdf(token,payload){
   const ctx=requireSession_(token,[ROLE.STUDENT,ROLE.ADVISOR,ROLE.ADMIN]);payload=payload||{};
   const groupId=String(payload.groupId||'');assertGroupAccess_(ctx,groupId);
@@ -2192,12 +2333,33 @@ function migrateResearchWorkflowSchema_(){
 }
 
 function assertGroupAccess_(ctx,groupId){
-  const group=readObjects_('RESEARCH_GROUPS').find(g=>g.GROUP_ID===groupId&&g.STATUS==='ACTIVE'); if(!group) throw new Error('ไม่พบกลุ่มวิจัย');
+  const targetGroupId=String(groupId||'').trim();
+  const groups=readObjectsFresh_('RESEARCH_GROUPS');
+  const group=groups.find(g=>String(g.GROUP_ID||'').trim()===targetGroupId&&String(g.STATUS||'').trim().toUpperCase()==='ACTIVE');
+  if(!group)throw new Error('ไม่พบกลุ่มวิจัย');
   if(ctx.user.ROLE_ID===ROLE.ADMIN)return true;
-  if(ctx.user.ROLE_ID===ROLE.ADVISOR){if(!readObjects_('ADVISOR_ASSIGNMENTS').some(a=>a.GROUP_ID===groupId&&a.ADVISOR_USER_ID===ctx.user.USER_ID&&a.STATUS==='APPROVED'))throw new Error('ไม่มีสิทธิ์เข้าถึงกลุ่มนี้');return true;}
-  const m=readObjects_('GROUP_MEMBERS').find(x=>x.GROUP_ID===groupId&&(x.USER_ID===ctx.user.USER_ID || String(x.STUDENT_ID)===String(ctx.user.STUDENT_ID))&&x.STATUS==='ACTIVE'); if(!m)throw new Error('ไม่มีสิทธิ์เข้าถึงกลุ่มนี้');return true;
+  if(ctx.user.ROLE_ID===ROLE.ADVISOR){
+    const advisorId=String(ctx.user.USER_ID||'').trim();
+    const assigned=readObjectsFresh_('ADVISOR_ASSIGNMENTS').some(a=>
+      String(a.GROUP_ID||'').trim()===targetGroupId&&
+      String(a.ADVISOR_USER_ID||'').trim()===advisorId&&
+      String(a.STATUS||'').trim().toUpperCase()==='APPROVED'
+    );
+    if(!assigned)throw new Error('ไม่มีสิทธิ์เข้าถึงกลุ่มนี้');
+    return true;
+  }
+  const members=readObjectsFresh_('GROUP_MEMBERS');
+  const member=members.find(x=>
+    String(x.GROUP_ID||'').trim()===targetGroupId&&
+    (String(x.USER_ID||'').trim()===String(ctx.user.USER_ID||'').trim()||
+     String(x.STUDENT_ID||'').trim()===String(ctx.user.STUDENT_ID||'').trim())&&
+    String(x.STATUS||'').trim().toUpperCase()==='ACTIVE'
+  );
+  if(!member)throw new Error('ไม่มีสิทธิ์เข้าถึงกลุ่มนี้');
+  return true;
 }
 function assessmentSettings_(){const o={WINDOW_A4:'CLOSED',WINDOW_A5:'CLOSED'};readObjects_('ASSESSMENT_SETTINGS').forEach(r=>o[r.SETTING_KEY]=r.SETTING_VALUE);return o;}
+function assessmentSettingsFresh_(){const o={WINDOW_A4:'CLOSED',WINDOW_A5:'CLOSED'};readObjectsFresh_('ASSESSMENT_SETTINGS').forEach(r=>o[r.SETTING_KEY]=r.SETTING_VALUE);return o;}
 function setAssessmentSetting_(key,value,actor){const sh=sheet_('ASSESSMENT_SETTINGS'),r=readObjects_('ASSESSMENT_SETTINGS').find(x=>x.SETTING_KEY===key);if(r){sh.getRange(r._row,2).setValue(value);sh.getRange(r._row,3).setValue(new Date());sh.getRange(r._row,4).setValue(actor);}else appendObject_('ASSESSMENT_SETTINGS',{SETTING_KEY:key,SETTING_VALUE:value,UPDATED_AT:new Date(),UPDATED_BY:actor});}
 function upsertGroupScore_(groupId,values,actor){const sh=sheet_('GROUP_SCORES'),r=readObjects_('GROUP_SCORES').find(x=>x.GROUP_ID===groupId);if(r){Object.keys(values).forEach(k=>sh.getRange(r._row,SCHEMA.GROUP_SCORES.indexOf(k)+1).setValue(values[k]));sh.getRange(r._row,7).setValue(new Date());sh.getRange(r._row,8).setValue(actor);}else{const o={GROUP_ID:groupId,A1_SCORE:'',A2_SCORE:'',A3_SCORE:'',A4_GROUP_SCORE:'',A4_ADVISOR_USER_ID:'',UPDATED_AT:new Date(),UPDATED_BY:actor};Object.assign(o,values);appendObject_('GROUP_SCORES',o);}}
 function upsertIndividualScore_(studentId,groupId,values,actor){const sh=sheet_('INDIVIDUAL_SCORES'),r=readObjects_('INDIVIDUAL_SCORES').find(x=>String(x.STUDENT_ID)===String(studentId));if(r){Object.keys(values).forEach(k=>sh.getRange(r._row,SCHEMA.INDIVIDUAL_SCORES.indexOf(k)+1).setValue(values[k]));sh.getRange(r._row,7).setValue(new Date());sh.getRange(r._row,8).setValue(actor);}else{const o={STUDENT_ID:studentId,GROUP_ID:groupId,A4_INDIVIDUAL_SCORE:'',A5_SCORE:'',A6_SCORE:'',ADMIN_NOTE:'',UPDATED_AT:new Date(),UPDATED_BY:actor};Object.assign(o,values);appendObject_('INDIVIDUAL_SCORES',o);}}

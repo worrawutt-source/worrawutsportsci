@@ -9,15 +9,66 @@ function readStoredSessionToken(){
     return token;
   }catch(e){return sessionStorage.getItem('ssrl_token')||'';}
 }
-function storeSessionToken(token){try{localStorage.setItem('ssrl_token',token);}catch(e){sessionStorage.setItem('ssrl_token',token);}}
-function clearStoredSessionToken(){try{localStorage.removeItem('ssrl_token');}catch(e){}try{sessionStorage.removeItem('ssrl_token');}catch(e){}}
+function storeSessionToken(token,expiresAt){
+  try{localStorage.setItem('ssrl_token',token);if(expiresAt)localStorage.setItem('ssrl_expires_at',expiresAt);}
+  catch(e){sessionStorage.setItem('ssrl_token',token);if(expiresAt)sessionStorage.setItem('ssrl_expires_at',expiresAt);}
+  if(expiresAt)scheduleSessionExpiry(expiresAt);
+}
+function clearStoredSessionToken(){
+  try{localStorage.removeItem('ssrl_token');localStorage.removeItem('ssrl_expires_at');}catch(e){}
+  try{sessionStorage.removeItem('ssrl_token');sessionStorage.removeItem('ssrl_expires_at');}catch(e){}
+  if(sessionExpiryTimer)clearTimeout(sessionExpiryTimer);
+  sessionExpiryTimer=null;
+}
 let sessionToken = readStoredSessionToken();
 let currentDashboard = null;
+const ACTIVE_MENU_STORAGE_KEY='ssrl_active_menu';
+function getSavedActiveMenu(){try{return localStorage.getItem(ACTIVE_MENU_STORAGE_KEY)||'';}catch(e){return '';}}
+function saveActiveMenu(label){try{localStorage.setItem(ACTIVE_MENU_STORAGE_KEY,String(label||''));}catch(e){}}
+function clearSavedActiveMenu(){try{localStorage.removeItem(ACTIVE_MENU_STORAGE_KEY);}catch(e){}}
 
 function callApi(name, ...args) {
   return new Promise((resolve,reject)=>{
-    google.script.run.withSuccessHandler(resolve).withFailureHandler(e=>reject(new Error(e.message||String(e))))[name](...args);
+    google.script.run
+      .withSuccessHandler(resolve)
+      .withFailureHandler(e=>{
+        const message=(e && e.message) ? e.message : String(e);
+        if(sessionToken && name!=='apiLogin' && name!=='apiStartStudentRegistration' && name!=='apiVerifyStudentRegistration' && isInvalidSessionError(message)){
+          handleInvalidSession(message);
+        }
+        reject(new Error(message));
+      })[name](...args);
   });
+}
+function isInvalidSessionError(message){
+  return /Session\s+หมดอายุ|Session.*ถูกยกเลิก|กรุณาเข้าสู่ระบบใหม่|บัญชีถูกระงับหรือไม่พบผู้ใช้/i.test(String(message||''));
+}
+let sessionExpiryTimer=null;
+function scheduleSessionExpiry(expiresAt){
+  if(sessionExpiryTimer) clearTimeout(sessionExpiryTimer);
+  sessionExpiryTimer=null;
+  const timestamp=Date.parse(expiresAt||'');
+  if(!Number.isFinite(timestamp)) return;
+  try{localStorage.setItem('ssrl_expires_at',new Date(timestamp).toISOString());}catch(e){}
+  const remaining=timestamp-Date.now();
+  if(remaining<=0){handleInvalidSession('Session หมดอายุ');return;}
+  sessionExpiryTimer=setTimeout(()=>{
+    handleInvalidSession('Session หมดอายุ');
+  },Math.min(remaining,2147480000));
+}
+function handleInvalidSession(reason){
+  if(sessionExpiryTimer) clearTimeout(sessionExpiryTimer);
+  sessionExpiryTimer=null;
+  sessionToken='';
+  currentDashboard=null;
+  clearStoredSessionToken();
+  const app=$('appView'),auth=$('authView');
+  document.documentElement.classList.remove('ssrl-session-restoring');
+  const restore=$('sessionRestoreView');if(restore)restore.classList.add('hidden');
+  if(app) app.classList.add('hidden');
+  if(auth) auth.classList.remove('hidden');
+  const message=/หมดอายุ/.test(String(reason||''))?'Session หมดอายุ กรุณาเข้าสู่ระบบใหม่':'Session ถูกยกเลิกหรือบัญชีไม่สามารถใช้งานได้ กรุณาเข้าสู่ระบบใหม่';
+  showMessage(message,true);
 }
 function showMessage(message,isError=false){
   const el=$('authMessage'); el.textContent=message; el.className='message'+(isError?' error':'');
@@ -97,11 +148,13 @@ $('verifyStudent').addEventListener('click',async()=>{
 });
 $('logoutBtn').addEventListener('click',async()=>{
   try{await callApi('apiLogout',sessionToken)}catch(e){}
-  sessionToken='';clearStoredSessionToken();$('appView').classList.add('hidden');$('authView').classList.remove('hidden');showMessage('ออกจากระบบแล้ว');
+  sessionToken='';clearStoredSessionToken();clearSavedActiveMenu();document.documentElement.classList.remove('ssrl-session-restoring');$('appView').classList.add('hidden');$('authView').classList.remove('hidden');showMessage('ออกจากระบบแล้ว');
 });
 async function loadDashboard(forcePasswordChange, isSessionRestore=false){
   try{
     currentDashboard=await callApi('apiGetDashboard',sessionToken);
+    document.documentElement.classList.remove('ssrl-session-restoring');
+    if(currentDashboard && currentDashboard.expiresAt) scheduleSessionExpiry(currentDashboard.expiresAt);
     $('authView').classList.add('hidden');$('appView').classList.remove('hidden');
     const mustChange = forcePasswordChange === true || currentDashboard.forcePasswordChange === true;
     $('passwordChangePanel').classList.toggle('hidden',!mustChange);
@@ -114,48 +167,59 @@ async function loadDashboard(forcePasswordChange, isSessionRestore=false){
     $('welcomeSub').textContent=roleLabel(currentDashboard.user.roleId)+' · '+currentDashboard.courseCode+' · '+currentDashboard.term;
     renderDashboard(currentDashboard);
   }catch(e){
-    clearStoredSessionToken();
-    sessionToken='';
+    document.documentElement.classList.remove('ssrl-session-restoring');
+    $('sessionRestoreView')?.classList.add('hidden');
     $('appView').classList.add('hidden');
     $('authView').classList.remove('hidden');
-    // A stale/expired token during automatic session restoration is not a login error.
-    // Keep the login form clean; the user can sign in normally when ready.
-    if(isSessionRestore) showMessage('');
-    else showMessage(e.message||'ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง',true);
+    if(isInvalidSessionError(e.message)){
+      handleInvalidSession(e.message);
+    }else if(isSessionRestore){
+      // Preserve the token after transient transport/server failures so refresh can retry.
+      showMessage('ไม่สามารถตรวจสอบ Session ได้ในขณะนี้ กรุณาลองรีเฟรชหน้าเว็บอีกครั้ง',true);
+    }else{
+      showMessage(e.message||'ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง',true);
+    }
   }
 }
 function roleLabel(role){return ({ADMIN:'อาจารย์ประจำวิชา / ผู้ดูแลระบบ',ADVISOR:'Research Advisor',STUDENT:'Student',SYSTEM_ADMIN:'อาจารย์ประจำวิชา / ผู้ดูแลระบบ',RESEARCH_ADVISOR:'Research Advisor'})[role]||role}
+function normalizeMenuLabel_(value){
+  return String(value||'').normalize('NFC').replace(/[\u200B-\u200D\uFEFF\u00A0]/g,' ').replace(/\s+/g,' ').trim();
+}
 function renderDashboard(d){
   $('sideMenu').innerHTML='';
   d.menu.forEach((label,i)=>{
     const b=document.createElement('button');b.className='menu-item'+(i===0?' active':'');b.textContent=label;
     b.addEventListener('click',async()=>{
       document.querySelectorAll('.menu-item').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+      saveActiveMenu(label);
+      const routeLabel=normalizeMenuLabel_(label);
+      const advisorRole=currentDashboard.user.roleId==='ADVISOR'||currentDashboard.user.roleId==='RESEARCH_ADVISOR';
+      const advisorFallback=advisorRole?['overview','groups','meetings','a4'][i]:'';
       $('sectionTitle').textContent=label;$('sectionText').textContent='กำลังโหลดข้อมูล...';
-      if(label==='บัญชีผู้ใช้' && currentDashboard.user.roleId==='ADMIN') await renderUserAdmin();
-      else if(label==='นำเข้ารายชื่อนักศึกษา' && currentDashboard.user.roleId==='ADMIN') await renderExcelImport();
-      else if(label==='บันทึกระบบ' && currentDashboard.user.roleId==='ADMIN') await renderAuditLog();
-      else if(label==='จัดการกลุ่มวิจัย' && currentDashboard.user.roleId==='ADMIN') await renderGroupAdmin();
-      else if(label==='กำหนดอาจารย์ที่ปรึกษา' && currentDashboard.user.roleId==='ADMIN') await renderAdvisorAssignment();
-      else if(label==='บันทึกการเข้าพบ' || label==='บันทึกการพบอาจารย์') await renderMeetingAttendance();
-      else if(label==='จัดการรายงานความก้าวหน้า' && currentDashboard.user.roleId==='ADMIN') await renderAdminProgressManagement();
-      else if(label==='จัดการงานกลุ่ม' && currentDashboard.user.roleId==='ADMIN') await renderAdminTaskBoard();
-      else if(label==='ติดตามจริยธรรม' && currentDashboard.user.roleId==='ADMIN') await renderAdminEthicsTracking();
-      else if(label==='สัญญาณเตือนความเสี่ยง' && currentDashboard.user.roleId==='ADMIN') await renderAdminEarlyWarnings();
-      else if(label==='งานกลุ่ม') await renderRoleTaskBoard();
-      else if(label==='ประเมินผล A1–A6' && currentDashboard.user.roleId==='ADMIN') await renderAssessmentAdmin();
-      else if(label==='ประเมิน A4') await renderAdvisorA4();
-      else if(label==='ประเมินเพื่อน A5') await renderPeerAssessment();
-      else if(label==='การตั้งค่าระบบ' && currentDashboard.user.roleId==='ADMIN') await renderSystemSettings();
-      else if(label==='กลุ่มที่ได้รับมอบหมาย') await renderAdvisorGroups();
-      else if(label==='ข้อมูลของกลุ่ม') await renderStudentWorkspace();
-      else if(label==='หัวข้อวิจัย') await renderStudentTopics();
-      else if(label==='เอกสารโครงร่าง') await renderProposalDocuments();
-      else if(label==='ความก้าวหน้า') await renderProgressReports();
-      else if(label==='ข้อเสนอแนะ') await renderFeedback();
-      else if(label==='ผลการประเมิน' && currentDashboard.user.roleId==='STUDENT') await renderStudentGrades();
-      else if(label==='ตรวจหัวข้อและให้ข้อเสนอแนะ') await renderAdvisorReview();
-      else if(label==='ภาพรวมระบบ' || label==='ภาพรวมการให้คำปรึกษ') await renderOverview();
+      if(routeLabel==='บัญชีผู้ใช้' && currentDashboard.user.roleId==='ADMIN') await renderUserAdmin();
+      else if(routeLabel==='นำเข้ารายชื่อนักศึกษา' && currentDashboard.user.roleId==='ADMIN') await renderExcelImport();
+      else if(routeLabel==='บันทึกระบบ' && currentDashboard.user.roleId==='ADMIN') await renderAuditLog();
+      else if(routeLabel==='จัดการกลุ่มวิจัย' && currentDashboard.user.roleId==='ADMIN') await renderGroupAdmin();
+      else if(routeLabel==='กำหนดอาจารย์ที่ปรึกษา' && currentDashboard.user.roleId==='ADMIN') await renderAdvisorAssignment();
+      else if(routeLabel==='บันทึกการเข้าพบ' || routeLabel==='บันทึกการพบอาจารย์' || advisorFallback==='meetings') await renderMeetingAttendance();
+      else if(routeLabel==='จัดการรายงานความก้าวหน้า' && currentDashboard.user.roleId==='ADMIN') await renderAdminProgressManagement();
+      else if(routeLabel==='จัดการงานกลุ่ม' && currentDashboard.user.roleId==='ADMIN') await renderAdminTaskBoard();
+      else if(routeLabel==='ติดตามจริยธรรม' && currentDashboard.user.roleId==='ADMIN') await renderAdminEthicsTracking();
+      else if(routeLabel==='สัญญาณเตือนความเสี่ยง' && currentDashboard.user.roleId==='ADMIN') await renderAdminEarlyWarnings();
+      else if(routeLabel==='งานกลุ่ม') await renderRoleTaskBoard();
+      else if(routeLabel==='ประเมินผล A1–A6' && currentDashboard.user.roleId==='ADMIN') await renderAssessmentAdmin();
+      else if(routeLabel==='ประเมิน A4' || advisorFallback==='a4') await renderAdvisorA4();
+      else if(routeLabel==='ประเมินเพื่อน A5') await renderPeerAssessment();
+      else if(routeLabel==='การตั้งค่าระบบ' && currentDashboard.user.roleId==='ADMIN') await renderSystemSettings();
+      else if(routeLabel==='กลุ่มที่ได้รับมอบหมาย' || advisorFallback==='groups') await renderAdvisorGroups();
+      else if(routeLabel==='ข้อมูลของกลุ่ม') await renderStudentWorkspace();
+      else if(routeLabel==='หัวข้อวิจัย') await renderStudentTopics();
+      else if(routeLabel==='เอกสารโครงร่าง') await renderProposalDocuments();
+      else if(routeLabel==='ความก้าวหน้า') await renderProgressReports();
+      else if(routeLabel==='ข้อเสนอแนะ') await renderFeedback();
+      else if(routeLabel==='ผลการประเมิน' && currentDashboard.user.roleId==='STUDENT') await renderStudentGrades();
+      else if(routeLabel==='ตรวจหัวข้อและให้ข้อเสนอแนะ') await renderAdvisorReview();
+      else if(routeLabel==='ภาพรวมระบบ' || routeLabel==='ภาพรวมการให้คำปรึกษ' || advisorFallback==='overview') await renderOverview();
       else $('sectionText').textContent='เมนูนี้ยังไม่มีสิทธิ์หรือไม่มีข้อมูลสำหรับบัญชีนี้';
     });
     $('sideMenu').appendChild(b);
@@ -169,10 +233,12 @@ function renderDashboard(d){
     card.append(label,value);$('metricGrid').appendChild(card);
   });
 
-  // Load the role-specific landing page immediately after login.
-  // This prevents the dashboard shell from appearing with stale placeholder content.
-  const firstMenuItem=$('sideMenu').querySelector('.menu-item');
-  if(firstMenuItem) firstMenuItem.click();
+  // Restore the last selected menu when the user refreshes the workspace.
+  // If the saved menu is no longer available for this role, fall back to the first menu.
+  const savedMenu=getSavedActiveMenu();
+  const menuItems=[...$('sideMenu').querySelectorAll('.menu-item')];
+  const targetMenu=menuItems.find(item=>item.textContent===savedMenu)||menuItems[0];
+  if(targetMenu) targetMenu.click();
 }
 async function renderUserAdmin(){
   const area=$('sectionText');area.textContent='กำลังโหลดบัญชีผู้ใช้...';
@@ -293,7 +359,7 @@ async function renderExcelImport(){
   });
   box.append(label,input,sheetLabel,sheetInput,btn,result); area.appendChild(box);
 }
-function metricLabel(k){return ({users:'บัญชีผู้ใช้ทั้งหมด',sessions:'Session ที่ยังใช้งาน',roster:'นักศึกษาในทะเบียน',students:'นักศึกษาในทะเบียน',registered:'ลงทะเบียนแล้ว',advisors:'อาจารย์ที่ปรึกษา',assignedGroups:'กลุ่มที่ได้รับมอบหมาย',pendingReviews:'งานรอตรวจ',reportsAvailable:'รายงานความก้าวหน้าที่ส่งแล้ว',feedbackProvided:'ข้อเสนอแนะที่บันทึกแล้ว',meetings:'การนัดหมาย',groupStatus:'สถานะกลุ่ม',milestones:'กิจกรรมและเป้าหมายรายสัปดาห์',feedback:'ข้อเสนอแนะ'})[k]||k}
+function metricLabel(k){return ({users:'บัญชีผู้ใช้ทั้งหมด',sessions:'Session ที่ยังใช้งาน',roster:'นักศึกษาในทะเบียน',students:'นักศึกษาในทะเบียน',registered:'ลงทะเบียนแล้ว',advisors:'อาจารย์ที่ปรึกษา',assignedGroups:'กลุ่มที่ได้รับมอบหมาย',pendingReviews:'งานรอตรวจ',reportsAvailable:'รายงานความก้าวหน้าที่รอตรวจ',pendingReports:'รายงานความก้าวหน้าที่รอตรวจ',pendingTopics:'หัวข้อวิจัยที่รอพิจารณา',feedbackProvided:'ข้อเสนอแนะที่บันทึกแล้ว',meetings:'การนัดหมาย',meetingsRecorded:'ครั้งที่บันทึกการเข้าพบ',openTasks:'งานที่ยังดำเนินการ',groupStatus:'สถานะกลุ่ม',milestones:'กิจกรรมและเป้าหมายรายสัปดาห์',feedback:'ข้อเสนอแนะ'})[k]||k}
 function dateTimeLocalInputValue(value){const d=new Date(value);if(isNaN(d.getTime()))return '';const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes())}
 function el(tag,props={},text){const n=document.createElement(tag);Object.entries(props).forEach(([k,v])=>{if(k==='className')n.className=v;else if(k==='value')n.value=v;else n.setAttribute(k,v)});if(text!==undefined)n.textContent=text;return n;}
 async function renderGroupAdmin(){
@@ -557,15 +623,41 @@ async function renderAssessmentAdmin(){
 async function renderAdvisorA4(){
  const a=$('sectionText');a.textContent='กำลังโหลดแบบประเมิน A4...';
  try{
-  const report=await callApi('apiGetAssessmentReport',sessionToken);a.textContent='';
-  report.forEach(g=>{const box=el('div',{className:'notice'});box.append(el('h3',{},g.groupName));
-   const form=el('form',{className:'admin-form'}),group=el('input',{type:'number',min:'0',max:'10',step:'0.01',required:'required',value:g.groupScore.A4_GROUP_SCORE??'',placeholder:'คะแนนกลุ่ม 0–10'});
-   form.append(el('label',{},'คะแนนกลุ่ม (10 คะแนน)'),group);const inputs={};
-   g.members.forEach(m=>{const i=el('input',{type:'number',min:'0',max:'10',step:'0.01',required:'required',value:m.a4Individual??'',placeholder:'คะแนนรายบุคคล 0–10'});inputs[m.studentId]=i;form.append(el('label',{},m.studentId+' '+m.studentName+' · คะแนนรายบุคคล (10)'),i)});
-   const b=el('button',{type:'submit',className:'primary'},'บันทึก A4');form.append(b);
-   form.onsubmit=async e=>{e.preventDefault();b.disabled=true;const individualScores={};Object.keys(inputs).forEach(k=>individualScores[k]=inputs[k].value);try{const r=await callApi('apiAdvisorSaveA4',sessionToken,{groupId:g.groupId,groupScore:group.value,individualScores});showOperationStatus(r.message);b.textContent='บันทึกแล้ว'}catch(x){showOperationStatus(x.message,true)}finally{b.disabled=false}};
+  const [report,workspace]=await Promise.all([
+   callApi('apiGetAssessmentReport',sessionToken),
+   callApi('apiGetAdvisorWorkspaceSummary',sessionToken)
+  ]);
+  a.textContent='';
+  const isOpen=String(workspace.assessmentWindowA4||'CLOSED').toUpperCase()==='OPEN';
+  const note=el('div',{className:'notice'});
+  note.append(el('h2',{},'การประเมิน A4 · Advisor Assessment'));
+  note.append(el('p',{},'ประเมินตามเกณฑ์ A4 ที่รายวิชาอนุมัติ โดยแยกข้อมูลระดับกลุ่มและรายบุคคลตามแบบประเมินเดิม'));
+  note.append(el('p',{},'สถานะช่วงประเมิน: '+(isOpen?'เปิดรับการบันทึกคะแนน':'ปิดรับการบันทึกคะแนน')));
+  if(!isOpen)note.append(el('p',{},'ขณะนี้ยังไม่สามารถบันทึกหรือแก้ไขคะแนนได้ เนื่องจากผู้ดูแลรายวิชายังไม่ได้เปิดช่วงประเมิน A4'));
+  a.append(note);
+  if(!report.length){a.append(el('p',{},'ยังไม่มีกลุ่มที่ได้รับมอบหมาย'));return;}
+  report.forEach(g=>{
+   const box=el('div',{className:'notice'});box.append(el('h3',{},g.groupName));
+   const form=el('form',{className:'admin-form'});
+   const group=el('input',{type:'number',min:'0',max:'10',step:'0.01',required:'required',value:g.groupScore.A4_GROUP_SCORE??'',placeholder:'คะแนนกลุ่ม 0–10'});
+   group.disabled=!isOpen;
+   form.append(el('label',{},'คะแนนระดับกลุ่ม (ตามแบบประเมิน A4)'),group);
+   const inputs={};
+   g.members.forEach(m=>{
+    const input=el('input',{type:'number',min:'0',max:'10',step:'0.01',required:'required',value:m.a4Individual??'',placeholder:'คะแนนรายบุคคล'});
+    input.disabled=!isOpen;inputs[m.studentId]=input;
+    form.append(el('label',{},(m.studentId||'')+' '+(m.studentName||'')+' · คะแนนรายบุคคล'),input);
+   });
+   const b=el('button',{type:'submit',className:'primary'},'บันทึกคะแนน A4');b.disabled=!isOpen;form.append(b);
+   form.onsubmit=async e=>{
+    e.preventDefault();if(!isOpen)return;b.disabled=true;
+    const individualScores={};Object.keys(inputs).forEach(k=>individualScores[k]=inputs[k].value);
+    try{const r=await callApi('apiAdvisorSaveA4',sessionToken,{groupId:g.groupId,groupScore:group.value,individualScores});showOperationStatus(r.message);b.textContent='บันทึกแล้ว';}
+    catch(x){showOperationStatus(x.message,true);}
+    finally{b.disabled=false;}
+   };
    box.append(form);a.append(box);
-  });if(!report.length)a.textContent='ยังไม่มีกลุ่มที่ได้รับมอบหมาย';
+  });
  }catch(e){a.textContent='เปิดแบบประเมิน A4 ไม่สำเร็จ: '+e.message;}
 }
 async function renderPeerAssessment(){
@@ -591,69 +683,76 @@ async function renderStudentTopics(){
  try{
   const d=await getStudentResearchDataOrNoGroup();a.textContent='';
   if(!d.group){a.append(el('div',{className:'notice'},'กรุณาสร้างหรือเข้าร่วมกลุ่มวิจัยในเมนูข้อมูลของกลุ่มก่อน จึงจะเสนอหัวข้อวิจัยได้'));return;}
+  const topics=Array.isArray(d.topics)?d.topics:[];
+  const latest=topics.slice().sort((x,y)=>Number(y.versionNo||0)-Number(x.versionNo||0))[0]||null;
   const box=el('div',{className:'notice'});
-  box.append(el('h3',{},'เสนอหรือปรับปรุงหัวข้อวิจัย · '+d.group.groupName),el('p',{},'สามารถบันทึกร่างไว้ก่อนได้ การบันทึกร่างจะยังไม่ส่งให้อาจารย์พิจารณา'));
+  box.append(el('h3',{},'เสนอหรือปรับปรุงหัวข้อวิจัย · '+d.group.groupName));
   if(d.group.isLeader){
    let draftData=null;
-   try{const draftResult=await callApi('apiGetResearchTopicDraft',sessionToken);draftData=draftResult.draft||null;}catch(draftError){console.warn('โหลดร่างหัวข้อวิจัยไม่สำเร็จ',draftError);}
-   const f=el('form',{className:'form-view'});
-   const th=el('input',{required:'required',maxLength:'500',value:(draftData&&draftData.titleTh)||d.group.topicTh||'',placeholder:'ชื่อเรื่องวิจัยภาษาไทย'});
-   const en=el('input',{maxLength:'500',placeholder:'Research title (English)',value:(draftData&&draftData.titleEn)||''});
-   const problem=el('textarea',{rows:'4',placeholder:'สภาพปัญหาและเหตุผลที่ต้องศึกษา',value:(draftData&&draftData.problem)||''});
-   const obj=el('textarea',{rows:'3',placeholder:'วัตถุประสงค์การวิจัย',value:(draftData&&draftData.objectives)||''});
-   const sig=el('textarea',{rows:'3',placeholder:'ความสำคัญ/ประโยชน์ที่คาดว่าจะได้รับ',value:(draftData&&draftData.significance)||''});
-   const problemCount=el('small',{className:'muted'},'0/20 ตัวอักษรขั้นต่ำ');
-   const objCount=el('small',{className:'muted'},'0/10 ตัวอักษรขั้นต่ำ');
-   const problemHint=el('div',{className:'message',role:'status'});
-   const objHint=el('div',{className:'message',role:'status'});
-   const formHint=el('div',{className:'message',role:'alert'});
-   const savedHint=el('small',{className:'muted'},draftData?'พบร่างที่บันทึกไว้ก่อนหน้านี้':'ยังไม่มีร่างที่บันทึกไว้');
-   const saveDraft=el('button',{type:'button',className:'secondary'},'บันทึกร่างไว้ก่อน');
-   const submit=el('button',{type:'submit',className:'primary'},'ส่งหัวข้อวิจัยให้อาจารย์พิจารณ');
-   const payload=()=>({titleTh:th.value,titleEn:en.value,problem:problem.value,objectives:obj.value,significance:sig.value});
-   const updateLengthHints=()=>{
-    const p=problem.value.trim().length,o=obj.value.trim().length;
-    problemCount.textContent=p+'/20 ตัวอักษรขั้นต่ำ';
-    objCount.textContent=o+'/10 ตัวอักษรขั้นต่ำ';
-    problemHint.textContent=p<20&&p>0?'กรุณาอธิบายสภาพปัญหาและเหตุผลที่ต้องศึกษาเพิ่มเติมอีก '+(20-p)+' ตัวอักษร':'';
-    objHint.textContent=o<10&&o>0?'กรุณาระบุวัตถุประสงค์ให้ชัดเจนเพิ่มเติมอีก '+(10-o)+' ตัวอักษร':'';
-    problemHint.className='message'+(p<20&&p>0?' error':'');
-    objHint.className='message'+(o<10&&o>0?' error':'');
-   };
-   problem.addEventListener('input',updateLengthHints);obj.addEventListener('input',updateLengthHints);updateLengthHints();
-   saveDraft.addEventListener('click',async()=>{
-    formHint.textContent='';saveDraft.disabled=true;saveDraft.textContent='กำลังบันทึกร่าง...';
-    try{const r=await callApi('apiSaveResearchTopicDraft',sessionToken,payload());formHint.textContent=r.message;formHint.className='message success';savedHint.textContent='บันทึกล่าสุด: '+new Date(r.updatedAt).toLocaleString('th-TH');}
-    catch(x){formHint.textContent='บันทึกร่างไม่สำเร็จ: '+x.message;formHint.className='message error';}
-    finally{saveDraft.disabled=false;saveDraft.textContent='บันทึกร่างไว้ก่อน';}
-   });
-   f.append(
-    el('label',{},'ชื่อเรื่องภาษาไทย'),th,
-    el('label',{},'ชื่อเรื่องภาษาอังกฤษ'),en,
-    el('label',{},'ปัญหาวิจัย'),problem,problemCount,problemHint,
-    el('label',{},'วัตถุประสงค์'),obj,objCount,objHint,
-    el('label',{},'ความสำคัญของการวิจัย'),sig,
-    savedHint,formHint,saveDraft,submit
-   );
-   f.onsubmit=async e=>{
-    e.preventDefault();formHint.textContent='';formHint.className='message';
-    const p=problem.value.trim().length,o=obj.value.trim().length;
-    if(!th.value.trim()){formHint.textContent='กรุณากรอกชื่อเรื่องวิจัยภาษาไทย';formHint.className='message error';th.focus();return;}
-    if(p<20||o<10){updateLengthHints();formHint.textContent='ยังส่งหัวข้อวิจัยไม่ได้ กรุณาตรวจสอบช่องที่มีข้อความเตือน ระบบยังไม่ได้ส่งข้อมูล';formHint.className='message error';(p<20?problem:obj).focus();return;}
-    submit.disabled=true;submit.textContent='กำลังส่งข้อมูล...';
-    try{
-     const r=await callApi('apiStudentSaveResearchTopic',sessionToken,payload());
-     formHint.textContent=r.message;formHint.className='message success';
-     await renderStudentTopics();
-    }catch(x){formHint.textContent='ส่งหัวข้อไม่สำเร็จ: '+x.message;formHint.className='message error';}
-    finally{submit.disabled=false;submit.textContent='ส่งหัวข้อวิจัยให้อาจารย์พิจารณ';}
-   };
-   box.append(f);
+   try{const draftResult=await callApi('apiGetResearchTopicDraft',sessionToken);draftData=draftResult.draft||null;}
+   catch(draftError){console.warn('โหลดร่างหัวข้อวิจัยไม่สำเร็จ',draftError);}
+   const canEdit=!latest||latest.reviewStatus==='REVISION_REQUIRED';
+   if(!canEdit){
+    const stateText=latest.reviewStatus==='PENDING'?'หัวข้อวิจัยอยู่ระหว่างการพิจารณาของอาจารย์ที่ปรึกษา':latest.reviewStatus==='APPROVED'?'อาจารย์ที่ปรึกษาเห็นชอบหัวข้อวิจัยแล้ว และสิ้นสุดขั้นตอน RW-01 ในระดับที่ปรึกษา':latest.reviewStatus==='REJECTED'?'หัวข้อวิจัยไม่ผ่านความเห็นชอบ การส่งใหม่ต้องได้รับการดำเนินการตามแนวทางที่ผู้รับผิดชอบรายวิชากำหนด':'ไม่สามารถแก้ไขหรือส่งหัวข้อวิจัยในสถานะปัจจุบันได้';
+    box.append(el('p',{className:'notice'},stateText));
+   }else{
+    box.append(el('p',{},latest&&latest.reviewStatus==='REVISION_REQUIRED'?'อาจารย์ที่ปรึกษาให้ปรับปรุง กรุณาทบทวนข้อเสนอแนะและแก้ไขข้อมูลเพื่อส่งเป็นเวอร์ชันใหม่':'สามารถบันทึกร่างไว้ก่อนได้ การบันทึกร่างจะยังไม่ส่งให้อาจารย์พิจารณา'));
+    const f=el('form',{className:'form-view'});
+    const th=el('input',{required:'required',maxLength:'500',value:(draftData&&draftData.titleTh)||d.group.topicTh||'',placeholder:'ชื่อเรื่องวิจัยภาษาไทย'});
+    const en=el('input',{maxLength:'500',placeholder:'Research title (English)',value:(draftData&&draftData.titleEn)||''});
+    const problem=el('textarea',{rows:'4',placeholder:'สภาพปัญหาและเหตุผลที่ต้องศึกษา',value:(draftData&&draftData.problem)||''});
+    const obj=el('textarea',{rows:'3',placeholder:'วัตถุประสงค์การวิจัย',value:(draftData&&draftData.objectives)||''});
+    const sig=el('textarea',{rows:'3',placeholder:'ความสำคัญ/ประโยชน์ที่คาดว่าจะได้รับ',value:(draftData&&draftData.significance)||''});
+    const problemCount=el('small',{className:'muted'},'0/20 ตัวอักษรขั้นต่ำ');
+    const objCount=el('small',{className:'muted'},'0/10 ตัวอักษรขั้นต่ำ');
+    const problemHint=el('div',{className:'message',role:'status'});
+    const objHint=el('div',{className:'message',role:'status'});
+    const formHint=el('div',{className:'message',role:'alert'});
+    const savedHint=el('small',{className:'muted'},draftData?'พบร่างหรือข้อมูลฉบับที่ต้องปรับปรุง':'ยังไม่มีร่างที่บันทึกไว้');
+    const saveDraft=el('button',{type:'button',className:'secondary'},'บันทึกร่างไว้ก่อน');
+    const submit=el('button',{type:'submit',className:'primary'},latest?'ส่งฉบับปรับปรุงให้อาจารย์พิจารณา':'ส่งหัวข้อวิจัยให้อาจารย์พิจารณา');
+    const payload=()=>({titleTh:th.value,titleEn:en.value,problem:problem.value,objectives:obj.value,significance:sig.value});
+    const updateLengthHints=()=>{
+     const p=problem.value.trim().length,o=obj.value.trim().length;
+     problemCount.textContent=p+'/20 ตัวอักษรขั้นต่ำ';objCount.textContent=o+'/10 ตัวอักษรขั้นต่ำ';
+     problemHint.textContent=p<20&&p>0?'กรุณาอธิบายสภาพปัญหาและเหตุผลที่ต้องศึกษาเพิ่มเติมอีก '+(20-p)+' ตัวอักษร':'';
+     objHint.textContent=o<10&&o>0?'กรุณาระบุวัตถุประสงค์ให้ชัดเจนเพิ่มเติมอีก '+(10-o)+' ตัวอักษร':'';
+     problemHint.className='message'+(p<20&&p>0?' error':'');objHint.className='message'+(o<10&&o>0?' error':'');
+    };
+    problem.addEventListener('input',updateLengthHints);obj.addEventListener('input',updateLengthHints);updateLengthHints();
+    saveDraft.addEventListener('click',async()=>{
+     formHint.textContent='';saveDraft.disabled=true;saveDraft.textContent='กำลังบันทึกร่าง...';
+     try{const r=await callApi('apiSaveResearchTopicDraft',sessionToken,payload());formHint.textContent=r.message;formHint.className='message success';savedHint.textContent='บันทึกล่าสุด: '+new Date(r.updatedAt).toLocaleString('th-TH');}
+     catch(x){formHint.textContent='บันทึกร่างไม่สำเร็จ: '+x.message;formHint.className='message error';}
+     finally{saveDraft.disabled=false;saveDraft.textContent='บันทึกร่างไว้ก่อน';}
+    });
+    f.append(el('label',{},'ชื่อเรื่องภาษาไทย'),th,el('label',{},'ชื่อเรื่องภาษาอังกฤษ'),en,el('label',{},'ปัญหาวิจัย'),problem,problemCount,problemHint,el('label',{},'วัตถุประสงค์'),obj,objCount,objHint,el('label',{},'ความสำคัญของการวิจัย'),sig,savedHint,formHint,saveDraft,submit);
+    f.onsubmit=async e=>{
+     e.preventDefault();formHint.textContent='';formHint.className='message';
+     const p=problem.value.trim().length,o=obj.value.trim().length;
+     if(!th.value.trim()){formHint.textContent='กรุณากรอกชื่อเรื่องวิจัยภาษาไทย';formHint.className='message error';th.focus();return;}
+     if(p<20||o<10){updateLengthHints();formHint.textContent='ยังส่งหัวข้อวิจัยไม่ได้ กรุณาตรวจสอบช่องที่มีข้อความเตือน ระบบยังไม่ได้ส่งข้อมูล';formHint.className='message error';(p<20?problem:obj).focus();return;}
+     submit.disabled=true;submit.textContent='กำลังส่งข้อมูล...';
+     try{const r=await callApi('apiStudentSaveResearchTopic',sessionToken,payload());showOperationStatus(r.message);await renderStudentTopics();}
+     catch(x){formHint.textContent='ส่งหัวข้อไม่สำเร็จ: '+x.message;formHint.className='message error';}
+     finally{submit.disabled=false;}
+    };
+    box.append(f);
+   }
   }else box.append(el('p',{className:'notice'},d.group.leaderAssigned?'เฉพาะหัวหน้ากลุ่มที่ Admin กำหนดเท่านั้นที่บันทึกร่างหรือส่งหัวข้อวิจัยได้':'ยังไม่สามารถดำเนินการได้ เนื่องจาก Admin ยังไม่ได้กำหนดหัวหน้ากลุ่ม'));
   a.append(box);
   const history=el('div',{className:'notice'});history.append(el('h3',{},'ประวัติหัวข้อวิจัยและผลการพิจารณา'));
-  if(!d.topics.length)history.append(el('p',{},'ยังไม่มีการส่งหัวข้อวิจัย'));
-  d.topics.forEach(t=>{const item=el('div',{className:'admin-row'});item.append(el('div',{},'เวอร์ชัน '+t.versionNo+' · '+t.titleTh+' · '+t.reviewStatus+' · '+(t.reviewComment||'')));history.append(item)});a.append(history);
+  if(!topics.length)history.append(el('p',{},'ยังไม่มีการส่งหัวข้อวิจัย'));
+  topics.slice().sort((x,y)=>Number(y.versionNo||0)-Number(x.versionNo||0)).forEach(t=>{
+   const item=el('div',{className:'admin-row'});
+   item.append(el('h4',{},'เวอร์ชัน '+t.versionNo+' · '+(t.titleTh||'ไม่ระบุชื่อเรื่อง')));
+   if(t.titleEn)item.append(el('p',{},'ชื่อเรื่องภาษาอังกฤษ: '+t.titleEn));
+   item.append(el('p',{},'สถานะ: '+(t.reviewStatus||t.status||'—')));
+   item.append(el('p',{},'ปัญหาวิจัย: '+(t.problem||'—')),el('p',{},'วัตถุประสงค์: '+(t.objectives||'—')),el('p',{},'ความสำคัญของการวิจัย: '+(t.significance||'—')));
+   if(t.reviewComment)item.append(el('p',{className:'notice'},'ข้อเสนอแนะจากอาจารย์ที่ปรึกษา: '+t.reviewComment));
+   history.append(item);
+  });
+  a.append(history);
  }catch(e){a.textContent='โหลดหัวข้อวิจัยไม่สำเร็จ: '+e.message;}
 }
 async function renderProposalDocuments(){
@@ -839,28 +938,57 @@ async function renderFeedback(){
 }
 async function renderAdvisorReview(){
  const a=$('sectionText');a.textContent='กำลังโหลดหัวข้อและรายงานที่ต้องให้ข้อเสนอแนะ...';
- try{const groups=await callApi('apiGetAssessmentReport',sessionToken);a.textContent='';if(!groups.length){a.textContent='ยังไม่มีกลุ่มที่ได้รับมอบหมาย';return;}
-  for(const g of groups){const d=await callApi('apiGetStudentResearchData',sessionToken,g.groupId);if(!d.group||d.group.groupId!==g.groupId)continue;
+ try{
+  const groups=await callApi('apiGetAssessmentReport',sessionToken);a.textContent='';
+  if(!groups.length){a.textContent='ยังไม่มีกลุ่มที่ได้รับมอบหมาย';return;}
+  for(const g of groups){
+   const d=await callApi('apiGetStudentResearchData',sessionToken,g.groupId);
+   if(!d.group||d.group.groupId!==g.groupId)continue;
    const box=el('div',{className:'notice'});box.append(el('h3',{},g.groupName));
-   d.topics.filter(t=>t.reviewStatus==='PENDING').forEach(t=>{box.append(el('p',{},'หัวข้อเวอร์ชัน '+t.versionNo+' · '+t.titleTh),el('p',{},'ปัญหาวิจัย: '+(t.problem||'—')),el('p',{},'วัตถุประสงค์: '+(t.objectives||'—')));const comment=el('textarea',{rows:'2',placeholder:'ข้อเสนอแนะ'});const sel=el('select');[['APPROVED','เห็นชอบ'],['REVISION_REQUIRED','ให้ปรับปรุง'],['REJECTED','ไม่เห็นชอบ']].forEach(([v,l])=>sel.append(el('option',{value:v},l)));const b=el('button',{type:'button',className:'secondary'},'บันทึกผลพิจารณา');b.onclick=async()=>{b.disabled=true;try{const r=await callApi('apiAdvisorReviewResearchTopic',sessionToken,t.versionId,sel.value,comment.value);showOperationStatus(r.message);await renderAdvisorReview()}catch(e){showOperationStatus(e.message,true);b.disabled=false}};box.append(sel,comment,b)});
-   if(d.files.length){box.append(el('h4',{},'เอกสารโครงร่าง'));d.files.forEach(file=>{const link=el('a',{href:file.url,target:'_blank',rel:'noopener noreferrer'},file.fileName);box.append(el('p',{},file.chapter+' · '),link)});}
-   const reportList=d.progress.slice(0,5);reportList.forEach(r=>{box.append(el('p',{},'รายงานสัปดาห์ '+r.weekNo+' · '+r.workCompleted));const comment=el('textarea',{rows:'2',placeholder:'ข้อเสนอแนะต่อรายงานนี้'});const b=el('button',{type:'button',className:'secondary'},'ส่งข้อเสนอแนะ');b.onclick=async()=>{b.disabled=true;try{const x=await callApi('apiAdvisorAddFeedback',sessionToken,{groupId:g.groupId,relatedType:'PROGRESS',relatedId:r.reportId,comment:comment.value});showOperationStatus(x.message);b.textContent='ส่งแล้ว'}catch(e){showOperationStatus(e.message,true);b.disabled=false}};box.append(comment,b)});a.append(box);
+   d.topics.filter(t=>t.reviewStatus==='PENDING').forEach(t=>{
+    box.append(el('h4',{},'หัวข้อวิจัยเวอร์ชัน '+t.versionNo+' · '+(t.titleTh||'—')));
+    if(t.titleEn)box.append(el('p',{},'ชื่อเรื่องภาษาอังกฤษ: '+t.titleEn));
+    box.append(el('p',{},'ปัญหาวิจัย: '+(t.problem||'—')),el('p',{},'วัตถุประสงค์: '+(t.objectives||'—')),el('p',{},'ความสำคัญของการวิจัย: '+(t.significance||'—')));
+    const comment=el('textarea',{rows:'3',placeholder:'ข้อเสนอแนะจากอาจารย์ที่ปรึกษา (จำเป็นเมื่อให้ปรับปรุงหรือไม่เห็นชอบ)'});
+    const sel=el('select');[['APPROVED','เห็นชอบ'],['REVISION_REQUIRED','ให้ปรับปรุง'],['REJECTED','ไม่เห็นชอบ']].forEach(([v,l])=>sel.append(el('option',{value:v},l)));
+    const hint=el('small',{className:'muted'},'การเห็นชอบของอาจารย์ที่ปรึกษาเป็นการสิ้นสุด RW-01 ในระดับที่ปรึกษา ไม่ใช่การอนุมัติจาก Course Coordinator หรือ REC');
+    const b=el('button',{type:'button',className:'secondary'},'บันทึกผลพิจารณา');
+    b.onclick=async()=>{
+     if(['REVISION_REQUIRED','REJECTED'].includes(sel.value)&&comment.value.trim().length<5){showOperationStatus('กรุณาระบุข้อเสนอแนะอย่างน้อย 5 ตัวอักษรสำหรับผลการพิจารณานี้',true);comment.focus();return;}
+     b.disabled=true;
+     try{const r=await callApi('apiAdvisorReviewResearchTopic',sessionToken,t.versionId,sel.value,comment.value);showOperationStatus(r.message);await renderAdvisorReview();}
+     catch(e){showOperationStatus(e.message,true);b.disabled=false;}
+    };
+    box.append(sel,comment,hint,b);
+   });
+   if(d.files.length){box.append(el('h4',{},'เอกสารโครงร่าง'));d.files.forEach(file=>{const link=el('a',{href:file.url,target:'_blank',rel:'noopener noreferrer'},file.fileName);box.append(el('p',{},file.chapter+' · '),link);});}
+   const reportList=d.progress.slice(0,5);reportList.forEach(r=>{box.append(el('p',{},'รายงานสัปดาห์ '+r.weekNo+' · '+r.workCompleted));const feedbackComment=el('textarea',{rows:'2',placeholder:'ข้อเสนอแนะต่อรายงานนี้'});const feedbackButton=el('button',{type:'button',className:'secondary'},'ส่งข้อเสนอแนะ');feedbackButton.onclick=async()=>{feedbackButton.disabled=true;try{const x=await callApi('apiAdvisorAddFeedback',sessionToken,{groupId:g.groupId,relatedType:'PROGRESS',relatedId:r.reportId,comment:feedbackComment.value});showOperationStatus(x.message);feedbackButton.textContent='ส่งแล้ว';}catch(e){showOperationStatus(e.message,true);feedbackButton.disabled=false;}};box.append(feedbackComment,feedbackButton);});
+   a.append(box);
   }
  }catch(e){a.textContent='โหลดรายการตรวจหัวข้อไม่สำเร็จ: '+e.message;}
 }
-
 async function renderOverview(){
- const a=$('sectionText');a.textContent='กำลังโหลดภาพรวม...';
+ const a=$('sectionText');a.textContent='กำลังโหลดภาพรวมการให้คำปรึกษา...';
  try{
-  if(currentDashboard.user.roleId==='ADMIN'){
-   const d=await callApi('apiAdminListCourseData',sessionToken);a.textContent='';
-   const total=d.students.filter(s=>s.active).length, grouped=d.students.filter(s=>s.active&&s.groupId).length;
-   a.append(el('div',{className:'notice'},'ทะเบียนนักศึกษา '+total+' คน · จัดกลุ่มแล้ว '+grouped+' คน · ยังไม่จัดกลุ่ม '+(total-grouped)+' คน · กลุ่มวิจัย '+d.groups.length+' กลุ่ม'));
-   d.groups.forEach(g=>{const members=d.members.filter(m=>m.GROUP_ID===g.GROUP_ID&&m.STATUS==='ACTIVE');const advisorAssignment=d.assignments.find(x=>x.GROUP_ID===g.GROUP_ID&&x.STATUS==='APPROVED');const advisor=advisorAssignment&&d.users.find(x=>x.userId===advisorAssignment.ADVISOR_USER_ID);a.append(el('div',{className:'notice'},g.GROUP_NAME+' · สมาชิก '+members.length+' คน · ที่ปรึกษา '+(advisor?advisor.displayName:'ยังไม่กำหนด')));});
-  }else if(currentDashboard.user.roleId==='ADVISOR'){await renderAdvisorGroups();}
-  else{await renderStudentWorkspace();}
-  await renderNotificationPanel(a);
- }catch(e){a.textContent='โหลดภาพรวมไม่สำเร็จ: '+e.message;}
+  const d=await callApi('apiGetAdvisorWorkspaceSummary',sessionToken);a.textContent='';
+  const action=el('div',{className:'notice'});
+  action.append(el('h2',{},'ภาพรวมการให้คำปรึกษา'),el('p',{},'ติดตามกลุ่มวิจัย งานที่รอตรวจ และกิจกรรมการให้คำปรึกษาที่อยู่ในความรับผิดชอบของอาจารย์'));
+  const actions=el('div',{className:'admin-row'});
+  const goGroups=el('button',{type:'button',className:'secondary'},'เปิดกลุ่มที่ได้รับมอบหมาย');goGroups.onclick=()=>renderAdvisorGroups();
+  const goMeetings=el('button',{type:'button',className:'secondary'},'บันทึกการพบอาจารย์');goMeetings.onclick=()=>renderMeetingAttendance();
+  const goA4=el('button',{type:'button',className:'secondary'},'ประเมิน A4');goA4.onclick=()=>renderAdvisorA4();
+  actions.append(goGroups,goMeetings,goA4);action.append(actions);a.append(action);
+  const pending=el('div',{className:'notice'});pending.append(el('h3',{},'รายการที่ต้องดำเนินการ'));
+  if(!d.pendingTopics.length&&!d.pendingReports.length)pending.append(el('p',{},'ไม่มีหัวข้อวิจัยหรือรายงานความก้าวหน้าที่รอการพิจารณา'));
+  d.pendingTopics.forEach(x=>{const row=el('div',{className:'admin-row'});row.append(el('div',{},'หัวข้อวิจัย · '+x.groupName+' · V'+x.versionNo+' · '+(x.titleTh||'')));const b=el('button',{type:'button',className:'secondary'},'ตรวจหัวข้อ');b.onclick=()=>renderAdvisorReview();row.append(b);pending.append(row)});
+  d.pendingReports.forEach(x=>{const row=el('div',{className:'admin-row'});row.append(el('div',{},'รายงานความก้าวหน้า · '+x.groupName+' · สัปดาห์ '+x.weekNo));const b=el('button',{type:'button',className:'secondary'},'เปิดกลุ่ม');b.onclick=()=>renderAdvisorReview();row.append(b);pending.append(row)});
+  a.append(pending);
+  const groupBox=el('div',{className:'notice'});groupBox.append(el('h3',{},'สถานะกลุ่มที่รับผิดชอบ'));
+  if(!d.groups.length)groupBox.append(el('p',{},'ยังไม่มีการแต่งตั้งอาจารย์ที่ปรึกษาที่ได้รับอนุมัติ'));
+  d.groups.forEach(g=>{const row=el('div',{className:'admin-row'});row.append(el('div',{},g.groupName+' · สมาชิก '+g.members.length+' คน · รายงาน '+g.totalReports+' · เอกสาร '+g.proposalFiles+' · นัดพบ '+g.meetingCount+' · งานคงค้าง '+g.openTasks));const b=el('button',{type:'button',className:'secondary'},'ดูรายละเอียด');b.onclick=()=>renderAdvisorGroups();row.append(b);groupBox.append(row)});
+  a.append(groupBox);
+  try{await renderNotificationPanel(a);}catch(e){console.warn('โหลดการแจ้งเตือนไม่สำเร็จ',e);}
+ }catch(e){a.textContent='โหลดภาพรวมการให้คำปรึกษาไม่สำเร็จ: '+e.message;}
 }
 
 async function renderNotificationPanel(container){const notifications=await callApi('apiGetMyNotifications',sessionToken);if(!notifications.length)return;const box=el('div',{className:'notice'});box.append(el('h3',{},'การแจ้งเตือน'));notifications.slice(0,10).forEach(n=>{const row=el('div',{className:'admin-row'});row.append(el('div',{},n.TITLE+' · '+n.MESSAGE+' · '+new Date(n.CREATED_AT).toLocaleString('th-TH')));if(String(n.IS_READ)!=='TRUE'){const b=el('button',{type:'button',className:'secondary'},'อ่านแล้ว');b.onclick=async()=>{await callApi('apiMarkNotificationRead',sessionToken,n.NOTIFICATION_ID);row.remove()};row.append(b)}box.append(row)});container.append(box)}
@@ -945,11 +1073,53 @@ async function renderSystemSettings(){
 }
 
 async function renderAdvisorGroups(){
- const a=$('sectionText');a.textContent='กำลังโหลดกลุ่มที่ได้รับมอบหมาย...';
+ const a=$('sectionText');a.textContent='กำลังโหลดข้อมูลกลุ่มที่ได้รับมอบหมาย...';
  try{
-  const report=await callApi('apiGetAssessmentReport',sessionToken);a.textContent='';
-  if(!report.length){a.textContent='ยังไม่มีกลุ่มที่ได้รับมอบหมาย';return;}
-  for(const g of report){const box=el('div',{className:'notice'});box.append(el('h3',{},g.groupName),el('p',{},'หัวข้อวิจัย: '+(g.topicTh||'ยังไม่กำหนด')),el('p',{},'สมาชิก '+g.members.length+' คน'));g.members.forEach(m=>box.append(el('p',{},m.studentId+' · '+m.studentName)));const ethics=await callApi('apiGetGroupEthicsSummary',sessionToken,g.groupId);if(ethics)box.append(el('h4',{},'สรุปแผนจริยธรรม (อ่านอย่างเดียว)'),el('p',{},'แผน: '+({DURING_COURSE:'ยื่นระหว่างรายวิชา',AFTER_COURSE:'ยื่นหลังรายวิชา',NOT_APPLICABLE:'ไม่เกี่ยวข้อง',UNDECIDED:'ยังไม่กำหนด'}[ethics.ETHICS_PLAN]||'—')+' · สถานะ: '+(ethics.SUBMISSION_STATUS||'—')+' · ผล REC: '+(ethics.REC_APPROVAL_STATUS||'—')),el('p',{},'ห้ามเริ่มเก็บข้อมูลจากมนุษย์ก่อนการรับรอง REC ที่เกี่ยวข้อง'));a.append(box)}
+  const summary=await callApi('apiGetAdvisorWorkspaceSummary',sessionToken);
+  a.textContent='';
+  if(!summary.groups.length){a.append(el('div',{className:'notice'},'ยังไม่พบกลุ่มที่ได้รับมอบหมายและอนุมัติแล้วสำหรับบัญชีนี้'));return;}
+  a.append(el('p',{},'แสดงเฉพาะกลุ่มที่มีการแต่งตั้งอาจารย์ที่ปรึกษาและสถานะ APPROVED'));
+  summary.groups.forEach(g=>{
+   const box=el('div',{className:'notice'}),head=el('div',{className:'admin-row'});
+   head.append(el('div',{},g.groupName||'ไม่ระบุชื่อกลุ่ม'));
+   box.append(head,el('p',{},'หัวข้อวิจัย: '+(g.topicTh||'ยังไม่กำหนด')));
+   if(g.topicEn)box.append(el('p',{},'Research title: '+g.topicEn));
+   box.append(el('p',{},'สมาชิก '+g.members.length+' คน · รายงานที่รอตรวจ '+g.pendingReports+' · เอกสารโครงร่าง '+g.proposalFiles+' ไฟล์ · บันทึกการเข้าพบ '+g.meetingCount+' ครั้ง · งานคงค้าง '+g.openTasks));
+   if(g.latestTopic)box.append(el('p',{},'หัวข้อวิจัยล่าสุด: เวอร์ชัน '+g.latestTopic.versionNo+' · '+({PENDING:'รอพิจารณา',APPROVED:'เห็นชอบโดยอาจารย์ที่ปรึกษา',REVISION_REQUIRED:'รอแก้ไข',REJECTED:'ไม่เห็นชอบ'}[String(g.latestTopic.reviewStatus||'').toUpperCase()]||g.latestTopic.reviewStatus||'สถานะไม่ระบุ')));
+   const members=el('div');members.append(el('strong',{},'สมาชิกกลุ่ม'));g.members.forEach(m=>members.append(el('p',{},(m.studentId||'')+' · '+(m.name||'ไม่พบชื่อในทะเบียน'))));box.append(members);
+   const detail=el('details'),summaryLabel=el('summary',{},'ดูรายละเอียดความก้าวหน้าและผลงานวิจัย');
+   detail.append(summaryLabel);
+   const detailBody=el('div');detailBody.append(el('p',{},'กดเพื่อโหลดรายละเอียดจากระบบ'));detail.append(detailBody);
+   let loaded=false;
+   detail.addEventListener('toggle',async()=>{
+    if(!detail.open||loaded)return;
+    loaded=true;detailBody.textContent='กำลังโหลดรายละเอียด...';
+    try{
+     const d=await callApi('apiGetStudentResearchData',sessionToken,g.groupId);detailBody.textContent='';
+     if(!d.group){detailBody.append(el('p',{},'ไม่พบข้อมูลกลุ่ม'));return;}
+     const topics=el('div');topics.append(el('h4',{},'ประวัติหัวข้อวิจัย'));
+     if(!d.topics.length)topics.append(el('p',{},'ยังไม่มีการเสนอหัวข้อวิจัย'));
+     d.topics.forEach(t=>topics.append(el('p',{},'V'+t.versionNo+' · '+(t.titleTh||'')+' · '+(t.reviewStatus||t.status||'' )+(t.reviewComment?' · ข้อเสนอแนะ: '+t.reviewComment:''))));
+     detailBody.append(topics);
+     const progress=el('div');progress.append(el('h4',{},'รายงานความก้าวหน้า'));
+     if(!d.progress.length)progress.append(el('p',{},'ยังไม่มีรายงานความก้าวหน้า'));
+     d.progress.forEach(r=>progress.append(el('p',{},'สัปดาห์ '+r.weekNo+' · '+(r.status||'')+' · '+(r.submittedAt?new Date(r.submittedAt).toLocaleDateString('th-TH'):'ยังไม่ระบุวันที่')+(r.reviewComment?' · ข้อเสนอแนะ: '+r.reviewComment:''))));
+     detailBody.append(progress);
+     const files=el('div');files.append(el('h4',{},'เอกสารโครงร่าง'));
+     if(!d.files.length)files.append(el('p',{},'ยังไม่มีเอกสารที่อัปโหลด'));
+     d.files.forEach(file=>{const row=el('p');row.append(el('span',{},(file.chapter||'เอกสาร')+' · '+file.fileName+' '));if(file.url)row.append(el('a',{href:file.url,target:'_blank',rel:'noopener noreferrer'},'เปิดเอกสาร'));files.append(row)});
+     detailBody.append(files);
+     const feedback=el('div');feedback.append(el('h4',{},'ข้อเสนอแนะที่บันทึกไว้'));
+     if(!d.feedback.length)feedback.append(el('p',{},'ยังไม่มีข้อเสนอแนะ'));
+     d.feedback.forEach(x=>feedback.append(el('p',{},(x.comment||x.COMMENT||x.FEEDBACK||x.MESSAGE||'ข้อเสนอแนะ')+' · '+(x.CREATED_AT?new Date(x.CREATED_AT).toLocaleDateString('th-TH'):''))));
+     detailBody.append(feedback);
+    }catch(e){loaded=false;detailBody.textContent='โหลดรายละเอียดไม่สำเร็จ: '+e.message;}
+   });
+   box.append(detail);
+   const ethicsButton=el('button',{type:'button',className:'secondary'},'ดูสถานะจริยธรรมการวิจัย');
+   ethicsButton.onclick=async()=>{ethicsButton.disabled=true;try{const ethics=await callApi('apiGetGroupEthicsSummary',sessionToken,g.groupId);const note=el('div',{className:'notice'});note.append(el('p',{},'แผน: '+({DURING_COURSE:'ยื่นระหว่างรายวิชา',AFTER_COURSE:'ยื่นหลังรายวิชา',NOT_APPLICABLE:'ไม่เกี่ยวข้อง',UNDECIDED:'ยังไม่กำหนด'}[ethics.ETHICS_PLAN]||'—')+' · สถานะการยื่น: '+(ethics.SUBMISSION_STATUS||'—')+' · ผล REC: '+(ethics.REC_APPROVAL_STATUS||'—')),el('p',{},'การเห็นชอบของอาจารย์ที่ปรึกษาไม่ใช่ REC Approval และห้ามเริ่มเก็บข้อมูลจากมนุษย์ก่อนการรับรองที่เกี่ยวข้อง'));box.append(note);ethicsButton.remove();}catch(e){showOperationStatus(e.message,true);ethicsButton.disabled=false;}};
+   box.append(ethicsButton);a.append(box);
+  });
  }catch(e){a.textContent='โหลดกลุ่มที่ได้รับมอบหมายไม่สำเร็จ: '+e.message;}
 }
 
@@ -1047,5 +1217,10 @@ async function submitPasswordChange(event){
 const passwordChangeForm=$('passwordChangeForm');
 if(passwordChangeForm)passwordChangeForm.addEventListener('submit',submitPasswordChange);
 if(window.SSRL_MAGIC_SESSION){sessionToken=window.SSRL_MAGIC_SESSION;storeSessionToken(sessionToken);loadDashboard(undefined,true);}
-else if(sessionToken)loadDashboard(undefined,true);
+else if(sessionToken){
+  let savedExpiry='';
+  try{savedExpiry=localStorage.getItem('ssrl_expires_at')||sessionStorage.getItem('ssrl_expires_at')||'';}catch(e){}
+  if(savedExpiry && Date.parse(savedExpiry)<=Date.now()) handleInvalidSession('Session หมดอายุ');
+  else {if(savedExpiry)scheduleSessionExpiry(savedExpiry);loadDashboard(undefined,true);}
+}
 </script>
