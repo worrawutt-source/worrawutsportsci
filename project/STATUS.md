@@ -524,3 +524,19 @@ Backend Frontend SHA pin: `92c95433cdb09c9899ceefd719b8f053c844c09d`
 Static source verification: 12 checks ผ่าน — ตรวจหมวดข้อมูลทั้ง 4, กลุ่มค้างตรวจ/สัปดาห์, ชื่อผู้ถูกเสนอ/ผู้ได้รับแต่งตั้ง, Admin-only guard, status filters, no-schema read-only และ frontend pin
 
 Runtime / browser UAT: **PENDING**. ยังไม่ได้ Deploy TEST หรือ Production.
+
+
+## 13. Admin Overview Syntax Hotfix
+
+ตรวจพบจาก Browser Console หลัง Deploy TEST: `Unexpected token 'async'` ที่บรรทัดประกาศ Admin Overview ซึ่งเกิดจาก `async async function renderAdminOverview()` ซ้ำคำว่า `async` ทำให้ Client Script parse ไม่ผ่านและหน้า Session Restoration ค้าง
+
+แก้เป็น `async function renderAdminOverview()` และปรับ Frontend SHA pin ใน `code.gs` ให้ตรงกับ Client snapshot ใหม่
+
+- Client commit: `260d13d634bd86161b189c77f93f4587dad1ba52`
+- Client content SHA pin: `33b465c17de4166fd2cfde4557cf33a4e8191207`
+- Backend commit: `387a0fb03211aad4eaba0455cc3af059a252e440`
+- Backend content SHA: `390e58d74da4b7a2199cc144934921cc3b32dd66`
+
+Static verification: duplicate async removed, function declaration correct, frontend pin matches, Admin overview API call remains.
+
+Deployment/Runtime: Source hotfix committed to `feature/admin-advisor-workspace`; not yet re-deployed or runtime-tested. The reported HTTP 401 may be a separate session/auth response and should be rechecked after correcting the syntax and deploying matching Client/Backend snapshots.
