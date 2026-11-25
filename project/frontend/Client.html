@@ -295,7 +295,7 @@ function renderDashboard(d,metricsOverride){
   // If the saved menu is no longer available for this role, fall back to the first menu.
   const savedMenu=getSavedActiveMenu();
   const menuItems=[...$('sideMenu').querySelectorAll('.menu-item')];
-  const targetMenu=menuItems.find(item=>item.textContent===savedMenu)||menuItems[0];
+  const targetMenu=menuItems.find(item=>normalizeMenuLabel_(item.dataset.menuLabel)===normalizeMenuLabel_(savedMenu))||menuItems[0];
   if(targetMenu) targetMenu.click();
 }
 async function renderUserAdmin(){
