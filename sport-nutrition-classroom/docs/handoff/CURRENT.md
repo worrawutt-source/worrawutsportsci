@@ -1237,3 +1237,12 @@ Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migrat
 - Refinement commit: `aaf65ad8aa09b45a476ca0d0814faf1cdf66238c`.
 - Final Preflight blob SHA: `bf9202a36ca3605973d82c0aa6ce898816973e49`.
 - Re-fetched final source and statically checked that the entry point and PF-01..PF-20 checks exist and that the source contains none of the reviewed mutation/external-call operations (`createFile`, `setTrashed`, permission grants/revocations, Sheet writes, UrlFetch, Mail, trigger creation, or Cache writes). This is static source review only, not GAS runtime verification.
+
+
+## WP-SUB-2 PF-04 expected TEST folder ID correction — 25 Nov 2026
+- Owner confirmed the actual Google Drive Folder ID for `SNC_TEST_SUBMISSION_FILES` and confirmed it matches the Script Property `SNC_SUBMISSION_FOLDER_ID`.
+- Updated only `EXPECTED_FOLDER_ID` in `backend/tests/WP-SUB-2/SNC_WP_SUB_2_Preflight_TEST.gs` to the owner-confirmed folder ID; Script Property was not changed.
+- Source commit: `fb4307ca1f19dcca110c7a0cd9a7e0fb6b817820`; updated Preflight blob: `f8db9c7968c7ff005c0402ab6b37241a75837684`.
+- Static diff confirms the only code change is the expected folder ID constant. No GAS execution, Runner, Cleanup, Drive mutation, Sheet write, or Script Property write was performed by the assistant.
+- Owner's Preflight execution on 25 Nov 2026 completed with `cleanupPerformed=false`, `writesExpected=0`, `externalCallsExpected=0`, and transient counts matching the recorded WP-SUB-1/WP-SUB-2 context; however PF-04 had FAIL because the prior expected ID did not match the owner-confirmed TEST folder. Other 19 checks remained BLOCKED.
+- Next: owner manually syncs the updated Preflight file into the existing TEST GAS project, verifies the Cleanup top-level invocation remains commented, saves, and runs only `SNC_WP_SUB_2_Preflight_READONLY_TEST()` once. Review the complete sanitized log before considering any next gate. No Runner or Cleanup authorized.
