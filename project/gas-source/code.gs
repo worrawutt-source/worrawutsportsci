@@ -127,7 +127,7 @@ function doPost(e){
 const FRONTEND_CONFIG = Object.freeze({
   OWNER: 'worrawutt-source',
   REPOSITORY: 'worrawutsportsci',
-  COMMIT_SHA: 'ec100c82daad257ff088c8effd1fece7a0b07202',
+  COMMIT_SHA: 'a4c72c11bb41450624830e27a298655b75c537e6',
   BASE_PATH: 'project/frontend/',
   CACHE_SECONDS: 21600,
   CACHE_CHUNK_SIZE: 20000
@@ -1460,7 +1460,7 @@ function apiAdminAssignAdvisor(token,groupId,advisorUserId){
 }
 
 function apiRecordMeetingAttendance(token,payload){
-  const ctx=requireSession_(token,[ROLE.ADMIN,ROLE.ADVISOR]);assertGradeEditable_();payload=payload||{};
+  const ctx=requireAdvisorWorkspaceSession_(token);assertGradeEditable_();payload=payload||{};
   const groupId=String(payload.groupId||''),no=Number(payload.meetingNo),week=[2,4,6,8,10,12,14][no-1];
   if(!week||Number(payload.meetingWeek)!==week)throw new Error('ครั้งที่พบอาจารย์ต้องตรงกับสัปดาห์ที่กำหนด 2,4,6,8,10,12,14');
   assertGroupAccess_(ctx,groupId);
