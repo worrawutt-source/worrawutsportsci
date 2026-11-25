@@ -182,6 +182,9 @@ async function loadDashboard(forcePasswordChange, isSessionRestore=false){
   }
 }
 function roleLabel(role){return ({ADMIN:'อาจารย์ประจำวิชา / ผู้ดูแลระบบ',ADVISOR:'Research Advisor',STUDENT:'Student',SYSTEM_ADMIN:'อาจารย์ประจำวิชา / ผู้ดูแลระบบ',RESEARCH_ADVISOR:'Research Advisor'})[role]||role}
+function normalizeMenuLabel_(value){
+  return String(value||'').normalize('NFC').replace(/[\\u200B-\\u200D\\uFEFF\\u00A0]/g,' ').replace(/\\s+/g,' ').trim();
+}
 function renderDashboard(d){
   $('sideMenu').innerHTML='';
   d.menu.forEach((label,i)=>{
@@ -189,31 +192,34 @@ function renderDashboard(d){
     b.addEventListener('click',async()=>{
       document.querySelectorAll('.menu-item').forEach(x=>x.classList.remove('active'));b.classList.add('active');
       saveActiveMenu(label);
+      const routeLabel=normalizeMenuLabel_(label);
+      const advisorRole=currentDashboard.user.roleId==='ADVISOR'||currentDashboard.user.roleId==='RESEARCH_ADVISOR';
+      const advisorFallback=advisorRole?['overview','groups','meetings','a4'][i]:'';
       $('sectionTitle').textContent=label;$('sectionText').textContent='กำลังโหลดข้อมูล...';
-      if(label==='บัญชีผู้ใช้' && currentDashboard.user.roleId==='ADMIN') await renderUserAdmin();
-      else if(label==='นำเข้ารายชื่อนักศึกษา' && currentDashboard.user.roleId==='ADMIN') await renderExcelImport();
-      else if(label==='บันทึกระบบ' && currentDashboard.user.roleId==='ADMIN') await renderAuditLog();
-      else if(label==='จัดการกลุ่มวิจัย' && currentDashboard.user.roleId==='ADMIN') await renderGroupAdmin();
-      else if(label==='กำหนดอาจารย์ที่ปรึกษา' && currentDashboard.user.roleId==='ADMIN') await renderAdvisorAssignment();
-      else if(label==='บันทึกการเข้าพบ' || label==='บันทึกการพบอาจารย์') await renderMeetingAttendance();
-      else if(label==='จัดการรายงานความก้าวหน้า' && currentDashboard.user.roleId==='ADMIN') await renderAdminProgressManagement();
-      else if(label==='จัดการงานกลุ่ม' && currentDashboard.user.roleId==='ADMIN') await renderAdminTaskBoard();
-      else if(label==='ติดตามจริยธรรม' && currentDashboard.user.roleId==='ADMIN') await renderAdminEthicsTracking();
-      else if(label==='สัญญาณเตือนความเสี่ยง' && currentDashboard.user.roleId==='ADMIN') await renderAdminEarlyWarnings();
-      else if(label==='งานกลุ่ม') await renderRoleTaskBoard();
-      else if(label==='ประเมินผล A1–A6' && currentDashboard.user.roleId==='ADMIN') await renderAssessmentAdmin();
-      else if(label==='ประเมิน A4') await renderAdvisorA4();
-      else if(label==='ประเมินเพื่อน A5') await renderPeerAssessment();
-      else if(label==='การตั้งค่าระบบ' && currentDashboard.user.roleId==='ADMIN') await renderSystemSettings();
-      else if(label==='กลุ่มที่ได้รับมอบหมาย') await renderAdvisorGroups();
-      else if(label==='ข้อมูลของกลุ่ม') await renderStudentWorkspace();
-      else if(label==='หัวข้อวิจัย') await renderStudentTopics();
-      else if(label==='เอกสารโครงร่าง') await renderProposalDocuments();
-      else if(label==='ความก้าวหน้า') await renderProgressReports();
-      else if(label==='ข้อเสนอแนะ') await renderFeedback();
-      else if(label==='ผลการประเมิน' && currentDashboard.user.roleId==='STUDENT') await renderStudentGrades();
-      else if(label==='ตรวจหัวข้อและให้ข้อเสนอแนะ') await renderAdvisorReview();
-      else if(label==='ภาพรวมระบบ' || label==='ภาพรวมการให้คำปรึกษ') await renderOverview();
+      if(routeLabel==='บัญชีผู้ใช้' && currentDashboard.user.roleId==='ADMIN') await renderUserAdmin();
+      else if(routeLabel==='นำเข้ารายชื่อนักศึกษา' && currentDashboard.user.roleId==='ADMIN') await renderExcelImport();
+      else if(routeLabel==='บันทึกระบบ' && currentDashboard.user.roleId==='ADMIN') await renderAuditLog();
+      else if(routeLabel==='จัดการกลุ่มวิจัย' && currentDashboard.user.roleId==='ADMIN') await renderGroupAdmin();
+      else if(routeLabel==='กำหนดอาจารย์ที่ปรึกษา' && currentDashboard.user.roleId==='ADMIN') await renderAdvisorAssignment();
+      else if(routeLabel==='บันทึกการเข้าพบ' || routeLabel==='บันทึกการพบอาจารย์' || advisorFallback==='meetings') await renderMeetingAttendance();
+      else if(routeLabel==='จัดการรายงานความก้าวหน้า' && currentDashboard.user.roleId==='ADMIN') await renderAdminProgressManagement();
+      else if(routeLabel==='จัดการงานกลุ่ม' && currentDashboard.user.roleId==='ADMIN') await renderAdminTaskBoard();
+      else if(routeLabel==='ติดตามจริยธรรม' && currentDashboard.user.roleId==='ADMIN') await renderAdminEthicsTracking();
+      else if(routeLabel==='สัญญาณเตือนความเสี่ยง' && currentDashboard.user.roleId==='ADMIN') await renderAdminEarlyWarnings();
+      else if(routeLabel==='งานกลุ่ม') await renderRoleTaskBoard();
+      else if(routeLabel==='ประเมินผล A1–A6' && currentDashboard.user.roleId==='ADMIN') await renderAssessmentAdmin();
+      else if(routeLabel==='ประเมิน A4' || advisorFallback==='a4') await renderAdvisorA4();
+      else if(routeLabel==='ประเมินเพื่อน A5') await renderPeerAssessment();
+      else if(routeLabel==='การตั้งค่าระบบ' && currentDashboard.user.roleId==='ADMIN') await renderSystemSettings();
+      else if(routeLabel==='กลุ่มที่ได้รับมอบหมาย' || advisorFallback==='groups') await renderAdvisorGroups();
+      else if(routeLabel==='ข้อมูลของกลุ่ม') await renderStudentWorkspace();
+      else if(routeLabel==='หัวข้อวิจัย') await renderStudentTopics();
+      else if(routeLabel==='เอกสารโครงร่าง') await renderProposalDocuments();
+      else if(routeLabel==='ความก้าวหน้า') await renderProgressReports();
+      else if(routeLabel==='ข้อเสนอแนะ') await renderFeedback();
+      else if(routeLabel==='ผลการประเมิน' && currentDashboard.user.roleId==='STUDENT') await renderStudentGrades();
+      else if(routeLabel==='ตรวจหัวข้อและให้ข้อเสนอแนะ') await renderAdvisorReview();
+      else if(routeLabel==='ภาพรวมระบบ' || routeLabel==='ภาพรวมการให้คำปรึกษ' || advisorFallback==='overview') await renderOverview();
       else $('sectionText').textContent='เมนูนี้ยังไม่มีสิทธิ์หรือไม่มีข้อมูลสำหรับบัญชีนี้';
     });
     $('sideMenu').appendChild(b);
