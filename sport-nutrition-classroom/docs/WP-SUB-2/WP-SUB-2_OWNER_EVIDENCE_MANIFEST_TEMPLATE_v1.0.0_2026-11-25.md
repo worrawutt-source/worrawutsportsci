@@ -43,8 +43,8 @@ Do not place raw User IDs, emails, Assignment/Group/Submission IDs, Drive File I
 | PF-16 | Exact primary-ID inventory for relevant Sheets plus exact Drive inventory/fingerprint captured read-only |  | BLOCKED |
 | PF-17 | Notification stub strategy, restore proof, and zero real external calls confirmed for Runner design |  | BLOCKED |
 | PF-18 | Owner-approved test window; no overlapping TEST activity; concurrency lock/stop plan confirmed |  | BLOCKED |
-| PF-19 | Owner-approved restricted Manifest storage location, access list, retention, and backup |  | BLOCKED |
-| PF-20 | Owner decision on post-test file disposition; default is preserve and no cleanup |  | BLOCKED |
+| PF-19 | Owner-approved restricted Manifest storage location, access list, retention, and backup | Owner approved encrypted owner-only evidence policy and owner/authorized-custodian-only GAS Execution Log access; exact destination and actual log ACL enforcement still require verification before inventory | APPROVED POLICY — VERIFY CONTROLS |
+| PF-20 | Owner decision on post-test file disposition; default is preserve and no cleanup | Owner explicitly approved `PRESERVE`; no Cleanup, delete, move, rename, overwrite, or file alteration | PASS — PRESERVE |
 
 ## Source Manifest reconciliation
 
@@ -82,13 +82,21 @@ The capture must be read-only. Do not write a Script Property, Sheet, Drive file
 
 - Source synchronization reviewed by: ____________________
 - TEST environment and execution account confirmed by: ____________________
-- Restricted evidence location approved by: ____________________
+- Restricted evidence location approved by: **Owner approval recorded 25 Nov 2026**; exact encrypted destination and actual access enforcement to be verified before inventory.
 - Effective ACL reviewed by: ____________________
 - Fixture / actor / Assignment / Group mapping approved by: ____________________
 - Test window approved: ____________________
-- File disposition: `PRESERVE` / other separately approved decision: ____________________
+- File disposition: **`PRESERVE` — owner approved 25 Nov 2026; no Cleanup.**
 - Date/time (Asia/Bangkok): ____________________
 
 ## Gate
 
-PF-02 source-manifest review is **PASS** with the documented comment-only Cleanup variance and owner confirmation of the exported manifest settings. Overall WP-SUB-2 Preflight remains **BLOCKED** because PF-01, PF-03, PF-08..PF-20 (except PF-04..PF-07 already PASS) are unresolved. Runner implementation and persistent execution remain separate approval gates. No cleanup is implied by this template.
+PF-02 source-manifest review is **PASS** with the documented comment-only Cleanup variance and owner confirmation of the exported manifest settings. PF-20 is **PASS — PRESERVE** by owner approval. PF-19 policy is approved, but exact encrypted destination and actual GAS Execution Log access enforcement must be verified before Exact-ID Inventory. Overall WP-SUB-2 Preflight remains **BLOCKED** because PF-01, PF-03, PF-08..PF-18 (except PF-04..PF-07 already PASS) and PF-19 operational verification are unresolved. Runner implementation and persistent execution remain separate approval gates. No Cleanup is authorized.
+
+
+## Owner approval — PF-19/PF-20 — 25 Nov 2026
+
+- PF-19 policy approved: store exact-ID evidence in an encrypted, owner-only restricted location; restrict GAS Execution Logs containing exact inventory output to owner/authorized custodian only.
+- PF-20 approved disposition: `PRESERVE`. Do not run Cleanup or delete/move/rename/overwrite existing test files.
+- This approval does not prove the encrypted destination is configured or the GAS Execution Log ACL is already restricted. Because the current Exact-ID Inventory function logs raw exact IDs, do not run it until both controls are verified. If the log cannot be restricted, use a separately reviewed safe-output approach before any inventory execution.
+- Keep raw IDs and actor/file mappings out of chat and GitHub. Record only sanitized counts, hashes, and status in the repository.
