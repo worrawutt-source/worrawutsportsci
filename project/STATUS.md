@@ -431,3 +431,41 @@ Static verification:
 - การคืนค่ารอบนี้ครอบคลุมระดับเมนู (Menu-level) ไม่รวมข้อมูลที่ยังไม่ได้บันทึกในฟอร์ม หรือรายละเอียดภายในหน้าที่เปิดค้าง เช่น กลุ่มที่เลือก/Modal/แท็บย่อย
 - ไม่เปลี่ยน Session Policy, Password Hash, Database Schema, Role/Permission, Workflow หรือ Production Deployment
 - Runtime Test/UAT: **PENDING**
+
+
+## 18. Advisor Menu Routing Hardening — Implementation
+
+สถานะ ณ 25 พฤศจิกายน 2026: **ปรับ Source Code บน feature branch แล้ว; รอ Runtime Test/UAT บน TEST**
+
+เหตุผล:
+- พบหน้า Advisor แสดงข้อความ fallback “เมนูนี้ยังไม่มีสิทธิ์หรือไม่มีข้อมูลสำหรับบัญชีนี้” ทั้งที่มีเมนูภาพรวมการให้คำปรึกษและมีฟังก์ชัน `renderOverview()` ใน Frontend snapshot
+- ผู้ใช้ยืนยันว่า TEST Web App ใช้ Deployment Version ล่าสุดแล้ว
+- ปรับ Menu Routing ให้ทนต่อช่องว่าง/อักขระ Unicode แฝง และมี Advisor index fallback สำหรับเมนูหลัก
+
+การเปลี่ยนแปลง:
+1. เพิ่ม `normalizeMenuLabel_()` เพื่อ Normalize Unicode (NFC), ตัด zero-width/BOM/non-breaking spaces และยุบช่องว่างก่อนเปรียบเทียบ
+2. ใช้ `routeLabel` ที่ Normalize แล้วในเงื่อนไข Menu Routing ภายใน `renderDashboard()`
+3. เพิ่ม Advisor fallback ตามลำดับเมนูที่ Backend ส่ง: index 0 Overview, index 1 Assigned Groups, index 2 Supervision Records, index 3 A4 Assessment
+4. คงการจับคู่ด้วยชื่อเมนูเป็นหลัก; ใช้ index fallback สำหรับ Advisor เพื่อรองรับชื่อเมนูที่มีความคลาดเคลื่อน
+5. อัปเดต Backend immutable Frontend SHA ให้ชี้ไปยัง Client snapshot ใหม่
+
+ไฟล์ที่เปลี่ยน:
+- `project/frontend/Client.html`
+- `project/gas-source/code.gs` (อัปเดต Frontend SHA เท่านั้น)
+
+Commit:
+- Client: `0009329fb08822f126c8ca6bf473a44828a7e83f`
+- Backend: `36c5c66da95c7ea57b04bd81052f4fd0a1b105e9`
+- Frontend SHA pinned: `0009329fb08822f126c8ca6bf473a44828a7e83f`
+
+Static verification:
+- ตรวจพบ Normalize helper และการเรียกใช้ก่อน Menu Routing
+- ตรวจเงื่อนไข fallback ของ Advisor ครบ 4 เมนูตามลำดับ
+- ตรวจชื่อเมนู Overview ยังคง route ไป `renderOverview()`
+- ตรวจ Backend Frontend SHA ตรงกับ Client snapshot ใหม่
+
+ข้อจำกัด:
+- ยังไม่ได้ทดสอบ Google Apps Script Runtime หรือ Browser จริง
+- ยังไม่ได้ Deploy เวอร์ชันนี้ไปยัง TEST Web App
+- Advisor index fallback อาศัยลำดับเมนูที่ Backend ส่งมา จึงต้องรักษาลำดับ 4 เมนูของ Advisor ให้ตรงกับที่กำหนด
+- Runtime Test/UAT: **PENDING**
