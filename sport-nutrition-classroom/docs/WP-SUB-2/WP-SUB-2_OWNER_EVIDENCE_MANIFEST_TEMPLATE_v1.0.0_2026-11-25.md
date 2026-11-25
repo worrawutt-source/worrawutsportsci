@@ -48,21 +48,22 @@ Do not place raw User IDs, emails, Assignment/Group/Submission IDs, Drive File I
 
 ## Source Manifest reconciliation
 
-### Current comparison from `SNC_GAS_EXPORT_20261125.zip`
+### Latest comparison from `SNC_GAS_EXPORT_20261125_FRESH.zip`
 
-- Export contains 32 code files plus `appsscript.json`.
-- 30/32 code files match GitHub `development` after normalizing the missing final newline in the export.
-- Differences requiring owner reconciliation:
-  1. `SNC_ApprovedCleanup_EXACT14_TEST.js`: export contains three trailing commented invocation lines not present in GitHub. They are comments, not executable calls. Do not run Cleanup.
-  2. `SNC_AuditLogReconciliation_READONLY_TEST.js`: exported version differs substantively from GitHub `development`; the GitHub version adds pre-batch AuditLog baseline, exact delta/untracked ID, and header checks. Sync/review the current read-only helper in the TEST GAS project.
-- `appsscript.json` is not versioned in this repository. The export declares `webapp.executeAs=USER_DEPLOYING` and `webapp.access=ANYONE_ANONYMOUS`. Owner must review and record the approved deployment configuration; no deployment action is authorized.
+- Export contains **33 code files plus `appsscript.json`**.
+- The 32 repository-tracked code files were compared with `development` after normalizing the export's missing final newline: **31/32 match exactly**; the only remaining difference is comment-only in the Cleanup file.
+- `SNC_AuditLogReconciliation_READONLY_TEST.js` now matches GitHub `development` after newline normalization. Exported normalized Git blob SHA: `afc868148b568d2ed524c1fe66a2723b715e4dc5`, equal to the current GitHub blob. This supersedes the prior export discrepancy; the older ZIP remains historical evidence.
+- `SNC_ApprovedCleanup_EXACT14_TEST.js`: the export has three trailing commented invocation lines not present in GitHub. They are comments, not executable top-level calls. The difference is documented and does not indicate a runnable cleanup call. **Do not run Cleanup.**
+- `SNC_SetFolderProperty_TEMP.js` is an owner-created temporary utility to correct `SNC_SUBMISSION_FOLDER_ID`. Its presence in GAS is expected and explained; the property was previously verified by owner log. Do not rerun it unless the owner specifically needs to correct the property again.
+- `appsscript.json` is not versioned in this repository. The export declares `webapp.executeAs=USER_DEPLOYING` and `webapp.access=ANYONE_ANONYMOUS`. These settings still require owner review against the intended TEST deployment. No deployment was inspected or changed.
+- Source code reconciliation is therefore **reviewed with one documented comment-only variance and one owner-created temporary utility**. PF-02 remains BLOCKED until the exported manifest/deployment configuration is owner-reviewed and recorded.
 
-| File | Exported normalized blob SHA | GitHub development blob SHA | Owner disposition |
+| File | Exported normalized blob SHA | GitHub development blob SHA | Disposition |
 |---|---|---|---|
-| `SNC_ApprovedCleanup_EXACT14_TEST.js` | `24fa5153f188cbd4dca18894a574930e23c7c877` | `9fd76f859e4f806dd951ce94e2f22ba83ee0692d` |  |
-| `SNC_AuditLogReconciliation_READONLY_TEST.js` | `0e3dedbd94ad67b850cea8bc8bf3a0fa7877bd3a` | `afc868148b568d2ed524c1fe66a2723b715e4dc5` |  |
+| `SNC_ApprovedCleanup_EXACT14_TEST.js` | `24fa5153f188cbd4dca18894a574930e23c7c877` | `9fd76f859e4f806dd951ce94e2f22ba83ee0692d` | Comment-only variance; no executable invocation; preserve and do not run |
+| `SNC_AuditLogReconciliation_READONLY_TEST.js` | `afc868148b568d2ed524c1fe66a2723b715e4dc5` | `afc868148b568d2ed524c1fe66a2723b715e4dc5` | Exact match after newline normalization |
 
-After the owner syncs/reviews the differences, re-export the same TEST GAS project and rerun the external file-by-file comparison. Do not claim PF-02 PASS until code files and manifest configuration have an approved, reproducible reconciliation.
+The owner-created `SNC_SetFolderProperty_TEMP.js` is not a repository source file and is not counted among the 32 tracked code files.
 
 ## Restricted baseline manifest — storage outside GitHub
 
