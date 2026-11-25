@@ -173,5 +173,27 @@ input,select,textarea{font-size:16px;min-height:48px}.primary,.secondary{font-si
 html.ssrl-session-restoring #authView{display:none!important}
 html.ssrl-session-restoring #sessionRestoreView{display:flex!important}
 @media(prefers-reduced-motion:reduce){.session-restore-spinner{animation:none}}
+
+/* Text-based advisor meeting record workflow */
+.meeting-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin:16px 0}
+.meeting-stat{display:grid;gap:5px;padding:12px;background:#fff;border:1px solid var(--line);border-radius:11px;min-width:0}
+.meeting-stat span{font-size:12px;color:var(--muted);line-height:1.4}.meeting-stat strong{font-size:22px;color:var(--navy)}
+.meeting-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;padding:18px;background:#fff;border:1px solid var(--line);border-radius:14px;margin:14px 0}
+.meeting-field{display:grid;gap:7px;min-width:0;font-weight:650;color:var(--navy)}
+.meeting-field input,.meeting-field textarea{width:100%;min-width:0;box-sizing:border-box}
+.meeting-field:nth-of-type(n+4){grid-column:1/-1}
+.meeting-form button,.meeting-form .message{grid-column:1/-1}
+.meeting-latest{padding:10px 14px;background:#f3f7f9;border-radius:10px;margin:10px 0;color:var(--muted)}
+.meeting-submission-list{display:grid;gap:12px;margin-top:14px}
+.meeting-record-card{padding:17px;background:#fff;border:1px solid var(--line);border-radius:13px;overflow-wrap:anywhere}
+.meeting-record-heading{font-size:17px;font-weight:800;color:var(--navy)}
+.meeting-record-status{display:inline-flex;margin:9px 0;padding:5px 10px;border-radius:999px;background:#edf2f7;color:#475569;font-size:13px;font-weight:700}
+.meeting-record-status.approved{background:#e8f5ee;color:#187447}.meeting-record-status.revision_required{background:#fff1e8;color:#a44b16}.meeting-record-status.submitted{background:#eaf3fb;color:#245f91}
+.meeting-record-card p{line-height:1.7;white-space:pre-wrap;margin:8px 0}
+.meeting-review-comment{padding:11px 13px;border-left:3px solid #d18a35;background:#fff8ed;border-radius:6px;margin:10px 0;white-space:pre-wrap}
+.meeting-review-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:10px}
+@media(max-width:800px){.meeting-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.meeting-form{grid-template-columns:minmax(0,1fr)}.meeting-field:nth-of-type(n){grid-column:1/-1}}
+@media(max-width:500px){.meeting-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.meeting-stat{padding:10px}.meeting-stat strong{font-size:20px}.meeting-form{padding:13px}.meeting-record-card{padding:13px}}
+
 </style>
 
