@@ -1285,3 +1285,13 @@ Preserve all WP-SUB-1 records and evidence. Do not run any test, cleanup, migrat
 2. Re-export the GAS project and recompare all code files plus the separately reviewed `appsscript.json`.
 3. Prepare the exact-ID baseline from the existing WP-SUB-1 manifest and current TEST rows, plus a read-only Drive inventory. This requires an owner-approved Manifest location/disposition (PF-19/PF-20); do not write or persist a manifest yet.
 - No GAS execution by the assistant, no Sheet/Script Property/Drive writes, no file upload/permission change, no Runner, Cleanup, migration, trigger, deployment, LINE/UrlFetch, or external call was performed.
+
+
+## WP-SUB-2 owner evidence register prepared — 25 Nov 2026
+
+- Created owner evidence template: `docs/WP-SUB-2/WP-SUB-2_OWNER_EVIDENCE_MANIFEST_TEMPLATE_v1.0.0_2026-11-25.md`.
+- Template records PF-01..PF-20, current owner-run Preflight status, the source-sync discrepancies, and the required restricted exact-ID/Drive baseline fields.
+- It intentionally contains no raw student/actor IDs, emails, Drive File IDs, credentials, or test-file content.
+- Template commit: `58ba166c9ad98335bc0bf8f45062813af183f197`.
+- Current next owner action is to sync/review the two source differences in the same TEST GAS project, review the exported `appsscript.json` deployment settings, then re-export for source comparison. After that, prepare the restricted read-only WP-SUB-1 exact-ID + current Drive inventory baseline; the owner must approve its storage location and file disposition (PF-19/PF-20) first.
+- No GAS execution, persistent Runner, Cleanup, Drive/Sheet/Properties write, permission change, upload, migration, trigger, deployment, LINE/UrlFetch, or external call was performed.
