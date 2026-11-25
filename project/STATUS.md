@@ -469,3 +469,33 @@ Static verification:
 - ยังไม่ได้ Deploy เวอร์ชันนี้ไปยัง TEST Web App
 - Advisor index fallback อาศัยลำดับเมนูที่ Backend ส่งมา จึงต้องรักษาลำดับ 4 เมนูของ Advisor ให้ตรงกับที่กำหนด
 - Runtime Test/UAT: **PENDING**
+
+
+## 11. Admin + Advisor Multi-Workspace — Feature Branch
+
+ปรับปรุงตามคำสั่งผู้รับผิดชอบโครงการ วันที่ 25 พฤศจิกายน 2026 (ยังไม่ Merge และยังไม่ Deploy)
+
+Branch: `feature/admin-advisor-workspace`
+
+ขอบเขตการเปลี่ยนแปลง:
+- Admin Overview แยกจาก Advisor Overview เพื่อไม่เรียก `apiGetAdvisorWorkspaceSummary` ในหน้า Admin Dashboard
+- Admin ที่ได้รับการแต่งตั้งเป็น Advisor ผ่านรายการ `ADVISOR_ASSIGNMENTS` สถานะ `APPROVED` สามารถใช้บัญชีและอีเมลเดิม สลับ Admin Workspace / Advisor Workspace ได้
+- หน้ากำหนดอาจารย์ที่ปรึกษาอนุญาตให้เลือกบัญชี ADMIN ที่เปิดใช้งาน และ Backend อนุญาตการกำหนด ADMIN เป็น Advisor ใน assignment ได้
+- Advisor Workspace ของ Admin ใช้กลุ่มที่ได้รับมอบหมายและอนุมัติแล้ว; Advisor-facing APIs ที่แก้ไขใช้ `requireAdvisorWorkspaceSession_` และตรวจขอบเขตกลุ่มผ่าน `assertGroupAccess_`
+- A4 report ใน Advisor Workspace กรองกลุ่มตาม assignment; การบันทึก A4 ยังคงต้องเปิดช่วงประเมิน
+- ไม่มีการเพิ่มชีต/Schema, ไม่มีการเปลี่ยนคะแนน, ไม่มีการแก้ DB_ID หรือ APP_SECRET และไม่มีการ Deploy
+
+ไฟล์ที่เปลี่ยน:
+- `project/frontend/Client.html`
+- `project/gas-source/code.gs`
+
+Frontend pinned commit: `85ebf91fa30cc0268bfb850bbbd13041e10ed2f5`
+Backend source commit: `3fc1c5135cccc59a9f4722096a9dadbb1a264e56`
+
+การตรวจสอบ Source แบบ Static: 18 checks ผ่าน (routing, workspace selector, pinned SHA, assignment availability, Advisor API guards, group restriction และ A4 filtering)
+
+ข้อจำกัด/งานที่ยังค้าง:
+- ยังไม่ได้ทดสอบ JavaScript/GAS Runtime ใน Apps Script
+- ยังไม่ได้ทดสอบ UAT ด้วย Admin ที่ได้รับ assignment และ Advisor ปกติ
+- ยังไม่ได้ Deploy TEST snapshot นี้; URL เดิมจะคงเดิมเมื่ออัปเดต deployment เดิม แต่การใช้งานโค้ดนี้ยังต้อง Deploy TEST โดยผู้รับผิดชอบ
+- การเปลี่ยนแปลงยังอยู่ใน Feature Branch และรอ Review/Merge
