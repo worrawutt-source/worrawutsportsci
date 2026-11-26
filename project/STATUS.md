@@ -694,3 +694,43 @@ Source refs:
 - Static menu order, route alias, and pin checks: PASS
 - GAS Runtime, browser behavior, TEST deployment and UAT: NOT TESTED / PENDING
 - Production: unchanged
+
+
+## 25. ADVISOR-MEETING-DETAIL — Click to read submitted meeting reports (2026-11-26)
+
+สถานะ: Implemented on PERF-01 branch; static validation PASS; GAS Runtime / TEST / UAT pending.
+
+Source inspection findings:
+- `MEETING_REPORTS` already stores the structured report content and review metadata; no new sheet/schema was required.
+- Existing `apiListMeetingReports(token, groupId, meetingNo)` returns the latest report for the selected group and meeting number.
+- That read API calls `requireSession_()` and `assertGroupAccess_()`. For ADVISOR, group access requires an active group and an approved `ADVISOR_ASSIGNMENTS` row matching the authenticated advisor user ID.
+- Existing Advisor page already supported selecting group/meeting and rendering the report; the new matrix adds direct navigation from status cells.
+
+Implementation:
+- Added `apiAdvisorGetMeetingMonitoring(token)` as an Advisor-only, status-metadata endpoint. It returns only groups from `getAdvisorAssignedGroups_()` and status metadata for 7 planned meeting numbers; report content is not duplicated in this endpoint.
+- Advisor page displays a compact status matrix. Statuses with an online report or legacy PDF are clickable; clicking selects the group and meeting, then loads details using the existing `apiListMeetingReports` and legacy PDF read API.
+- Existing Student form, save/submit workflow, Advisor review actions, Admin-only monitoring API and schema remain unchanged.
+- No database migration, new sheet, or production data change.
+
+Files changed:
+- `project/gas-source/code.gs`
+- `project/frontend/Client.html`
+- `project/frontend/Styles.html`
+
+Commits:
+- Advisor status API: `1fc654a831282ab4a26f75675228e429063d5c01`
+- Client status matrix: `4c5ab251c2c1a2ac66f413b454f468111f2bd371`
+- Styles: `f6c5594930d603e21a4a87ffa9c32dbafa34d211`
+- Backend frontend-pin update: `21a82537ae71950c40edd9107a70c10281a8d1e7`
+- Immutable Frontend pin: `4c5ab251c2c1a2ac66f413b454f468111f2bd371`
+
+Verification:
+- GAS backend syntax compile: PASS
+- Client script syntax compile: PASS
+- Static source checks for Advisor-only role gate, assigned-group source, status metadata only, click handler, reuse of existing report API and frontend pin: pending final verification
+- GAS Runtime / Browser test: NOT TESTED
+- TEST deployment: NOT DEPLOYED
+- UAT: PENDING
+- Production: UNCHANGED
+
+Next Action: deploy approved branch to TEST only, verify Advisor sees only assigned groups, click each status and confirm report content, legacy PDF behavior, review controls, role denial for non-Advisor, and regression of Student save/submit and Admin monitoring; then UAT.
