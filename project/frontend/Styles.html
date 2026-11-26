@@ -173,5 +173,38 @@ input,select,textarea{font-size:16px;min-height:48px}.primary,.secondary{font-si
 html.ssrl-session-restoring #authView{display:none!important}
 html.ssrl-session-restoring #sessionRestoreView{display:flex!important}
 @media(prefers-reduced-motion:reduce){.session-restore-spinner{animation:none}}
+
+
+/* Compact course-coordinator meeting monitoring: summary, filters and status matrix */
+.meeting-monitor-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0 18px}
+.meeting-monitor-stat-card{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;padding:12px 14px;background:#fff;border:1px solid var(--line);border-radius:11px}
+.meeting-monitor-stat-card span{font-size:13px;line-height:1.4;color:var(--muted)}
+.meeting-monitor-stat-card strong{font-size:24px;line-height:1.1;color:var(--navy);font-weight:800;font-variant-numeric:tabular-nums}
+.meeting-monitor-toolbar{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(190px,1fr);gap:12px;align-items:end;margin:14px 0}
+.meeting-monitor-filter{display:grid;gap:6px;font-size:13px;color:var(--muted);font-weight:700}
+.meeting-monitor-filter input,.meeting-monitor-filter select{min-height:42px;padding:9px 12px;font-size:14px}
+.meeting-monitor-table-wrap{width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:#fff;-webkit-overflow-scrolling:touch}
+.meeting-monitor-table{width:100%;min-width:820px;border-collapse:separate;border-spacing:0;table-layout:fixed}
+.meeting-monitor-table th,.meeting-monitor-table td{padding:10px 8px;text-align:center;vertical-align:middle;border-bottom:1px solid #e8eef3;font-size:12px}
+.meeting-monitor-table th{position:sticky;top:0;z-index:1;background:#f4f8fb;color:var(--navy);font-weight:800;white-space:nowrap}
+.meeting-monitor-table th:first-child{width:190px;text-align:left;padding-left:14px}
+.meeting-monitor-table th small{display:block;margin-top:2px;font-size:10px;color:var(--muted);font-weight:500}
+.meeting-monitor-table tbody tr:last-child td{border-bottom:0}
+.meeting-monitor-table tbody tr:hover td{background:#f8fbfd}
+.meeting-monitor-group-cell{text-align:left!important;padding-left:14px!important}
+.meeting-monitor-group-cell strong,.meeting-monitor-group-cell small{display:block;overflow-wrap:anywhere}
+.meeting-monitor-group-cell strong{font-size:13px;color:var(--navy);line-height:1.4}
+.meeting-monitor-group-cell small{margin-top:4px;font-size:11px;color:var(--muted);line-height:1.4}
+.meeting-monitor-status-cell{background:#fff}
+.meeting-monitor-status-cell.is-filter-match{background:#f5faf9}
+.meeting-monitor-status-cell>small{display:block;margin-top:4px;color:var(--muted);font-size:10px;white-space:nowrap}
+.meeting-monitor-status-badge{display:inline-flex;justify-content:center;align-items:center;max-width:100%;padding:4px 6px;border-radius:7px;font-size:11px;line-height:1.3;font-weight:700;overflow-wrap:anywhere}
+.status-not_submitted{background:#fff0f0;color:#a12626}
+.status-submitted,.status-active{background:#fff5df;color:#8a5b00}
+.status-verified{background:#eaf7ef;color:#187447}
+.status-revision_required{background:#f1eafe;color:#6842a0}
+.meeting-monitor-file-link{display:inline-block;margin-top:4px;font-size:11px;font-weight:700;color:var(--blue);white-space:nowrap}
+@media(max-width:900px){.meeting-monitor-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.meeting-monitor-stat-card{padding:10px}.meeting-monitor-stat-card strong{font-size:21px}.meeting-monitor-toolbar{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+@media(max-width:600px){.meeting-monitor-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.meeting-monitor-stat-card{align-items:flex-start;flex-direction:column;gap:4px;padding:10px 12px}.meeting-monitor-stat-card strong{font-size:22px}.meeting-monitor-toolbar{grid-template-columns:minmax(0,1fr);gap:10px}.meeting-monitor-table{min-width:780px}}
 </style>
 
