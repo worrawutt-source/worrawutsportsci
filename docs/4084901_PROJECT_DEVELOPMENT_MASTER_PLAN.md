@@ -160,6 +160,7 @@ Change types:
 |---|---|---|---|---|---|
 | 2026-11-26 | CHG-002 | Planning | Master Plan becomes continuously updated source of truth | Continuity across work sessions | v1.0 |
 | 2026-11-26 | CHG-001 | Planning | Adopt usable incremental releases | Course is in progress; students need system now | v1.0 |
+| 2026-11-26 | CHG-003 | C Workflow/Data Change (approved) | Add structured online advisor meeting report form; retain legacy PDF records; distinguish upcoming meetings from due reports | Replace student PDF upload with in-system form and prevent false pending counts; implementation branch `perf/perf-01-advisor-dashboard-load`, TEST/UAT pending | Approved; source implementation committed on feature branch, not deployed |
 
 ## 12. Release Log (actual delivery only)
 | Release | Date | Scope | Test evidence | User acceptance | Deployment | Status |
@@ -187,3 +188,24 @@ Check only what students need for the current milestone: login; correct group/me
 - Repository: worrawutt-source/worrawutsportsci
 
 If this plan conflicts with a user-approved Course Outline or baseline, the approved source takes precedence; document the reconciliation in Change Log.
+
+
+## 16. CHG-003 — Online Advisor Meeting Report (Approved 2026-11-26)
+
+Approved scope:
+- Replace student PDF upload UI for advisor meeting records with structured in-system fields based on the prior meeting record: meeting date; work completed before meeting; 3 Agenda items; problems/barriers; advisor consultation summary; 3 follow-up actions with due dates.
+- Student group representative may save draft and submit; advisor reviews/approves or returns for revision; Course Coordinator monitors status.
+- Add new additive sheet `MEETING_REPORTS`; retain existing `MEETING_FILES` and PDF records as read-only historical entries. Do not delete or migrate old PDF content into fields.
+- Monitoring marks sessions UPCOMING until an actual meeting attendance record exists; only recorded meetings without a report count as NOT_SUBMITTED. Submitted reports remain visible regardless of attendance entry.
+- Preserve role and group authorization, audit logging, and use batched row updates. Do not edit `setup.gs`.
+
+Implementation evidence:
+- Implementation branch: `perf/perf-01-advisor-dashboard-load`
+- Backend commit: `71e65ff6d419626fe4593111b75d7d358bdc636c`
+- Client commit / immutable Frontend pin: `b37f5d8dba2d6217c156b2713b85cc996c1d3192`
+- Styles commit: `e3b69badf9623d1f287e2de3e908372c382a101d`
+- Static cross-file checks: PASS
+- GAS runtime, TEST deployment, and UAT: NOT TESTED / PENDING
+- Production: unchanged
+
+Note: The plan's earlier starting-status reference to `MEETING_SUBMISSIONS` reflects its earlier project context. This implementation branch's inspected baseline uses `MEETING_FILES`; the additive `MEETING_REPORTS` schema is separate and preserves that legacy sheet. Confirm the actual TEST database before any schema setup or deployment.
