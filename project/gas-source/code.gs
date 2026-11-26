@@ -1645,6 +1645,7 @@ function apiAdminGetMeetingMonitoring(token){
   const groups=readObjectsFresh_('RESEARCH_GROUPS').filter(g=>g.STATUS==='ACTIVE');
   const reports=readObjectsFresh_('MEETING_REPORTS').filter(r=>['SUBMITTED','VERIFIED','REVISION_REQUIRED'].includes(String(r.STATUS)));
   const files=readObjectsFresh_('MEETING_FILES').filter(f=>['SUBMITTED','VERIFIED','REVISION_REQUIRED','ACTIVE'].includes(String(f.STATUS)));
+  const recordedMeetings=readObjectsFresh_('MEETING_RECORDS');
   const assignments=readObjectsFresh_('ADVISOR_ASSIGNMENTS').filter(a=>a.STATUS==='APPROVED');
   const users=readObjectsFresh_('SYS_USERS'),weeks=[2,4,6,8,10,12,14];
   const rows=groups.map(g=>{
@@ -1653,12 +1654,12 @@ function apiAdminGetMeetingMonitoring(token){
       const online=reports.filter(r=>String(r.GROUP_ID)===String(g.GROUP_ID)&&Number(r.MEETING_NO)===i+1).sort((a,b)=>Number(b.VERSION||0)-Number(a.VERSION||0))[0];
       const legacy=files.filter(f=>String(f.GROUP_ID)===String(g.GROUP_ID)&&Number(f.MEETING_NO)===i+1).sort((a,b)=>new Date(b.UPLOADED_AT)-new Date(a.UPLOADED_AT))[0];
       const latest=online||legacy;
-      return {meetingNo:i+1,week:w,status:!latest?'NOT_SUBMITTED':String(latest.STATUS),reportId:online?String(online.REPORT_ID):'',fileName:legacy?String(legacy.FILE_NAME||''):'',uploadedAt:latest&&latest.SUBMITTED_AT?new Date(latest.SUBMITTED_AT).toISOString():latest&&latest.UPLOADED_AT?new Date(latest.UPLOADED_AT).toISOString():'',url:legacy?String(legacy.DRIVE_URL||''):'',reviewComment:latest?String(latest.REVIEW_COMMENT||''):''};
+      const meetingOccurred=recordedMeetings.some(m=>String(m.GROUP_ID)===String(g.GROUP_ID)&&Number(m.MEETING_NO)===i+1);return {meetingNo:i+1,week:w,status:!latest?(meetingOccurred?'NOT_SUBMITTED':'UPCOMING'):String(latest.STATUS),reportId:online?String(online.REPORT_ID):'',fileName:legacy?String(legacy.FILE_NAME||''):'',uploadedAt:latest&&latest.SUBMITTED_AT?new Date(latest.SUBMITTED_AT).toISOString():latest&&latest.UPLOADED_AT?new Date(latest.UPLOADED_AT).toISOString():'',url:legacy?String(legacy.DRIVE_URL||''):'',reviewComment:latest?String(latest.REVIEW_COMMENT||''):''};
     });
     return {groupId:g.GROUP_ID,groupName:g.GROUP_NAME,advisor:au?au.DISPLAY_NAME:'ยังไม่กำหนด',meetings};
   });
   const all=rows.flatMap(x=>x.meetings);
-  return sanitizeForClient_({groups:rows,summary:{groups:rows.length,total:all.length,submitted:all.filter(x=>['SUBMITTED','VERIFIED','REVISION_REQUIRED','ACTIVE'].includes(x.status)).length,verified:all.filter(x=>x.status==='VERIFIED').length,notSubmitted:all.filter(x=>x.status==='NOT_SUBMITTED').length,revision:all.filter(x=>x.status==='REVISION_REQUIRED').length}});
+  return sanitizeForClient_({groups:rows,summary:{groups:rows.length,total:all.length,due:all.filter(x=>x.status!=='UPCOMING').length,upcoming:all.filter(x=>x.status==='UPCOMING').length,submitted:all.filter(x=>['SUBMITTED','VERIFIED','REVISION_REQUIRED','ACTIVE'].includes(x.status)).length,verified:all.filter(x=>x.status==='VERIFIED').length,notSubmitted:all.filter(x=>x.status==='NOT_SUBMITTED').length,revision:all.filter(x=>x.status==='REVISION_REQUIRED').length}});
 }
 
 /** Advisor verifies or requests revision of the latest group submission. */
