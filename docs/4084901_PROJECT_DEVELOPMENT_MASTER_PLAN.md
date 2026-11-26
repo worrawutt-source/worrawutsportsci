@@ -224,3 +224,20 @@ After reviewing the student screenshots, the user requested these corrections:
 - Save Draft may persist partial content; Submit must validate required content and all dates on both client and server.
 
 Verification: Client and GAS JavaScript syntax compile PASS; static cross-file checks PASS; GAS runtime/browser, TEST deployment, and UAT remain pending. Production is unchanged.
+
+
+## 18. MEETING-ONLINE — Full-width fields and per-meeting data behavior (2026-11-26)
+
+Change approved from student UI screenshot review:
+- Use a single-column form layout and full-width textareas for each narrative topic, with improved textarea height, spacing and readability.
+- Stack the three follow-up tasks vertically; task descriptions are full width and due-date controls remain clearly associated with each task.
+- Meeting report data remains separate for each group and meeting number. The existing backend retrieves by `GROUP_ID + MEETING_NO`; changing the meeting selector loads that meeting's saved report, or clears the fields if no report exists. It does not carry over or overwrite another meeting's data.
+- Warn before changing meeting number when the current form contains unsaved edits; cancelling restores the previous meeting selection.
+
+Implementation branch: `perf/perf-01-advisor-dashboard-load`
+- Client commit / immutable Frontend pin: `81215bae9ffabdf59eca7b0d52e5082f1bdf8e19`
+- Backend pin commit: `ea6ac4e227ca51762b8d5e8a67aa66beb3d85ae1`
+- Styles commit: `65e4729baef41f67cd2e647c891fef78141ad383`
+- Static syntax and consistency checks: PASS
+- GAS runtime/browser test, TEST deployment, UAT: PENDING / NOT TESTED
+- Production: unchanged
