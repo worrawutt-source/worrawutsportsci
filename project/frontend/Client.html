@@ -970,7 +970,7 @@ async function renderAdvisorReview(){
 async function renderOverview(){
  const a=$('sectionText');a.textContent='กำลังโหลดภาพรวมการให้คำปรึกษา...';
  try{
-  const d=await callApi('apiGetAdvisorWorkspaceSummary',sessionToken);a.textContent='';
+  const d=currentDashboard&&currentDashboard.advisorWorkspaceSummary ? currentDashboard.advisorWorkspaceSummary : await callApi('apiGetAdvisorWorkspaceSummary',sessionToken);a.textContent='';
   const action=el('div',{className:'notice'});
   action.append(el('h2',{},'ภาพรวมการให้คำปรึกษา'),el('p',{},'ติดตามกลุ่มวิจัย งานที่รอตรวจ และกิจกรรมการให้คำปรึกษาที่อยู่ในความรับผิดชอบของอาจารย์'));
   const actions=el('div',{className:'admin-row'});
