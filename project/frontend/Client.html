@@ -361,7 +361,7 @@ async function renderExcelImport(){
   });
   box.append(label,input,sheetLabel,sheetInput,btn,result); area.appendChild(box);
 }
-function metricLabel(k){return ({users:'บัญชีผู้ใช้ทั้งหมด',sessions:'Session ที่ยังใช้งาน',roster:'นักศึกษาในทะเบียน',students:'นักศึกษาในทะเบียน',registered:'ลงทะเบียนแล้ว',advisors:'อาจารย์ที่ปรึกษา',assignedGroups:'กลุ่มที่ได้รับมอบหมาย',pendingReviews:'งานรอตรวจ',reportsAvailable:'รายงานความก้าวหน้าที่รอตรวจ',pendingReports:'รายงานความก้าวหน้าที่รอตรวจ',pendingTopics:'หัวข้อวิจัยที่รอพิจารณา',feedbackProvided:'ข้อเสนอแนะที่บันทึกแล้ว',meetings:'การนัดหมาย',meetingsRecorded:'ครั้งที่บันทึกการเข้าพบ',openTasks:'งานที่ยังดำเนินการ',groupStatus:'สถานะกลุ่ม',milestones:'กิจกรรมและเป้าหมายรายสัปดาห์',feedback:'ข้อเสนอแนะ'})[k]||k}
+function metricLabel(k){return ({users:'บัญชีผู้ใช้ทั้งหมด',sessions:'Session ที่ยังใช้งาน',roster:'นักศึกษาในทะเบียน',students:'นักศึกษาในทะเบียน',registered:'ลงทะเบียนแล้ว',advisors:'อาจารย์ที่ปรึกษา',assignedGroups:'กลุ่มที่ได้รับมอบหมาย',pendingReviews:'งานรอตรวจ',reportsAvailable:'รายงานความก้าวหน้าที่รอตรวจ',pendingReports:'รายงานความก้าวหน้าที่รอตรวจ',pendingTopics:'หัวข้อวิจัยที่รอพิจารณา',feedbackProvided:'ข้อเสนอแนะที่บันทึกแล้ว',meetings:'การนัดหมาย',meetingsRecorded:'ครั้งที่บันทึกการเข้าพบ',openTasks:'งานกลุ่มที่ยังไม่เสร็จ',groupStatus:'สถานะกลุ่ม',milestones:'เป้าหมายรายสัปดาห์ที่ผ่านการตรวจ',feedback:'ข้อเสนอแนะที่ได้รับ'})[k]||k}
 function dateTimeLocalInputValue(value){const d=new Date(value);if(isNaN(d.getTime()))return '';const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes())}
 function el(tag,props={},text){const n=document.createElement(tag);Object.entries(props).forEach(([k,v])=>{if(k==='className')n.className=v;else if(k==='value')n.value=v;else n.setAttribute(k,v)});if(text!==undefined)n.textContent=text;return n;}
 async function renderGroupAdmin(){
@@ -759,10 +759,53 @@ async function renderStudentTopics(){
      const p=problem.value.trim().length,o=obj.value.trim().length;
      if(!th.value.trim()){formHint.textContent='กรุณากรอกชื่อเรื่องวิจัยภาษาไทย';formHint.className='message error';th.focus();return;}
      if(p<20||o<10){updateLengthHints();formHint.textContent='ยังส่งหัวข้อวิจัยไม่ได้ กรุณาตรวจสอบช่องที่มีข้อความเตือน ระบบยังไม่ได้ส่งข้อมูล';formHint.className='message error';(p<20?problem:obj).focus();return;}
-     submit.disabled=true;submit.textContent='กำลังส่งข้อมูล...';
-     try{const r=await callApi('apiStudentSaveResearchTopic',sessionToken,payload());showOperationStatus(r.message);await renderStudentTopics();}
-     catch(x){formHint.textContent='ส่งหัวข้อไม่สำเร็จ: '+x.message;formHint.className='message error';}
-     finally{submit.disabled=false;}
+     const submittedPayload=payload(),previousVersion=latest?Number(latest.versionNo||0):0;
+     let uncertain=false,verifiedSaved=false;
+     f.querySelectorAll('input,textarea,button').forEach(control=>control.disabled=true);
+     submit.textContent='กำลังตรวจสอบผลการส่ง...';
+     try{
+      let response=null,submitError=null;
+      try{response=await callApi('apiStudentSaveResearchTopic',sessionToken,submittedPayload);}
+      catch(err){submitError=err;}
+      if(response&&response.ok===true){
+       showOperationStatus(response.message||'ส่งหัวข้อวิจัยให้อาจารย์พิจารณาแล้ว');
+       await renderStudentTopics();
+       return;
+      }
+      if(response&&response.ok===false&&response.message)submitError=new Error(response.message);
+      let check=null;
+      try{check=await callApi('apiGetStudentResearchData',sessionToken);}
+      catch(verifyErr){uncertain=true;}
+      if(!check||!Array.isArray(check.topics))uncertain=true;
+      if(check&&Array.isArray(check.topics)){
+       const saved=check.topics.slice().sort((x,y)=>Number(y.versionNo||0)-Number(x.versionNo||0))[0]||null;
+       const samePayload=saved&&String(saved.titleTh||'')===String(submittedPayload.titleTh||'').trim()&&
+        String(saved.titleEn||'')===String(submittedPayload.titleEn||'').trim()&&
+        String(saved.problem||'')===String(submittedPayload.problem||'').trim()&&
+        String(saved.objectives||'')===String(submittedPayload.objectives||'').trim()&&
+        String(saved.significance||'')===String(submittedPayload.significance||'').trim();
+       if(saved&&Number(saved.versionNo||0)>previousVersion&&samePayload&&String(saved.reviewStatus||'').toUpperCase()==='PENDING'){
+        verifiedSaved=true;
+        showOperationStatus('หัวข้อถูกบันทึกและส่งแล้ว (ตรวจสอบจากข้อมูลในระบบ)');
+        await renderStudentTopics();
+        return;
+       }
+      }
+      if(uncertain){
+       formHint.textContent='ยังยืนยันผลการส่งไม่ได้ ระบบอาจบันทึกหัวข้อแล้ว กรุณาอย่าแก้ไขหรือส่งซ้ำ ให้รีเฟรชหน้าและตรวจสอบประวัติหัวข้อก่อน';
+       formHint.className='message error';
+       showOperationStatus('ไม่สามารถยืนยันผลการส่งได้ กรุณาตรวจสอบประวัติหัวข้อก่อนส่งซ้ำ',true);
+      }else{
+       throw new Error((submitError&&submitError.message)||(response&&response.message)||'ไม่พบเวอร์ชันหัวข้อที่ส่งใหม่ในระบบ');
+      }
+     }catch(x){
+      formHint.textContent='ส่งหัวข้อไม่สำเร็จ: '+(x&&x.message?x.message:String(x));
+      formHint.className='message error';
+      f.querySelectorAll('input,textarea,button').forEach(control=>control.disabled=false);
+      submit.textContent=latest?'ส่งฉบับปรับปรุงให้อาจารย์พิจารณา':'ส่งหัวข้อวิจัยให้อาจารย์พิจารณา';
+     }finally{
+      if(!uncertain&&!verifiedSaved)submit.disabled=false;
+     }
     };
     box.append(f);
    }
