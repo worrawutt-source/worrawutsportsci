@@ -216,7 +216,7 @@ function renderDashboard(d){
       else if(routeLabel==='ข้อมูลของกลุ่ม') await renderStudentWorkspace();
       else if(routeLabel==='หัวข้อวิจัย') await renderStudentTopics();
       else if(routeLabel==='เอกสารโครงร่าง') await renderProposalDocuments();
-      else if(routeLabel==='ความก้าวหน้า') await renderProgressReports();
+      else if(routeLabel==='ความก้าวหน้า' || routeLabel==='รายงานความก้าวหน้า') await renderProgressReports();
       else if(routeLabel==='ข้อเสนอแนะ') await renderFeedback();
       else if(routeLabel==='ผลการประเมิน' && currentDashboard.user.roleId==='STUDENT') await renderStudentGrades();
       else if(routeLabel==='ตรวจหัวข้อและให้ข้อเสนอแนะ') await renderAdvisorReview();
