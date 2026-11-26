@@ -727,7 +727,8 @@ async function renderStudentTopics(){
      const requested=payload();
      const matchesDraft=draft=>{
       if(!draft)return false;
-      return ['titleTh','titleEn','problem','objectives','significance'].every(k=>String(draft[k]||'')===String(requested[k]||''));
+      const limits={titleTh:500,titleEn:500,problem:10000,objectives:5000,significance:5000};
+      return Object.keys(limits).every(k=>String(draft[k]??'').slice(0,limits[k])===String(requested[k]??'').slice(0,limits[k]));
      };
      try{
       let result=null,saveError=null;
@@ -744,7 +745,7 @@ async function renderStudentTopics(){
         formHint.textContent='บันทึกแล้ว (ตรวจสอบจากข้อมูลร่างที่บันทึกไว้)';formHint.className='message success';
         savedHint.textContent='บันทึกล่าสุด: '+new Date(verified.updatedAt||Date.now()).toLocaleString('th-TH');
        }else{
-        const detail=(result&&result.message)||(saveError&&saveError.message)||(verifyError&&verifyError.message)||'เซิร์ฟเวอร์ไม่ส่งผลยืนยันการบันทึกร่าง และตรวจไม่พบข้อมูลที่ตรงกับที่กรอก';
+        const detail=(result&&result.message)||(saveError&&saveError.message)||(verifyError&&verifyError.message)||'ตรวจสอบไม่พบร่างที่ตรงกับข้อมูลล่าสุด โปรดตรวจสอบว่า TEST Web App ใช้ Backend deployment ล่าสุดและเชื่อมกับชีต TEST ที่ถูกต้อง';
         throw new Error(detail);
        }
       }
