@@ -728,7 +728,8 @@ async function renderStudentTopics(){
      const matchesDraft=draft=>{
       if(!draft)return false;
       const limits={titleTh:500,titleEn:500,problem:10000,objectives:5000,significance:5000};
-      return Object.keys(limits).every(k=>String(draft[k]??'').slice(0,limits[k])===String(requested[k]??'').slice(0,limits[k]));
+      const normalize=value=>String(value??'').replace(/\\r\\n?/g,'\\n').trim();
+      return Object.keys(limits).every(k=>normalize(draft[k]).slice(0,limits[k])===normalize(requested[k]).slice(0,limits[k]));
      };
      try{
       let result=null,saveError=null;
