@@ -128,7 +128,7 @@ function doPost(e){
 const FRONTEND_CONFIG = Object.freeze({
   OWNER: 'worrawutt-source',
   REPOSITORY: 'worrawutsportsci',
-  COMMIT_SHA: '59d0e43697fdc339b8c5d1e068e53972d8867cfc',
+  COMMIT_SHA: '8252ee9dd9136b57699640fc92895d6e3d0ae420',
   BASE_PATH: 'project/frontend/',
   CACHE_SECONDS: 21600,
   CACHE_CHUNK_SIZE: 20000
