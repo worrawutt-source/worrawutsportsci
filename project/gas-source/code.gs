@@ -127,7 +127,7 @@ function doPost(e){
 const FRONTEND_CONFIG = Object.freeze({
   OWNER: 'worrawutt-source',
   REPOSITORY: 'worrawutsportsci',
-  COMMIT_SHA: '91da1c393b4a515f6366cec14d09549a1703bb04',
+  COMMIT_SHA: 'ead652204a7f13021e3ac0057a67838061a4222b',
   BASE_PATH: 'project/frontend/',
   CACHE_SECONDS: 21600,
   CACHE_CHUNK_SIZE: 20000
@@ -538,7 +538,7 @@ function apiGetDashboard(token) {
       milestones: 0,
       feedback: 0
     };
-    base.menu = ['ข้อมูลของกลุ่ม','งานกลุ่ม','หัวข้อวิจัย','เอกสารโครงร่าง','ความก้าวหน้า','บันทึกการเข้าพบ','ประเมินเพื่อน A5','ข้อเสนอแนะ','ผลการประเมิน'];
+    base.menu = ['ข้อมูลของกลุ่ม','หัวข้องานวิจัย','งานกลุ่ม','เอกสารโครงร่าง','ความก้าวหน้า','บันทึกการเข้าพบ','ประเมินเพื่อน A5','ข้อเสนอแนะ','ผลการประเมิน'];
   } else {
     throw new Error('บัญชีนี้ไม่มี Role ที่ระบบรองรับ');
   }
