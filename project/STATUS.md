@@ -641,3 +641,40 @@ Commits:
 - TEST deployment: **NOT DEPLOYED**
 - UAT: **PENDING**
 - Production: **UNCHANGED**
+
+## 23. Research Topic Draft Save Confirmation Fix
+
+สถานะ ณ 26 พฤศจิกายน 2026: **Source committed on feature branch; TEST deployment and runtime validation pending**
+
+### Issue
+Student draft save showed: “เซิร์ฟเวอร์ไม่ส่งผลยืนยันการบันทึกร่าง และตรวจไม่พบข้อมูลที่ตรงกับที่กรอก”.
+
+### Source findings
+- Backend `apiSaveResearchTopicDraft()` writes the draft and returns `{ok:true,message,updatedAt}`.
+- Frontend previously accepted that response; otherwise it fetched the draft and compared five fields using exact string equality.
+- The fallback comparison did not account for backend field truncation limits, which could incorrectly report a mismatch for long input.
+- The error alone does not prove whether the active TEST deployment is running the current backend or writing to the intended TEST spreadsheet.
+
+### Changes
+- Frontend draft verification now compares fields using the same maximum lengths as Backend.
+- Updated the fallback diagnostic to identify deployment/version or TEST spreadsheet mismatch as a check when no matching draft is found.
+- Backend draft save now flushes the write, reads the saved draft back, validates persisted fields, and returns the persisted draft in the success response.
+- Backend throws a specific error if the read-back is missing or differs.
+- Backend immutable frontend SHA pin updated to the latest Client commit.
+- No schema change and no production data change.
+
+### Commits
+- `project/frontend/Client.html`: `0f64ba5cdb296f7e98a632c3c6b53c5b46ffc726`
+- `project/gas-source/code.gs` (read-after-write verification): `1654708afea1dff4bcc91e92bc59a08c832c475d`
+- `project/gas-source/code.gs` (frontend pin): `4f818b0cf64c65a7ae3dd5c68398ff9aad953102`
+
+### Validation
+- Source-level comparison limits match Backend field limits: **PASS**
+- Backend read-after-write confirmation added: **PASS by source inspection**
+- Frontend SHA pin updated: **PASS by source inspection**
+- GAS Runtime / TEST browser / duplicate-save / UAT: **NOT TESTED**
+- TEST deployment: **NOT DEPLOYED**
+- Production: **UNCHANGED**
+
+### Required next action
+Deploy the matching Backend and Frontend versions to TEST, then test draft create and update with short and maximum-length field values. Verify the row in `RESEARCH_TOPIC_DRAFTS` and confirm the API returns `ok:true` with the persisted draft before marking UAT passed.
