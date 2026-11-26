@@ -767,3 +767,36 @@ Next Action: deploy approved branch to TEST only, verify Advisor sees only assig
 2. Run syntax/static checks and regression tests against a TEST spreadsheet and TEST deployment.
 3. Verify draft create/update, reload/read-back, duplicate save, invalid payload, leader-only permissions, and topic submit/review regression.
 4. Complete UAT before proposing merge or deployment.
+
+
+## CODE-MODULE-REFACTOR — Backend source organization (2026-11-27)
+
+สถานะ: แยกไฟล์ Backend ใน branch เฉพาะเพื่อให้ดูแลรักษาง่ายขึ้น; ยังไม่ผ่าน GAS Runtime / TEST / UAT และยังไม่ merge หรือ deploy
+
+### Source Base
+- Base branch: `integration/phase2-perf-topic-fixes`
+- Base commit: `802e5974a4ac9fe2efed61d4c6381cdcfab39957`
+- Refactor branch: `refactor/phase2-code-modules`
+- Branch comparison: 14 commits ahead, 0 behind; changes confined to `project/gas-source/code.gs` and 13 new numbered `.gs` modules.
+
+### Change Scope
+- Replaced `project/gas-source/code.gs` implementation with a module-structure note.
+- Split the original 2,775-line Backend source into 13 numbered `.gs` files by contiguous source ranges.
+- Kept all 176 function definitions and all 84 API endpoint definitions; source slices reconstruct the original source exactly.
+- No API names, schema, Spreadsheet structure, permissions, workflow, or function logic intentionally changed.
+- `project/gas-source/setup.gs`, `project/frontend/Client.html`, `Index.html`, and `Styles.html` are unchanged (blob SHA comparison PASS).
+- All `.gs` files share the Apps Script global namespace; function and global names must remain unique. File splitting is organizational and does not itself improve runtime performance.
+
+### Static Validation
+- Module source slices match the original source ranges exactly: PASS.
+- Function inventory: 176 original / 176 split; duplicate function names: 0 — PASS.
+- API inventory: 84 original / 84 split — PASS.
+- Frontend literal `callApi()` references: 74; missing backend API definitions: 0 — PASS.
+- GAS syntax compile: NOT TESTED.
+- GAS Runtime / TEST deployment / browser regression / UAT: NOT TESTED / NOT STARTED.
+- Production data and deployment: UNCHANGED.
+
+### Next Action
+1. Pull this branch into a separate TEST Apps Script project or TEST copy; add all numbered `.gs` files while preserving the same project-wide global scope.
+2. Run GAS syntax validation and verify `doGet`, `doPost`, authentication, group/advisor workflows, meetings, topic draft save/read-back, progress, assessment, tasks/notifications, and Admin endpoints.
+3. Complete TEST regression and UAT before merge or deployment.
