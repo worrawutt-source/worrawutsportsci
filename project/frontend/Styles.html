@@ -195,5 +195,34 @@ html.ssrl-session-restoring #sessionRestoreView{display:flex!important}
 @media(max-width:800px){.meeting-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.meeting-form{grid-template-columns:minmax(0,1fr)}.meeting-field:nth-of-type(n){grid-column:1/-1}}
 @media(max-width:500px){.meeting-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.meeting-stat{padding:10px}.meeting-stat strong{font-size:20px}.meeting-form{padding:13px}.meeting-record-card{padding:13px}}
 
+
+/* Clear submitted / outstanding progress report states */
+.progress-submit-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+.progress-summary-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.progress-summary-item span{font-size:14px;color:var(--muted)}
+.progress-summary-item strong{font-size:23px;color:var(--navy)}
+.progress-summary-item.needs-action{border-color:#f1c6c6;background:#fff8f8}
+.progress-summary-item.needs-action strong{color:#b42318}
+.progress-summary-item.all-submitted{border-color:#b7dfc8;background:#f3fbf6}
+.progress-summary-item.all-submitted strong{color:#187447}
+.progress-week-card{margin:12px 0}
+.progress-week-card.progress-week-submitted{border:1px solid #b7dfc8;background:#f7fcf8}
+.progress-week-card.progress-week-action{border-left:4px solid #d97706}
+.progress-week-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.progress-week-heading h3{margin:0;flex:1;min-width:180px}
+.progress-state-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:999px;font-size:13px;font-weight:750;white-space:nowrap}
+.progress-state-badge.submitted{background:#e5f4eb;color:#176b3a}
+.progress-state-badge.action{background:#fff1d6;color:#925900}
+.progress-state-badge.revision{background:#fde8e7;color:#a32620}
+.progress-submission-confirmation{padding:10px 13px;border-radius:8px;background:#e8f6ed;color:#176b3a;font-weight:750}
+.progress-submitted-at{color:#38664b;font-size:13px}
+.progress-locked-panel{margin-top:13px;padding:15px;border:1px solid #c6e2d0;border-radius:11px;background:#eef8f1}
+.progress-locked-title{font-size:16px;font-weight:800;color:#176b3a}
+.progress-locked-panel>p{color:#38664b;line-height:1.65}
+.progress-readonly-field{display:grid;gap:7px;margin-top:12px;font-weight:700;color:#405b4b}
+.progress-readonly-input{width:100%;box-sizing:border-box;resize:vertical;background:#e7eee9!important;border:1px solid #cbd8cf!important;color:#45574b!important;opacity:1!important;cursor:not-allowed}
+.progress-review-comment{margin:10px 0;padding:11px 13px;border-left:3px solid #d97706;background:#fff8e8;border-radius:7px;white-space:pre-wrap}
+@media(max-width:560px){.progress-submit-summary{grid-template-columns:1fr}.progress-summary-item{padding:11px 13px}.progress-week-heading{display:grid}.progress-state-badge{justify-self:start}}
+
 </style>
 
