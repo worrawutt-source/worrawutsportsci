@@ -259,3 +259,24 @@ Implementation branch: `perf/perf-01-advisor-dashboard-load`
 - Static syntax and consistency checks: PASS
 - Runtime, Browser, TEST deployment and UAT: NOT TESTED / PENDING
 - Production: unchanged
+
+
+## 20. STUDENT-MENU — Approved student navigation order (2026-11-26)
+
+Student navigation order on the PERF-01 development branch:
+1. ข้อมูลของกลุ่ม
+2. เอกสารโครงร่าง
+3. บันทึกการเข้าพบที่ปรึกษา
+4. รายงานความก้าวหน้า
+5. งานกลุ่ม
+6. ข้อเสนอแนะ
+7. ประเมินเพื่อน
+
+The student menu omits `หัวข้อวิจัย` and `ผลการประเมิน` from navigation only; existing features/routes are retained. The progress menu label was renamed from `ความก้าวหน้า` to `รายงานความก้าวหน้า`, and the peer assessment label was shortened from `ประเมินเพื่อน A5` to `ประเมินเพื่อน`; Client preserves old route labels as compatibility aliases.
+
+Implementation branch: `perf/perf-01-advisor-dashboard-load`
+- Backend menu commit: `19217e33427d3028ff0fe910f5113e5d45f259dd`
+- Client route/label commit and immutable Frontend pin: `bc52450ace9fa702ebafe42781b902c9d8da8171`
+- Backend pin commit: `33a39fb1a1a43c10aa26bdfb2e053d96b9e475c3`
+- Static syntax, menu order, route alias, and pin verification: PASS
+- Runtime, TEST deployment, and UAT: PENDING; Production unchanged
