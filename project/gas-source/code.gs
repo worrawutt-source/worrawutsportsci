@@ -533,10 +533,17 @@ function apiGetDashboard(token) {
     const activeGroup = membership
       ? activeGroups.find(g => String(g.GROUP_ID) === String(membership.GROUP_ID))
       : null;
+    const groupId=activeGroup?String(activeGroup.GROUP_ID):'';
+    const groupTasks=groupId?readObjectsFresh_('GROUP_TASKS').filter(t=>String(t.GROUP_ID)===groupId):[];
+    const openTasks=groupTasks.filter(t=>['OPEN','IN_PROGRESS','BLOCKED'].includes(String(t.STATUS||'').toUpperCase())).length;
+    const progressReports=groupId?readObjectsFresh_('PROGRESS_REPORTS').filter(r=>String(r.GROUP_ID)===groupId):[];
+    const approvedWeeks=new Set(progressReports.filter(r=>String(r.STATUS||'').toUpperCase()==='APPROVED').map(r=>String(r.WEEK_NO||'' )).filter(Boolean));
+    const groupFeedback=groupId?readObjectsFresh_('ADVISOR_FEEDBACK').filter(f=>String(f.GROUP_ID)===groupId&&String(f.STATUS||'').toUpperCase()!=='DELETED'): [];
     base.metrics = {
       groupStatus: activeGroup ? 'จัดกลุ่มแล้ว' : 'ยังไม่ได้จัดกลุ่ม',
-      milestones: 0,
-      feedback: 0
+      milestones: approvedWeeks.size,
+      feedback: groupFeedback.length,
+      openTasks: openTasks
     };
     base.menu = ['ข้อมูลของกลุ่ม','หัวข้องานวิจัย','งานกลุ่ม','เอกสารโครงร่าง','ความก้าวหน้า','บันทึกการเข้าพบ','ประเมินเพื่อน A5','ข้อเสนอแนะ','ผลการประเมิน'];
   } else {
