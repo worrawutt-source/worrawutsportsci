@@ -127,7 +127,7 @@ function doPost(e){
 const FRONTEND_CONFIG = Object.freeze({
   OWNER: 'worrawutt-source',
   REPOSITORY: 'worrawutsportsci',
-  COMMIT_SHA: '64f237ddf0fa31d75bce4f0c4f3c25dbe553d6ea',
+  COMMIT_SHA: '51504226d7f7a3aed25adf09cd5ab4e4c750eec2',
   BASE_PATH: 'project/frontend/',
   CACHE_SECONDS: 21600,
   CACHE_CHUNK_SIZE: 20000
@@ -514,7 +514,7 @@ function apiGetDashboard(token) {
   };
   if (role === ROLE.ADMIN) {
     base.metrics = {users:readObjects_('SYS_USERS').length, sessions:readObjects_('SYS_SESSIONS').filter(s=>!s.REVOKED_AT && new Date(s.EXPIRES_AT)>new Date()).length, roster:readObjects_('STUDENTS').length};
-    base.menu = ['ภาพรวมระบบ','จัดการกลุ่มวิจัย','กำหนดอาจารย์ที่ปรึกษา','บันทึกการเข้าพบ','จัดการรายงานความก้าวหน้า','จัดการงานกลุ่ม','ติดตามจริยธรรม','สัญญาณเตือนความเสี่ยง','ประเมินผล A1–A6','บัญชีผู้ใช้','นำเข้ารายชื่อนักศึกษา','บันทึกระบบ','การตั้งค่าระบบ'];
+    base.menu = ['ภาพรวมระบบ','จัดการกลุ่มวิจัย','กำหนดอาจารย์ที่ปรึกษา','จัดการหัวข้องานวิจัย','บันทึกการเข้าพบ','จัดการรายงานความก้าวหน้า','จัดการงานกลุ่ม','ติดตามจริยธรรม','สัญญาณเตือนความเสี่ยง','ประเมินผล A1–A6','บัญชีผู้ใช้','นำเข้ารายชื่อนักศึกษา','บันทึกระบบ','การตั้งค่าระบบ'];
     } else if (role === ROLE.ADVISOR) {
     const advisorSummary=advisorWorkspaceSummary_(ctx.user.USER_ID);
     base.metrics={assignedGroups:advisorSummary.metrics.assignedGroups,pendingReports:advisorSummary.metrics.pendingReports,pendingTopics:advisorSummary.metrics.pendingTopics,meetingsRecorded:advisorSummary.metrics.meetingsRecorded};
@@ -1945,6 +1945,49 @@ function assertResearchTopicEditable_(latest){
   if(status==='REJECTED')throw new Error('หัวข้อวิจัยไม่ผ่านความเห็นชอบ การเริ่มส่งหัวข้อใหม่ต้องได้รับการดำเนินการตามแนวทางที่ผู้รับผิดชอบรายวิชากำหนด');
   if(status!=='REVISION_REQUIRED')throw new Error('สถานะหัวข้อวิจัยไม่อนุญาตให้ส่งฉบับใหม่');
 }
+function apiAdminGetResearchTopicManagement(token){
+  requireSession_(token,[ROLE.ADMIN]);
+  const groups=readObjectsFresh_('RESEARCH_GROUPS').filter(g=>String(g.STATUS||'').toUpperCase()==='ACTIVE');
+  const versions=readObjectsFresh_('RESEARCH_TOPIC_VERSIONS');
+  const assignments=readObjectsFresh_('ADVISOR_ASSIGNMENTS').filter(a=>String(a.STATUS||'').toUpperCase()==='APPROVED');
+  const users=readObjectsFresh_('SYS_USERS');
+  const byGroup=new Map();
+  versions.forEach(v=>{const gid=String(v.GROUP_ID||'');if(!byGroup.has(gid))byGroup.set(gid,[]);byGroup.get(gid).push(v);});
+  return sanitizeForClient_(groups.map(g=>{
+    const rows=(byGroup.get(String(g.GROUP_ID))||[]).sort((a,b)=>Number(b.VERSION_NO||0)-Number(a.VERSION_NO||0));
+    const latest=rows[0]||null;
+    const assignment=assignments.find(x=>String(x.GROUP_ID)===String(g.GROUP_ID));
+    const advisor=assignment?users.find(u=>String(u.USER_ID)===String(assignment.ADVISOR_USER_ID))||null:null;
+    const mapVersion=v=>({versionId:String(v.VERSION_ID||''),versionNo:Number(v.VERSION_NO)||0,titleTh:String(v.TITLE_TH||''),titleEn:String(v.TITLE_EN||''),problem:String(v.PROBLEM_STATEMENT||''),objectives:String(v.OBJECTIVES||''),significance:String(v.RESEARCH_SIGNIFICANCE||''),status:String(v.STATUS||''),reviewStatus:String(v.REVIEW_STATUS||''),submittedAt:v.SUBMITTED_AT||'',reviewedAt:v.REVIEWED_AT||'',reviewComment:String(v.REVIEW_COMMENT||'')});
+    return {groupId:String(g.GROUP_ID),groupName:String(g.GROUP_NAME||''),topicTitle:String(g.TOPIC_TITLE_TH||''),advisorName:advisor?String(advisor.DISPLAY_NAME||advisor.EMAIL||''):'',latest:latest?mapVersion(latest):null,history:rows.slice(0,10).map(mapVersion)};
+  }));
+}
+
+function apiAllowResearchTopicRevision(token,versionId,comment){
+  const ctx=requireSession_(token,[ROLE.ADMIN,ROLE.ADVISOR]);
+  const note=String(comment||'').trim();
+  if(note.length<5||note.length>3000)throw new Error('กรุณาระบุเหตุผลให้แก้ไข 5–3,000 ตัวอักษร');
+  const id=String(versionId||'').trim();if(!id)throw new Error('ไม่พบรหัสเวอร์ชันหัวข้อวิจัย');
+  const lock=LockService.getScriptLock();lock.waitLock(60000);
+  try{
+    const row=readObjectsFresh_('RESEARCH_TOPIC_VERSIONS').find(x=>String(x.VERSION_ID)===id);
+    if(!row)throw new Error('ไม่พบหัวข้อวิจัยเวอร์ชันนี้');
+    assertGroupAccess_(ctx,row.GROUP_ID);
+    const latest=latestResearchTopicVersion_(row.GROUP_ID);
+    if(!latest||String(latest.VERSION_ID)!==id)throw new Error('สามารถให้แก้ไขได้เฉพาะหัวข้องานวิจัยเวอร์ชันล่าสุด');
+    const current=String(row.REVIEW_STATUS||'');
+    if(current==='REVISION_REQUIRED')throw new Error('หัวข้อวิจัยนี้ได้รับอนุญาตให้แก้ไขแล้ว');
+    if(!['PENDING','APPROVED','REJECTED'].includes(current))throw new Error('สถานะหัวข้อวิจัยนี้ไม่อนุญาตให้เปิดแก้ไข');
+    const sh=sheet_('RESEARCH_TOPIC_VERSIONS'),headers=SCHEMA.RESEARCH_TOPIC_VERSIONS,now=new Date();
+    [['STATUS','REVISION_REQUIRED'],['REVIEW_STATUS','REVISION_REQUIRED'],['REVIEWED_BY',ctx.user.USER_ID],['REVIEWED_AT',now],['REVIEW_COMMENT',note]].forEach(([key,value])=>sh.getRange(row._row,headers.indexOf(key)+1).setValue(value));
+    logSystem_('RESEARCH_TOPIC_REVISION_ALLOWED','GROUP',row.GROUP_ID,{versionId:id,previousStatus:current,comment:note},ctx.user.USER_ID);
+    try{enqueueResearchTopicNotification_(row.GROUP_ID,'RESEARCH_TOPIC_REVISION_ALLOWED','อนุญาตให้แก้ไขหัวข้องานวิจัย','หัวข้องานวิจัยเวอร์ชัน '+row.VERSION_NO+' ได้รับอนุญาตให้แก้ไขแล้ว กรุณาอ่านข้อเสนอแนะ: '+note,id+':EDIT:'+now.getTime());}
+    catch(notificationError){logSystem_('RESEARCH_TOPIC_NOTIFICATION_FAILED','GROUP',row.GROUP_ID,{versionId:id,error:String(notificationError.message||notificationError)},ctx.user.USER_ID);}
+    SpreadsheetApp.flush();
+    return {ok:true,message:'อนุญาตให้แก้ไขหัวข้องานวิจัยแล้ว นักศึกษาสามารถปรับปรุงและส่งเป็นเวอร์ชันใหม่ได้'};
+  }finally{lock.releaseLock();}
+}
+
 function apiGetResearchTopicDraft(token){
   const ctx=requireSession_(token,[ROLE.STUDENT]);const {groupId}=assertStudentGroupLeader_(ctx);
   const row=readObjectsFresh_('RESEARCH_TOPIC_DRAFTS').find(x=>String(x.GROUP_ID)===String(groupId)&&x.STATUS==='DRAFT');
