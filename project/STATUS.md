@@ -506,3 +506,43 @@ Static verification:
 - ยังไม่ได้ทดสอบการแสดงเมนูบนบัญชีนักศึกษาจริง
 - Runtime Test/UAT: **PENDING**
 - Production: **ไม่เปลี่ยนแปลง**
+
+
+## 20. ADMIN Dashboard Overview Route Fix
+
+สถานะ ณ 26 พฤศจิกายน 2026: **Source Code committed บน feature branch; ยังไม่ Deploy และยังไม่ผ่าน Runtime Test/UAT**
+
+ปัญหาที่พบ:
+- เมนู ADMIN “ภาพรวมระบบ” ถูกส่งไปยัง `renderOverview()` ของ Advisor
+- ฟังก์ชันดังกล่าวเรียก `apiGetAdvisorWorkspaceSummary()` ซึ่ง Backend อนุญาตเฉพาะ `ROLE.ADVISOR`
+- ADMIN จึงได้รับ Error “ไม่มีสิทธิ์ดำเนินการ”
+
+การแก้ไขแบบ Minimal Change:
+1. เพิ่ม `renderAdminOverview()` ใน Client โดยใช้ metrics ที่มีอยู่แล้วจาก `apiGetDashboard()`: users, sessions, roster
+2. แยก route “ภาพรวมระบบ” ของ ADMIN ให้เรียก `renderAdminOverview()`
+3. คง `renderOverview()` และ API Advisor เดิมสำหรับ Role ADVISOR
+4. ไม่เปลี่ยน API authorization, schema, workflow หรือข้อมูล
+5. อัปเดต immutable Frontend SHA ใน Backend ให้ตรงกับ Client
+
+ไฟล์:
+- `project/frontend/Client.html`
+- `project/gas-source/code.gs`
+- `project/STATUS.md`
+
+Commits:
+- Client: `64f237ddf0fa31d75bce4f0c4f3c25dbe553d6ea`
+- Backend: `fafa120db118796d9bc9fc4ca2fe30efb0d0c15b`
+- Frontend SHA pinned: `64f237ddf0fa31d75bce4f0c4f3c25dbe553d6ea`
+
+Static checks:
+- ADMIN route แยกจาก Advisor route
+- ADMIN overview ใช้ข้อมูล Dashboard ที่มีอยู่ ไม่เรียก Advisor-only API
+- Advisor overview ยังคงเรียก `apiGetAdvisorWorkspaceSummary()`
+- Frontend pin ตรงกับ Client commit
+
+ผลทดสอบ:
+- Static source inspection: **PASS**
+- GAS runtime / browser test: **NOT TESTED**
+- TEST deployment: **NOT DEPLOYED**
+- UAT: **PENDING**
+- Production: **ไม่เปลี่ยนแปลง**
