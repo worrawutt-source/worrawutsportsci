@@ -1519,20 +1519,21 @@ function apiSaveMeetingReport(token,payload){
     nextActions:(Array.isArray(payload.nextActions)?payload.nextActions:[]).slice(0,3).map(x=>text(x,1200)),
     dueDates:(Array.isArray(payload.dueDates)?payload.dueDates:[]).slice(0,3).map(x=>String(x||'').trim())
   };
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(p.meetingDate)||isNaN(new Date(p.meetingDate+'T00:00:00').getTime()))throw new Error('กรุณาระบุวันที่เข้าพบ');
   const validDateOnly=s=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&!isNaN(new Date(s+'T00:00:00').getTime())&&Utilities.formatDate(new Date(s+'T00:00:00'),Session.getScriptTimeZone(),'yyyy-MM-dd')===s;
-  if(!validDateOnly(p.meetingDate)||p.dueDates.some(x=>!validDateOnly(x)))throw new Error('วันที่เข้าพบหรือกำหนดส่งไม่ถูกต้อง');
-  if(!p.preparationProgress||p.agenda.length!==3||p.agenda.some(x=>!x)||!p.problems||!p.consultationSummary||p.nextActions.length!==3||p.nextActions.some(x=>!x)||p.dueDates.length!==3||p.dueDates.some(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x)))throw new Error('กรุณากรอกข้อมูลที่จำเป็นให้ครบ รวมถึง Agenda 3 ประเด็นและงานที่ต้องดำเนินการ 3 รายการ');
+  const isSubmit=String(payload.action||'DRAFT')==='SUBMIT';
+  if(p.meetingDate&&!validDateOnly(p.meetingDate))throw new Error('วันที่เข้าพบไม่ถูกต้อง');
+  if(p.dueDates.some(x=>x&&!validDateOnly(x)))throw new Error('กำหนดส่งงานไม่ถูกต้อง');
+  if(isSubmit&&(!p.meetingDate||!p.preparationProgress||p.agenda.length!==3||p.agenda.some(x=>!x)||!p.problems||!p.consultationSummary||p.nextActions.length!==3||p.nextActions.some(x=>!x)||p.dueDates.length!==3||p.dueDates.some(x=>!x)))throw new Error('กรุณากรอกข้อมูลให้ครบก่อนส่ง รวมถึงวันที่เข้าพบ Agenda 3 ประเด็น และงานต่อ 3 รายการพร้อมกำหนดส่ง');
   const lock=LockService.getScriptLock();lock.waitLock(60000);
   try{
     const sh=sheet_('MEETING_REPORTS'),rows=readObjectsFresh_('MEETING_REPORTS').filter(r=>String(r.GROUP_ID)===groupId&&Number(r.MEETING_NO)===no).sort((a,b)=>Number(b.VERSION||0)-Number(a.VERSION||0));
-    const old=rows[0],now=new Date(),status=String(payload.action||'DRAFT')==='SUBMIT'?'SUBMITTED':'DRAFT';
+    const old=rows[0],now=new Date(),status=isSubmit?'SUBMITTED':'DRAFT';
     if(old&&!['DRAFT','REVISION_REQUIRED'].includes(String(old.STATUS)))throw new Error('บันทึกครั้งนี้ถูกส่งแล้วหรืออาจารย์ตรวจแล้ว ไม่สามารถแก้ไขได้');
     const vals={
-      REPORT_ID:old?old.REPORT_ID:Utilities.getUuid(),GROUP_ID:groupId,MEETING_NO:no,MEETING_WEEK:week,MEETING_DATE:new Date(p.meetingDate+'T00:00:00'),
+      REPORT_ID:old?old.REPORT_ID:Utilities.getUuid(),GROUP_ID:groupId,MEETING_NO:no,MEETING_WEEK:week,MEETING_DATE:p.meetingDate?new Date(p.meetingDate+'T00:00:00'):'',
       PREPARATION_PROGRESS:p.preparationProgress,AGENDA_1:p.agenda[0],AGENDA_2:p.agenda[1],AGENDA_3:p.agenda[2],PROBLEMS:p.problems,
-      CONSULTATION_SUMMARY:p.consultationSummary,NEXT_ACTION_1:p.nextActions[0],DUE_DATE_1:new Date(p.dueDates[0]+'T00:00:00'),
-      NEXT_ACTION_2:p.nextActions[1],DUE_DATE_2:new Date(p.dueDates[1]+'T00:00:00'),NEXT_ACTION_3:p.nextActions[2],DUE_DATE_3:new Date(p.dueDates[2]+'T00:00:00'),
+      CONSULTATION_SUMMARY:p.consultationSummary,NEXT_ACTION_1:p.nextActions[0],DUE_DATE_1:p.dueDates[0]?new Date(p.dueDates[0]+'T00:00:00'):'',
+      NEXT_ACTION_2:p.nextActions[1],DUE_DATE_2:p.dueDates[1]?new Date(p.dueDates[1]+'T00:00:00'):'',NEXT_ACTION_3:p.nextActions[2],DUE_DATE_3:p.dueDates[2]?new Date(p.dueDates[2]+'T00:00:00'):'',
       STATUS,CREATED_BY:old?old.CREATED_BY:ctx.user.USER_ID,UPDATED_BY:ctx.user.USER_ID,CREATED_AT:old?old.CREATED_AT:now,UPDATED_AT:now,
       SUBMITTED_AT:status==='SUBMITTED'?now:'',REVIEWED_BY:'',REVIEWED_AT:'',REVIEW_COMMENT:'',VERSION:old?Number(old.VERSION||1):1
     };
