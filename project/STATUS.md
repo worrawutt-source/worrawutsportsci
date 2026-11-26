@@ -563,7 +563,7 @@ Next Action:
 
 ## 21. MEETING-ONLINE — Structured Online Advisor Meeting Report
 
-สถานะ ณ 26 พฤศจิกายน 2026: **Source Code implementation committed on feature branch; Static checks pending final verification; Runtime/TEST/UAT pending**
+สถานะ ณ 26 พฤศจิกายน 2026: **Source Code implementation committed on feature branch; Static cross-file checks PASS; Runtime/TEST/UAT pending**
 
 อนุมัติจากผู้ใช้: เพิ่ม Schema แบบ additive สำหรับแบบบันทึกการเข้าพบออนไลน์ โดยเก็บข้อมูล PDF เดิมไว้ ไม่ลบหรือแก้ข้อมูลย้อนหลัง
 
@@ -594,7 +594,13 @@ Static checks planned/completed:
 - Frontend immutable pin must match exact Client snapshot
 
 Test status:
-- Static source consistency: **PASS pending final cross-file verification**
+- Static source consistency: **PASS**
+- Schema declaration and safe auto-create allowlist: **PASS**
+- Student UI calls online report APIs; no PDF upload input/API call in meeting form: **PASS**
+- Advisor review API and UI actions present: **PASS**
+- Server validation for exactly 3 Agenda items, 3 next actions, and valid dates: **PASS**
+- Admin monitoring distinguishes UPCOMING from NOT_SUBMITTED using recorded meeting attendance: **PASS**
+- Immutable Frontend pin matches Client snapshot `b37f5d8dba2d6217c156b2713b85cc996c1d3192`: **PASS**
 - GAS runtime / browser test: **NOT TESTED**
 - TEST deployment: **NOT DEPLOYED**
 - UAT: **PENDING**
@@ -607,3 +613,10 @@ Risks/notes:
 
 Next Action:
 - Perform static cross-file verification, deploy approved branch to TEST only, confirm new sheet schema, test Student draft/submit/revision, Advisor review, Admin monitoring counts, access control, duplicate/concurrent save, mobile layout and legacy PDF read-only history; then complete UAT. No production deployment without separate approval.
+
+
+Final source references for MEETING-ONLINE:
+- Backend commit: `71e65ff6d419626fe4593111b75d7d358bdc636c`
+- Client commit / immutable frontend pin: `b37f5d8dba2d6217c156b2713b85cc996c1d3192`
+- Styles commit: `e3b69badf9623d1f287e2de3e908372c382a101d`
+- STATUS update is recorded in this commit; Master Plan update is recorded separately on its existing documentation branch because the Master Plan file is not present in this implementation branch.
