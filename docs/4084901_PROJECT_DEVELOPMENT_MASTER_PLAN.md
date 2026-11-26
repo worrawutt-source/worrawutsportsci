@@ -280,3 +280,22 @@ Implementation branch: `perf/perf-01-advisor-dashboard-load`
 - Backend pin commit: `33a39fb1a1a43c10aa26bdfb2e053d96b9e475c3`
 - Static syntax, menu order, route alias, and pin verification: PASS
 - Runtime, TEST deployment, and UAT: PENDING; Production unchanged
+
+
+## 21. ADVISOR-MEETING-DETAIL — Click to read meeting reports (2026-11-26)
+
+Source inspection confirmed that `MEETING_REPORTS` already stores structured meeting reports and `apiListMeetingReports(token, groupId, meetingNo)` already returns the latest report for the selected meeting. The existing API requires a valid session and `assertGroupAccess_()`; for Advisor access, the group must be active and have an approved assignment for the authenticated Advisor user ID.
+
+Implementation on `perf/perf-01-advisor-dashboard-load`:
+- Added Advisor-only `apiAdvisorGetMeetingMonitoring(token)` to provide status metadata for only the groups returned by `getAdvisorAssignedGroups_()`.
+- Added a status matrix to the Advisor meeting page. Submitted online reports and legacy PDF records are clickable; clicking a status selects the group/meeting and opens the existing report-detail flow, reusing `apiListMeetingReports` and `apiListMeetingPdfs`.
+- No new sheet, schema, migration, or report storage API was introduced. Student form, save/submit, Advisor review and Admin-only monitoring remain unchanged.
+
+Commits:
+- Status API: `1fc654a831282ab4a26f75675228e429063d5c01`
+- Client matrix: `4c5ab251c2c1a2ac66f413b454f468111f2bd371`
+- Styles: `f6c5594930d603e21a4a87ffa9c32dbafa34d211`
+- Backend frontend pin: `21a82537ae71950c40edd9107a70c10281a8d1e7`
+- Frontend immutable pin: `4c5ab251c2c1a2ac66f413b454f468111f2bd371`
+
+Static syntax and authorization/cross-file checks: PASS. Runtime/Browser, TEST deployment and UAT: NOT TESTED / PENDING. Production unchanged.
