@@ -714,3 +714,40 @@ Deploy the matching Backend and Frontend versions to TEST, then test draft creat
 
 ### Next action
 Update Backend in TEST to commit `b6f27ce37a60a3cd5463d7088750a6ef6a7e3e15` and verify the existing draft row updates in place; confirm UI shows success and no duplicate row is created. Do not run setup or migration.
+
+
+## 25. Research Topic Draft API Serialization Fix
+
+สถานะ ณ 26 พฤศจิกายน 2026: **Source committed บน feature branch; TEST runtime/browser validation และ deployment หลังแก้ไขยัง pending**
+
+### Root cause found
+- `apiSaveResearchTopicDraft()` และ `apiGetResearchTopicDraft()` ส่งค่า `UPDATED_AT` ที่อ่านจาก Google Sheets ซึ่งเป็น JavaScript `Date` กลับผ่าน `google.script.run` โดยตรงใน response object
+- `Date` ไม่ใช่ return value type ที่รองรับของ `google.script.run`; จึงมีโอกาสที่ write สำเร็จแต่ response serialization ล้มเหลว และ fallback read ล้มเหลวในลักษณะเดียวกัน
+- Draft read selector ยังใช้ exact match ของ `GROUP_ID`/`STATUS` ต่างจาก save selector ที่ trim/normalize แล้ว
+- Newline normalization source มี escaped regex ที่จับ literal backslash sequence แทน CR/LF จริง
+
+### Fix
+- Convert timestamp values to Unix milliseconds (number) before returning from draft read/save API, including nested `draft.updatedAt`; no Date object is returned in these responses.
+- Normalize draft read selector using trimmed `GROUP_ID` and uppercase/trimmed `STATUS`.
+- Correct CR/LF normalization regex in Backend and Frontend.
+- Update immutable Backend frontend SHA pin to current Client commit.
+- No schema, workflow, permission, or production-data changes.
+
+### Commits
+- Backend timestamp serialization: `0aa661f2a198abe290ff044b96a83a6e8adf479f`
+- Frontend newline normalization: `7b115f67c0a3cd5d985a1d036f385c7ecad1412e`
+- Backend selector/normalization/pin: `9ae8ad2a47a423e959d4294e99daa6391b5a7e66`
+- Frontend SHA pinned: `7b115f67c0a3cd5d985a1d036f385c7ecad1412e`
+
+### Validation
+- API response timestamp fields are number/string, not Date: **PASS by source inspection**
+- Draft selector uses normalized group/status: **PASS by source inspection**
+- CR/LF normalization corrected in both sources: **PASS by source inspection**
+- Backend immutable frontend pin matches Client commit: **PASS by source inspection**
+- GAS runtime / browser / save-reload / repeated save: **NOT TESTED**
+- TEST deployment after this fix: **NOT DEPLOYED**
+- UAT: **PENDING**
+- Production: **UNCHANGED**
+
+### Next action
+Update both Backend `Code.gs` and Frontend `Client.html` in TEST from the commits above, deploy a new TEST version, then save draft and reload the page. Verify the API success response, existing row update, timestamp display, and no duplicate row. Do not run setup/migration.
