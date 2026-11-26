@@ -1665,6 +1665,39 @@ function apiAdminGetMeetingMonitoring(token){
   return sanitizeForClient_({groups:rows,summary:{groups:rows.length,total:all.length,due:all.filter(x=>x.status!=='UPCOMING').length,upcoming:all.filter(x=>x.status==='UPCOMING').length,submitted:all.filter(x=>['SUBMITTED','VERIFIED','REVISION_REQUIRED','ACTIVE'].includes(x.status)).length,verified:all.filter(x=>x.status==='VERIFIED').length,notSubmitted:all.filter(x=>x.status==='NOT_SUBMITTED').length,revision:all.filter(x=>x.status==='REVISION_REQUIRED').length}});
 }
 
+/**
+ * Advisor-only meeting status matrix for assigned groups.
+ * Returns status metadata only; full report content is read through apiListMeetingReports.
+ */
+function apiAdvisorGetMeetingMonitoring(token){
+  const ctx=requireSession_(token,[ROLE.ADVISOR]);
+  const assigned=getAdvisorAssignedGroups_(ctx.user.USER_ID);
+  const groupIds=new Set(assigned.map(g=>String(g.groupId)));
+  const reports=readObjectsFresh_('MEETING_REPORTS').filter(r=>groupIds.has(String(r.GROUP_ID||'')));
+  const files=readObjectsFresh_('MEETING_FILES').filter(f=>groupIds.has(String(f.GROUP_ID||''))&&['SUBMITTED','VERIFIED','REVISION_REQUIRED','ACTIVE'].includes(String(f.STATUS||'').toUpperCase()));
+  const records=readObjectsFresh_('MEETING_RECORDS').filter(m=>groupIds.has(String(m.GROUP_ID||'')));
+  const weeks=[2,4,6,8,10,12,14];
+  const groups=assigned.map(g=>({
+    groupId:g.groupId,groupName:g.groupName,advisorUserId:String(ctx.user.USER_ID),
+    meetings:weeks.map((week,i)=>{
+      const no=i+1;
+      const online=reports.filter(r=>String(r.GROUP_ID)===String(g.groupId)&&Number(r.MEETING_NO)===no)
+        .sort((a,b)=>Number(b.VERSION||0)-Number(a.VERSION||0)||new Date(b.UPDATED_AT||0)-new Date(a.UPDATED_AT||0))[0];
+      const legacy=files.filter(f=>String(f.GROUP_ID)===String(g.groupId)&&Number(f.MEETING_NO)===no)
+        .sort((a,b)=>new Date(b.UPLOADED_AT||0)-new Date(a.UPLOADED_AT||0))[0];
+      const meetingRecorded=records.some(m=>String(m.GROUP_ID)===String(g.groupId)&&Number(m.MEETING_NO)===no);
+      return {
+        meetingNo:no,week,status:online?String(online.STATUS||'DRAFT'):legacy?String(legacy.STATUS||'SUBMITTED'):meetingRecorded?'NOT_SUBMITTED':'UPCOMING',
+        hasReport:!!online,hasLegacy:!!legacy,
+        updatedAt:online&&online.UPDATED_AT?new Date(online.UPDATED_AT).toISOString():'',
+        uploadedAt:legacy&&legacy.UPLOADED_AT?new Date(legacy.UPLOADED_AT).toISOString():'',
+        reportId:online?String(online.REPORT_ID||''):''
+      };
+    })
+  }));
+  return sanitizeForClient_({groups});
+}
+
 /** Advisor verifies or requests revision of the latest group submission. */
 function apiAdvisorReviewMeetingSubmission(token,fileRecordId,decision,comment){
   const ctx=requireSession_(token,[ROLE.ADVISOR]);
