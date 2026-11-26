@@ -727,7 +727,7 @@ Commits:
 Verification:
 - GAS backend syntax compile: PASS
 - Client script syntax compile: PASS
-- Static source checks for Advisor-only role gate, assigned-group source, status metadata only, click handler, reuse of existing report API and frontend pin: pending final verification
+- Static source checks for Advisor-only role gate, assigned-group source, status metadata only, click handler, reuse of existing report API and frontend pin: PASS
 - GAS Runtime / Browser test: NOT TESTED
 - TEST deployment: NOT DEPLOYED
 - UAT: PENDING
