@@ -672,3 +672,25 @@ Source refs:
 - Static CSS/data-key/pin checks: PASS
 - GAS Runtime, browser behavior, TEST deployment and UAT: NOT TESTED / PENDING
 - Production: unchanged
+
+
+## 24. STUDENT-MENU — Reorder student navigation (2026-11-26)
+
+Approved menu order for STUDENT:
+1. ข้อมูลของกลุ่ม
+2. เอกสารโครงร่าง
+3. บันทึกการเข้าพบที่ปรึกษา
+4. รายงานความก้าวหน้า
+5. งานกลุ่ม
+6. ข้อเสนอแนะ
+7. ประเมินเพื่อน A5
+
+Removed `หัวข้อวิจัย` and `ผลการประเมิน` from the student navigation menu only; their existing frontend functionality/API has not been deleted. `ความก้าวหน้า` was renamed in the menu to `รายงานความก้าวหน้า`; Client retains the old route label as a compatibility alias.
+
+Source refs:
+- Backend menu commit: `19217e33427d3028ff0fe910f5113e5d45f259dd`
+- Client route commit / immutable Frontend pin: `d00cfe57b75427def3cf33d02f9849d8633739a6`
+- Backend pin commit: `683576517438d7ca5a6f8731bb2952097c6bcbfd`
+- Static menu order, route alias, and pin checks: PASS
+- GAS Runtime, browser behavior, TEST deployment and UAT: NOT TESTED / PENDING
+- Production: unchanged
