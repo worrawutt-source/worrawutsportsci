@@ -1520,6 +1520,8 @@ function apiSaveMeetingReport(token,payload){
     dueDates:(Array.isArray(payload.dueDates)?payload.dueDates:[]).slice(0,3).map(x=>String(x||'').trim())
   };
   if(!/^\d{4}-\d{2}-\d{2}$/.test(p.meetingDate)||isNaN(new Date(p.meetingDate+'T00:00:00').getTime()))throw new Error('กรุณาระบุวันที่เข้าพบ');
+  const validDateOnly=s=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&!isNaN(new Date(s+'T00:00:00').getTime())&&Utilities.formatDate(new Date(s+'T00:00:00'),Session.getScriptTimeZone(),'yyyy-MM-dd')===s;
+  if(!validDateOnly(p.meetingDate)||p.dueDates.some(x=>!validDateOnly(x)))throw new Error('วันที่เข้าพบหรือกำหนดส่งไม่ถูกต้อง');
   if(!p.preparationProgress||p.agenda.length!==3||p.agenda.some(x=>!x)||!p.problems||!p.consultationSummary||p.nextActions.length!==3||p.nextActions.some(x=>!x)||p.dueDates.length!==3||p.dueDates.some(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x)))throw new Error('กรุณากรอกข้อมูลที่จำเป็นให้ครบ รวมถึง Agenda 3 ประเด็นและงานที่ต้องดำเนินการ 3 รายการ');
   const lock=LockService.getScriptLock();lock.waitLock(60000);
   try{
