@@ -202,8 +202,8 @@ Approved scope:
 
 Implementation evidence (latest UI correction):
 - Implementation branch: `perf/perf-01-advisor-dashboard-load`
-- Backend pin commit: `76f1185a25076d8c0bae2306cb007a60843f4984`
-- Client commit / immutable Frontend pin: `59d0e43697fdc339b8c5d1e068e53972d8867cfc`
+- Backend pin commit: `890c749c27f9950ae247c5c41ecc992cc97ca627`
+- Client commit / immutable Frontend pin: `8252ee9dd9136b57699640fc92895d6e3d0ae420`
 - Styles commit: `0e9c0c2eede8fa59d7e90035ab2da743f98159a5`
 - Static cross-file and JavaScript syntax checks: PASS
 - GAS runtime, TEST deployment, and UAT: NOT TESTED / PENDING
@@ -215,6 +215,7 @@ Note: The plan's earlier starting-status reference to `MEETING_SUBMISSIONS` refl
 ## 17. CHG-004 — Meeting Report UI Correction (2026-11-26)
 
 After reviewing the student screenshots, the user requested these corrections:
+- Remove the redundant page-level meeting title marked for deletion; retain the descriptive meeting-form title.
 - Do not show the group selector to Students; show their assigned group name and research/advisor/member context as static information. Advisor group selection remains available.
 - The prior form fields were not interactive because the local `el()` helper accepts one text argument and ignored additional child controls. Scope the fix to the meeting report form using a DOM builder that explicitly appends controls; do not alter the global helper and risk unrelated screens.
 - Render visible textareas with clear labels/placeholders and separate Agenda 1–3 and follow-up action 1–3 fields.
