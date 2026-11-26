@@ -2011,9 +2011,15 @@ function apiSaveResearchTopicDraft(token,payload){
     const latest=latestResearchTopicVersion_(groupId);if(latest)assertResearchTopicEditable_(latest);
     const sh=sheet_('RESEARCH_TOPIC_DRAFTS'),rows=readObjectsFresh_('RESEARCH_TOPIC_DRAFTS');
     const current=rows.find(x=>String(x.GROUP_ID)===String(groupId)&&x.STATUS==='DRAFT'),now=new Date();
-    if(current){const headers=SCHEMA.RESEARCH_TOPIC_DRAFTS;Object.keys(values).forEach(k=>sh.getRange(current._row,headers.indexOf(k)+1).setValue(values[k]));sh.getRange(current._row,headers.indexOf('UPDATED_BY')+1).setValue(ctx.user.USER_ID);sh.getRange(current._row,headers.indexOf('UPDATED_AT')+1).setValue(now);}
+    if(current){const headers=SCHEMA.RESEARCH_TOPIC_DRAFTS;Object.keys(values).forEach(k=>{const col=headers.indexOf(k);if(col<0)throw new Error('ไม่พบคอลัมน์ร่างหัวข้อ: '+k);sh.getRange(current._row,col+1).setValue(values[k]);});sh.getRange(current._row,headers.indexOf('UPDATED_BY')+1).setValue(ctx.user.USER_ID);sh.getRange(current._row,headers.indexOf('UPDATED_AT')+1).setValue(now);}
     else appendObject_('RESEARCH_TOPIC_DRAFTS',Object.assign({DRAFT_ID:Utilities.getUuid(),GROUP_ID:groupId},values,{STATUS:'DRAFT',UPDATED_BY:ctx.user.USER_ID,UPDATED_AT:now}));
-    return {ok:true,message:'บันทึกร่างหัวข้อวิจัยแล้ว ยังไม่ส่งให้อาจารย์พิจารณา',updatedAt:now};
+    SpreadsheetApp.flush();
+    const saved=readObjectsFresh_('RESEARCH_TOPIC_DRAFTS').find(x=>String(x.GROUP_ID)===String(groupId)&&x.STATUS==='DRAFT');
+    if(!saved)throw new Error('บันทึกร่างแล้วแต่ตรวจสอบไม่พบแถวข้อมูล กรุณาตรวจสอบชีต TEST และ deployment');
+    const persisted={titleTh:String(saved.TITLE_TH||''),titleEn:String(saved.TITLE_EN||''),problem:String(saved.PROBLEM_STATEMENT||''),objectives:String(saved.OBJECTIVES||''),significance:String(saved.RESEARCH_SIGNIFICANCE||''),updatedAt:saved.UPDATED_AT||now};
+    const verified=Object.keys(values).every(k=>String(persisted[{TITLE_TH:'titleTh',TITLE_EN:'titleEn',PROBLEM_STATEMENT:'problem',OBJECTIVES:'objectives',RESEARCH_SIGNIFICANCE:'significance'}[k]]||'')===String(values[k]||''));
+    if(!verified)throw new Error('บันทึกร่างแล้วแต่ข้อมูลที่อ่านกลับไม่ตรงกับข้อมูลที่ส่ง กรุณาลองใหม่หลังตรวจสอบสถานะ');
+    return {ok:true,message:'บันทึกร่างหัวข้อวิจัยแล้ว ยังไม่ส่งให้อาจารย์พิจารณา',updatedAt:persisted.updatedAt,draft:persisted};
   }finally{lock.releaseLock();}
 }
 function apiStudentSaveResearchTopic(token,payload){
