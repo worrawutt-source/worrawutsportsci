@@ -213,7 +213,7 @@ function renderDashboard(d){
       else if(routeLabel==='การตั้งค่าระบบ' && currentDashboard.user.roleId==='ADMIN') await renderSystemSettings();
       else if(routeLabel==='กลุ่มที่ได้รับมอบหมาย' || advisorFallback==='groups') await renderAdvisorGroups();
       else if(routeLabel==='ข้อมูลของกลุ่ม') await renderStudentWorkspace();
-      else if(routeLabel==='หัวข้อวิจัย') await renderStudentTopics();
+      else if(routeLabel==='หัวข้องานวิจัย' || routeLabel==='หัวข้อวิจัย') await renderStudentTopics();
       else if(routeLabel==='เอกสารโครงร่าง') await renderProposalDocuments();
       else if(routeLabel==='ความก้าวหน้า') await renderProgressReports();
       else if(routeLabel==='ข้อเสนอแนะ') await renderFeedback();
