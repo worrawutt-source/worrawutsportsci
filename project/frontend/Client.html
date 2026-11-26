@@ -210,7 +210,7 @@ function renderDashboard(d){
       else if(routeLabel==='งานกลุ่ม') await renderRoleTaskBoard();
       else if(routeLabel==='ประเมินผล A1–A6' && currentDashboard.user.roleId==='ADMIN') await renderAssessmentAdmin();
       else if(routeLabel==='ประเมิน A4' || advisorFallback==='a4') await renderAdvisorA4();
-      else if(routeLabel==='ประเมินเพื่อน A5') await renderPeerAssessment();
+      else if(routeLabel==='ประเมินเพื่อน A5' || routeLabel==='ประเมินเพื่อน') await renderPeerAssessment();
       else if(routeLabel==='การตั้งค่าระบบ' && currentDashboard.user.roleId==='ADMIN') await renderSystemSettings();
       else if(routeLabel==='กลุ่มที่ได้รับมอบหมาย' || advisorFallback==='groups') await renderAdvisorGroups();
       else if(routeLabel==='ข้อมูลของกลุ่ม') await renderStudentWorkspace();
