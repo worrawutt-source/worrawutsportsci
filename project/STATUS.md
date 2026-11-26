@@ -571,6 +571,7 @@ Next Action:
 - เพิ่ม Schema `MEETING_REPORTS` สำหรับบันทึกเนื้อหาแบบ structured fields; เพิ่มชื่อชีตใน `AUTO_CREATE_WORKFLOW_SHEETS_` เพื่อสร้าง/ตรวจ schema แบบ additive เมื่อเรียกใช้ครั้งแรก โดยไม่แตะ `setup.gs`
 - นักศึกษากรอกวันที่, ความก้าวหน้าก่อนพบ, Agenda 3 ประเด็น, ปัญหา/อุปสรรค, สรุปคำปรึกษา, งานต่อ 3 รายการและกำหนดส่ง โดยทุกช่องสร้าง DOM controls จริงและแสดงพื้นที่พิมพ์ชัดเจน
 - Student UI แสดงชื่อกลุ่มเป็นข้อความคงที่ ไม่ใช้ dropdown; Advisor ยังคงเลือกกลุ่มที่รับผิดชอบได้
+- ซ่อน section title ซ้ำบนหน้า meeting เพื่อคงหัวข้อย่อยที่อธิบายชัดกว่า
 - ใช้ date picker วัน/เดือน/ปี พ.ศ. ทั้งวันที่เข้าพบและกำหนดส่ง; แปลงเป็น ISO Gregorian ก่อนส่ง Backend และแสดงวันที่ประวัติเป็น พ.ศ.
 - เมื่อ SUBMITTED/VERIFIED ซ่อนแบบฟอร์มแก้ไขและแสดงสถานะ/ข้อมูลที่ส่ง; DRAFT และ REVISION_REQUIRED ยังแก้ไขได้ตามสิทธิ์
 - Save Draft รองรับข้อมูลบางส่วน; Submit ตรวจ required fields และวันที่ครบถ้วนฝั่ง Client และ Server
@@ -587,8 +588,8 @@ Next Action:
 - `project/STATUS.md`
 
 Frontend immutable pin:
-- Client snapshot: `59d0e43697fdc339b8c5d1e068e53972d8867cfc`
-- Backend pin commit: `76f1185a25076d8c0bae2306cb007a60843f4984`
+- Client snapshot: `8252ee9dd9136b57699640fc92895d6e3d0ae420`
+- Backend pin commit: `890c749c27f9950ae247c5c41ecc992cc97ca627`
 
 Static checks planned/completed:
 - Schema and auto-create list contain `MEETING_REPORTS`
@@ -604,7 +605,7 @@ Test status:
 - Student UI calls online report APIs; no PDF upload input/API call in meeting form: **PASS**
 - Advisor review API and UI actions present: **PASS**
 - Server validation requires complete Agenda 3 items, 3 next actions, and valid dates on SUBMIT; permits partial DRAFT: **PASS**
-- Student group dropdown removed; Thai Buddhist date controls and submitted-state form hiding: **PASS**
+- Student group dropdown and duplicate page title removed; Thai Buddhist date controls and submitted-state form hiding: **PASS**
 - Local field builder explicitly appends child controls (root cause of missing input controls): **PASS**
 - Admin monitoring distinguishes UPCOMING from NOT_SUBMITTED using recorded meeting attendance: **PASS**
 - Immutable Frontend pin matches Client snapshot `59d0e43697fdc339b8c5d1e068e53972d8867cfc`: **PASS**
@@ -630,3 +631,5 @@ Latest UI correction source references:
 
 
 UI correction review note (2026-11-26): The screenshots exposed that the existing `el()` helper accepts only one text argument and ignores nested controls passed as additional arguments. The meeting-report form now uses a local DOM builder/field helper that appends each control explicitly. This fix is scoped to the meeting-report workflow; the global helper was not changed to avoid unrelated UI regression.
+
+Latest Client commit after duplicate heading removal: `8252ee9dd9136b57699640fc92895d6e3d0ae420`.
