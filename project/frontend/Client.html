@@ -605,6 +605,8 @@ async function renderMeetingAttendance(){
   const todayIso=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
   const formatThaiDate=iso=>{if(!iso)return '—';const p=String(iso).split('-');if(p.length!==3)return iso;return Number(p[2])+' '+(monthNames[Number(p[1])-1]||'')+' พ.ศ. '+(Number(p[0])+543);};
   date.setValue(todayIso());attendanceDate.setValue(todayIso());
+  let loadedFormSnapshot='',loadedMeetingNo=Number(no.value);
+  function formSnapshot(){return JSON.stringify({date:date.controls.map(x=>x.value),progress:progress.value,agenda:agenda.map(x=>x.value),problems:problems.value,summary:summary.value,actions:actions.map(x=>x.value),due:due.map(x=>x.controls.map(c=>c.value))});}
   function field(label,...nodes){const wrap=el('label',{className:'meeting-report-field'});wrap.append(document.createTextNode(label));nodes.forEach(n=>wrap.append(n));return wrap;}
   const dateField=field('วันที่เข้าพบ (วัน / เดือน / ปี พ.ศ.)',date.element),agendaFields=agenda.map((x,i)=>field('Agenda '+(i+1)+' · ประเด็นที่ต้องการปรึกษา',x));
   const taskFields=actions.map((x,i)=>{const box=el('div',{className:'meeting-report-task'});box.append(field('งานที่ต้องดำเนินการ '+(i+1),x),field('กำหนดส่ง (วัน / เดือน / ปี พ.ศ.)',due[i].element));return box;});
@@ -623,8 +625,9 @@ async function renderMeetingAttendance(){
     if(isAdvisor&&online.canReview){const comment=el('textarea',{rows:'2',placeholder:'ข้อเสนอแนะ (หากส่งกลับแก้ไข)'}),btns=el('div',{className:'meeting-report-actions'});['VERIFIED','REVISION_REQUIRED'].forEach(dec=>{const btn=el('button',{type:'button',className:dec==='VERIFIED'?'primary':'secondary'},dec==='VERIFIED'?'ยืนยันตรวจแล้ว':'ส่งกลับแก้ไข');btn.onclick=async()=>{btn.disabled=true;try{const out=await callApi('apiAdvisorReviewMeetingReport',sessionToken,r.reportId,dec,comment.value);showOperationStatus(out.message);await load()}catch(e){showOperationStatus(e.message,true);btn.disabled=false}};btns.append(btn)});history.append(comment,btns);}
    }else{history.append(el('p',{},'ยังไม่มีบันทึกออนไลน์สำหรับครั้งนี้'));if(isStudent){date.setValue(todayIso());progress.value='';agenda.forEach(x=>x.value='');problems.value='';summary.value='';actions.forEach(x=>x.value='');due.forEach(x=>x.setValue(''));reportForm.hidden=false;status.textContent='';status.className='message';}}
    if(files.length){legacyHistory.append(el('h4',{},'เอกสาร PDF เดิม'),...files.map(f=>el('p',{},el('a',{href:f.url,target:'_blank',rel:'noopener noreferrer'},f.fileName+' · '+f.status))))}
+   if(isStudent){loadedFormSnapshot=formSnapshot();loadedMeetingNo=Number(no.value);}
   }
-  g.onchange=load;no.onchange=load;await load();
+  g.onchange=load;no.onchange=async()=>{if(isStudent&&formSnapshot()!==loadedFormSnapshot){const proceed=window.confirm('มีข้อมูลที่ยังไม่ได้บันทึกในครั้งที่ '+loadedMeetingNo+' ต้องการเปลี่ยนครั้งที่เข้าพบหรือไม่? ข้อมูลที่ยังไม่บันทึกจะไม่ถูกเก็บ');if(!proceed){no.value=String(loadedMeetingNo);return;}}await load();};await load();
   const groupInfo=el('div',{className:'meeting-report-history-card'});function updateGroupInfo(){const selectedGroup=report.find(x=>String(x.groupId)===String(g.value))||report[0];groupInfo.textContent='';groupInfo.append(node('strong',{},'หัวข้องานวิจัย: '+(selectedGroup.topicTh||'ยังไม่ได้ระบุ')),node('p',{},'อาจารย์ที่ปรึกษา: '+(selectedGroup.advisor||'ยังไม่ได้แต่งตั้ง')),node('p',{},'สมาชิกกลุ่ม: '+selectedGroup.members.map(m=>m.studentName+' ('+m.studentId+')').join(' · ')));}updateGroupInfo();
   const meetingTitle=el('h2',{},isStudent?'บันทึกการเข้าพบอาจารย์ที่ปรึกษา':'ตรวจบันทึกการเข้าพบและการเข้าร่วม');
   if(isStudent)a.append(meetingTitle,el('p',{},'กลุ่มวิจัย: '+report[0].groupName),el('label',{},'ครั้งที่ / สัปดาห์'),no,groupInfo);
