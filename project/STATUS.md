@@ -546,3 +546,56 @@ Static checks:
 - TEST deployment: **NOT DEPLOYED**
 - UAT: **PENDING**
 - Production: **ไม่เปลี่ยนแปลง**
+
+
+## 21. Research Topic Field Labels, Submission Lock, and Review Management
+
+สถานะ ณ 26 พฤศจิกายน 2026: **Source Code committed บน feature branch; ยังไม่ Deploy และยังไม่ผ่าน GAS Runtime/Browser/UAT**
+
+### Approved change
+- เปลี่ยนป้าย “ปัญหาวิจัย” เป็น “ที่มาและความสำคัญ”
+- เปลี่ยนป้าย “ความสำคัญของการวิจัย” เป็น “ประโยชน์ที่คาดว่าจะได้รับ”
+- เมื่อหัวหน้ากลุ่มส่งหัวข้อให้อาจารย์พิจารณาแล้ว ให้หัวข้อและร่างถูกล็อกจนกว่า ADVISOR หรือ ADMIN/Course Coordinator จะสั่ง “ให้แก้ไข”
+- เพิ่มหน้าจอจัดการหัวข้องานวิจัยสำหรับ ADMIN/Course Coordinator
+- เพิ่มปุ่ม “ให้แก้ไข” ในหน้าตรวจหัวข้อของ Advisor และหน้าจัดการหัวข้อของ ADMIN
+
+### Implementation
+1. ใช้ status `REVISION_REQUIRED` ที่มีอยู่แล้ว ไม่สร้างชีตหรือ schema ใหม่
+2. Student UI เปิดแบบฟอร์มแก้ไขเฉพาะเมื่อไม่มีหัวข้อส่งแล้ว หรือ latest topic เป็น `REVISION_REQUIRED`
+3. Backend ตรวจ lock ใน `apiSaveResearchTopicDraft` และ `apiStudentSaveResearchTopic` ด้วย `assertResearchTopicEditable_`; UI lock ไม่ใช่ security boundary เพียงอย่างเดียว
+4. เพิ่ม `apiAllowResearchTopicRevision(token, versionId, comment)`:
+   - อนุญาตเฉพาะ `ADMIN` และ `ADVISOR`
+   - Advisor ต้องมี assignment ที่ APPROVED ผ่าน `assertGroupAccess_`
+   - อนุญาตเฉพาะ latest version
+   - ต้องระบุเหตุผล 5–3,000 ตัวอักษร
+   - เปลี่ยน status เป็น `REVISION_REQUIRED`, บันทึกผู้พิจารณา/เวลา/เหตุผล, audit log และแจ้งเตือน
+5. เพิ่ม `apiAdminGetResearchTopicManagement` สำหรับ ADMIN โดยอ่านข้อมูลกลุ่ม/หัวข้อ/assignment/users แบบ batch ภายใน request; ไม่เรียก API แยกทีละกลุ่ม
+6. เพิ่มเมนู ADMIN “จัดการหัวข้องานวิจัย”; Advisor ใช้เมนูเดิม “ตรวจหัวข้อและให้ข้อเสนอแนะ”
+7. ADMIN สามารถบันทึกผลพิจารณา PENDING ผ่าน API เดิม และให้แก้ไขหัวข้อ latest version ได้
+
+### Files
+- `project/frontend/Client.html`
+- `project/gas-source/code.gs`
+- `project/STATUS.md`
+
+Commits:
+- Client: `51504226d7f7a3aed25adf09cd5ab4e4c750eec2`
+- Backend: `a5bd878cbafba2bbf7100cae4ba4fadecdacb4c5`
+- Frontend SHA pinned: `51504226d7f7a3aed25adf09cd5ab4e4c750eec2`
+
+### Static verification
+- ADMIN menu and route: PASS
+- Student field labels and history labels: PASS
+- Student editing gated to no submission / `REVISION_REQUIRED`: PASS
+- Advisor and ADMIN revision action present: PASS
+- Backend role authorization and latest-version check: PASS
+- Backend Frontend SHA matches Client commit: PASS
+- Existing topic schema reused; no new sheet/schema: PASS
+
+### Test and release status
+- Static source checks: **PASS**
+- GAS syntax/runtime: **NOT TESTED**
+- Browser interaction and role-based UAT: **NOT TESTED**
+- TEST deployment: **NOT DEPLOYED**
+- Production: **UNCHANGED**
+- Required UAT: STUDENT submit/lock; draft-save and direct API attempts while locked; Advisor allow-edit; ADMIN allow-edit; new version submission; older version cannot be unlocked; unauthorized advisor blocked; duplicate action and notification failure handling.
