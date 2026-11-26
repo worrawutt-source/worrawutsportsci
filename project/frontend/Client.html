@@ -195,14 +195,14 @@ function renderDashboard(d){
       const routeLabel=normalizeMenuLabel_(label);
       const advisorRole=currentDashboard.user.roleId==='ADVISOR'||currentDashboard.user.roleId==='RESEARCH_ADVISOR';
       const advisorFallback=advisorRole?['overview','groups','meetings','a4'][i]:'';
-      const isMeetingPage=routeLabel==='บันทึกการเข้าพบ'||routeLabel==='บันทึกการพบอาจารย์'||advisorFallback==='meetings';
+      const isMeetingPage=routeLabel==='บันทึกการเข้าพบที่ปรึกษา'||routeLabel==='บันทึกการเข้าพบ'||routeLabel==='บันทึกการพบอาจารย์'||advisorFallback==='meetings';
       $('sectionTitle').textContent=isMeetingPage?'':label;$('sectionText').textContent='กำลังโหลดข้อมูล...';
       if(routeLabel==='บัญชีผู้ใช้' && currentDashboard.user.roleId==='ADMIN') await renderUserAdmin();
       else if(routeLabel==='นำเข้ารายชื่อนักศึกษา' && currentDashboard.user.roleId==='ADMIN') await renderExcelImport();
       else if(routeLabel==='บันทึกระบบ' && currentDashboard.user.roleId==='ADMIN') await renderAuditLog();
       else if(routeLabel==='จัดการกลุ่มวิจัย' && currentDashboard.user.roleId==='ADMIN') await renderGroupAdmin();
       else if(routeLabel==='กำหนดอาจารย์ที่ปรึกษา' && currentDashboard.user.roleId==='ADMIN') await renderAdvisorAssignment();
-      else if(routeLabel==='บันทึกการเข้าพบ' || routeLabel==='บันทึกการพบอาจารย์' || advisorFallback==='meetings') await renderMeetingAttendance();
+      else if(routeLabel==='บันทึกการเข้าพบที่ปรึกษา' || routeLabel==='บันทึกการเข้าพบ' || routeLabel==='บันทึกการพบอาจารย์' || advisorFallback==='meetings') await renderMeetingAttendance();
       else if(routeLabel==='จัดการรายงานความก้าวหน้า' && currentDashboard.user.roleId==='ADMIN') await renderAdminProgressManagement();
       else if(routeLabel==='จัดการงานกลุ่ม' && currentDashboard.user.roleId==='ADMIN') await renderAdminTaskBoard();
       else if(routeLabel==='ติดตามจริยธรรม' && currentDashboard.user.roleId==='ADMIN') await renderAdminEthicsTracking();
@@ -627,7 +627,7 @@ async function renderMeetingAttendance(){
   }
   g.onchange=load;no.onchange=async()=>{if(isStudent&&formSnapshot()!==loadedFormSnapshot){const proceed=window.confirm('มีข้อมูลที่ยังไม่ได้บันทึกในครั้งที่ '+loadedMeetingNo+' ต้องการเปลี่ยนครั้งที่เข้าพบหรือไม่? ข้อมูลที่ยังไม่บันทึกจะไม่ถูกเก็บ');if(!proceed){no.value=String(loadedMeetingNo);return;}}await load();};await load();
   const groupInfo=el('div',{className:'meeting-report-history-card'});function updateGroupInfo(){const selectedGroup=report.find(x=>String(x.groupId)===String(g.value))||report[0];groupInfo.textContent='';groupInfo.append(node('strong',{},'หัวข้องานวิจัย: '+(selectedGroup.topicTh||'ยังไม่ได้ระบุ')),node('p',{},'อาจารย์ที่ปรึกษา: '+(selectedGroup.advisor||'ยังไม่ได้แต่งตั้ง')),node('p',{},'สมาชิกกลุ่ม: '+selectedGroup.members.map(m=>m.studentName+' ('+m.studentId+')').join(' · ')));}updateGroupInfo();
-  const meetingTitle=el('h2',{},isStudent?'บันทึกการเข้าพบอาจารย์ที่ปรึกษา':'ตรวจบันทึกการเข้าพบและการเข้าร่วม');
+  const meetingTitle=el('h2',{},isStudent?'บันทึกการเข้าพบที่ปรึกษา':'ติดตามบันทึกการเข้าพบที่ปรึกษา');
   if(isStudent)a.append(meetingTitle,el('p',{},'กลุ่มวิจัย: '+report[0].groupName),el('label',{},'ครั้งที่ / สัปดาห์'),no,groupInfo);
   else a.append(meetingTitle,el('label',{},'กลุ่มวิจัย'),g,el('label',{},'ครั้งที่ / สัปดาห์'),no,groupInfo);
   g.addEventListener('change',updateGroupInfo);
