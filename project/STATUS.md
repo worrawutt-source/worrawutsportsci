@@ -469,3 +469,40 @@ Static verification:
 - ยังไม่ได้ Deploy เวอร์ชันนี้ไปยัง TEST Web App
 - Advisor index fallback อาศัยลำดับเมนูที่ Backend ส่งมา จึงต้องรักษาลำดับ 4 เมนูของ Advisor ให้ตรงกับที่กำหนด
 - Runtime Test/UAT: **PENDING**
+
+
+## 19. Student Research Topic Menu — Minor Feature
+
+สถานะ ณ 26 พฤศจิกายน 2026: **Source Code committed บน feature branch; ยังไม่ Deploy และยังไม่ผ่าน Runtime Test/UAT**
+
+ความต้องการ:
+- เพิ่ม/แสดงเมนู “หัวข้องานวิจัย” ในฝั่งนักศึกษา
+- วางเมนูต่อจาก “ข้อมูลของกลุ่ม” เพื่อให้เข้าถึงการเสนอหัวข้องานวิจัยได้ชัดเจน
+
+การเปลี่ยนแปลง:
+1. ปรับรายการเมนู Student ใน Backend ให้เรียง “ข้อมูลของกลุ่ม” → “หัวข้องานวิจัย” → “งานกลุ่ม”
+2. เปลี่ยนชื่อเมนูเดิม “หัวข้อวิจัย” เป็น “หัวข้องานวิจัย” โดยใช้หน้าฟังก์ชันเดิม `renderStudentTopics()`; ไม่สร้างหน้าหรือ API ซ้ำ
+3. เพิ่ม Client route ให้รองรับชื่อเมนูใหม่ และคงชื่อ “หัวข้อวิจัย” เดิมเป็น compatibility fallback
+4. อัปเดต Backend immutable Frontend SHA ให้ตรงกับ Client snapshot
+
+ไฟล์ที่เปลี่ยน:
+- `project/frontend/Client.html`
+- `project/gas-source/code.gs`
+- `project/STATUS.md`
+
+Commits:
+- Client: `ead652204a7f13021e3ac0057a67838061a4222b`
+- Backend: `fb1f3e8c3cb2bb0faf7802e7ae5daac4f87cda7d`
+- Frontend SHA pinned: `ead652204a7f13021e3ac0057a67838061a4222b`
+
+Static verification:
+- ตรวจ Source ว่ามีเมนูใหม่ต่อจาก “ข้อมูลของกลุ่ม”
+- ตรวจ Client route ใหม่เชื่อมไปยัง `renderStudentTopics()`
+- ตรวจว่า Backend pin ชี้ไปยัง Client commit ที่ถูกต้อง
+
+ข้อจำกัด:
+- ยังไม่ได้ตรวจ Compile/Execute ใน Google Apps Script Runtime
+- ยังไม่ได้ Deploy ไปยัง TEST Web App
+- ยังไม่ได้ทดสอบการแสดงเมนูบนบัญชีนักศึกษาจริง
+- Runtime Test/UAT: **PENDING**
+- Production: **ไม่เปลี่ยนแปลง**
