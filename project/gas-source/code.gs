@@ -1534,7 +1534,7 @@ function apiSaveMeetingReport(token,payload){
       STATUS,CREATED_BY:old?old.CREATED_BY:ctx.user.USER_ID,UPDATED_BY:ctx.user.USER_ID,CREATED_AT:old?old.CREATED_AT:now,UPDATED_AT:now,
       SUBMITTED_AT:status==='SUBMITTED'?now:'',REVIEWED_BY:'',REVIEWED_AT:'',REVIEW_COMMENT:'',VERSION:old?Number(old.VERSION||1):1
     };
-    if(old){const headers=SCHEMA.MEETING_REPORTS;headers.forEach((h,i)=>sh.getRange(old._row,i+1).setValue(vals[h]===undefined?'':vals[h]));}
+    if(old){const headers=SCHEMA.MEETING_REPORTS;sh.getRange(old._row,1,1,headers.length).setValues([headers.map(h=>vals[h]===undefined?'':vals[h])]);}
     else appendObject_('MEETING_REPORTS',vals);
     SpreadsheetApp.flush();logSystem_(status==='SUBMITTED'?'MEETING_REPORT_SUBMITTED':'MEETING_REPORT_DRAFT_SAVED','GROUP',groupId,{meetingNo:no,reportId:vals.REPORT_ID},ctx.user.USER_ID);
     return {ok:true,message:status==='SUBMITTED'?'ส่งบันทึกการเข้าพบแล้ว':'บันทึกฉบับร่างแล้ว',status};
@@ -1554,8 +1554,8 @@ function apiAdvisorReviewMeetingReport(token,reportId,decision,comment){
     if(!latest||String(latest.REPORT_ID)!==String(row.REPORT_ID))throw new Error('บันทึกนี้ไม่ใช่ฉบับล่าสุด');
     if(!['SUBMITTED','REVISION_REQUIRED'].includes(String(row.STATUS)))throw new Error('สถานะบันทึกไม่สามารถตรวจได้');
     const sh=sheet_('MEETING_REPORTS'),headers=SCHEMA.MEETING_REPORTS,now=new Date();
-    const vals={STATUS:decision,REVIEWED_BY:ctx.user.USER_ID,REVIEWED_AT:now,REVIEW_COMMENT:String(comment||'').trim().slice(0,2000),UPDATED_BY:ctx.user.USER_ID,UPDATED_AT:now};
-    Object.keys(vals).forEach(k=>{const i=headers.indexOf(k);if(i>=0)sh.getRange(row._row,i+1).setValue(vals[k]);});
+    const vals={...row,STATUS:decision,REVIEWED_BY:ctx.user.USER_ID,REVIEWED_AT:now,REVIEW_COMMENT:String(comment||'').trim().slice(0,2000),UPDATED_BY:ctx.user.USER_ID,UPDATED_AT:now};
+    sh.getRange(row._row,1,1,headers.length).setValues([headers.map(h=>vals[h]===undefined?'':vals[h])]);
     SpreadsheetApp.flush();logSystem_('MEETING_REPORT_REVIEWED','GROUP',row.GROUP_ID,{meetingNo:row.MEETING_NO,reportId,decision},ctx.user.USER_ID);
     return {ok:true,message:decision==='VERIFIED'?'อาจารย์ตรวจบันทึกแล้ว':'ส่งบันทึกกลับให้นักศึกษาแก้ไขแล้ว'};
   }finally{lock.releaseLock();}
