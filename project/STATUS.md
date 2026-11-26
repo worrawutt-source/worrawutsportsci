@@ -490,7 +490,7 @@ Static verification:
 Branch:
 - `perf/perf-01-advisor-dashboard-load`
 - Base: `3037bac4f8b73b3e57f47fd4525096296e66d731`
-- Latest commit: `4caa18a1312b212cf736e1805ecf07d94609296f`
+- PERF-01 implementation commit before UI refinement: `4caa18a1312b212cf736e1805ecf07d94609296f`
 
 Static Performance Analysis:
 - ก่อนแก้ เส้นทาง Dashboard → Overview มีการอ่านข้อมูล Fresh Read ประมาณ 22 sheet reads ตาม call path (Dashboard summary 8 + Overview API 14)
@@ -513,3 +513,49 @@ Test status:
 
 Next Action:
 - Deploy approved branch to TEST only, then compare Dashboard → Overview API count, Spreadsheet operations, payload size and response timing against the baseline; run Advisor regression tests before UAT.
+
+
+## 20. UI-02 — Compact Course Coordinator Meeting Monitoring
+
+สถานะ ณ 26 พฤศจิกายน 2026: **Source Code ปรับแล้วบน branch เดิม; Static checks ผ่าน; Runtime/TEST/UAT pending**
+
+เหตุผล:
+- หน้า Admin/ผู้รับผิดชอบรายวิชาวาง Summary, Filter และข้อมูลรายกลุ่มเรียงลงแนวตั้ง ทำให้ใช้พื้นที่แนวนอนไม่คุ้มและต้องเลื่อนหน้าจอมาก
+- Summary เดิมใช้ `stats-grid` ที่ไม่มี layout เฉพาะ จึงแสดงตัวเลขเป็นรายการแนวตั้ง
+
+การเปลี่ยนแปลง:
+1. Summary 6 รายการจัดเป็น Grid 3 คอลัมน์บน Desktop และ 2 คอลัมน์บน Mobile
+2. Search และ Status filter จัดวางแนวนอนบนจอที่มีพื้นที่เพียงพอ
+3. เปลี่ยนรายการติดตามเป็น Status Matrix: 1 แถวต่อกลุ่ม และ 7 คอลัมน์ตามครั้ง/สัปดาห์ที่กำหนด
+4. แต่ละช่องแสดงสถานะ วันที่ส่ง และลิงก์เปิด PDF เมื่อมีเอกสาร
+5. Status filter ใช้กรองกลุ่มที่มีรายการตรงเงื่อนไข และเน้นช่องสถานะที่ตรงกับ filter
+6. ไม่เปลี่ยน API, Schema, Role/Permission, ข้อมูล หรือ workflow; หน้านี้ยังคง workflow PDF ตาม Source ปัจจุบัน การเปลี่ยนเป็นแบบฟอร์มออนไลน์เป็นงานแยกต่างหาก
+
+ไฟล์ที่เปลี่ยน:
+- `project/frontend/Styles.html`
+- `project/frontend/Client.html`
+- `project/gas-source/code.gs` (อัปเดต immutable Frontend pin)
+
+Commits:
+- Styles: `bbee3735790ad8fb655eeaf0cc31d8deb8b88c16`
+- Client: `4585d4d23d0e6fa9cb49f09aee68dd1c9ba63f8d`
+- Backend pin: `74040a4b311e973a9891cda310b669c1e11bce43`
+- Frontend immutable pin: `4585d4d23d0e6fa9cb49f09aee68dd1c9ba63f8d`
+
+Static verification:
+- ตรวจพบ Summary Grid และ Status Matrix ใหม่
+- ตรวจว่า stats-grid แบบเดิมถูกแทนที่
+- ตรวจ status mapping/filter สำหรับ SUBMITTED และ ACTIVE
+- ตรวจ 7 meeting weeks: 2, 4, 6, 8, 10, 12, 14
+- ตรวจ CSS responsive rules และ status styles
+- ตรวจ Backend immutable Frontend pin ตรงกับ Client commit
+
+Test status:
+- Static source checks: **PASS**
+- Runtime / Browser test: **NOT TESTED**
+- TEST deployment: **NOT DEPLOYED**
+- UAT: **PENDING**
+- Production: **UNCHANGED**
+
+Next Action:
+- Deploy branch to TEST only after approval; verify summary, search/status filters, table overflow on desktop/mobile, links and current meeting statuses; then run UAT. Do not claim runtime/performance improvement before measuring.
