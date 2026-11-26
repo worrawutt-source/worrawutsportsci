@@ -219,7 +219,8 @@ function renderDashboard(d){
       else if(routeLabel==='ข้อเสนอแนะ') await renderFeedback();
       else if(routeLabel==='ผลการประเมิน' && currentDashboard.user.roleId==='STUDENT') await renderStudentGrades();
       else if(routeLabel==='ตรวจหัวข้อและให้ข้อเสนอแนะ') await renderAdvisorReview();
-      else if(routeLabel==='ภาพรวมระบบ' || routeLabel==='ภาพรวมการให้คำปรึกษ' || advisorFallback==='overview') await renderOverview();
+      else if(routeLabel==='ภาพรวมระบบ' && currentDashboard.user.roleId==='ADMIN') await renderAdminOverview();
+      else if(routeLabel==='ภาพรวมการให้คำปรึกษ' || (advisorFallback==='overview' && currentDashboard.user.roleId==='ADVISOR')) await renderOverview();
       else $('sectionText').textContent='เมนูนี้ยังไม่มีสิทธิ์หรือไม่มีข้อมูลสำหรับบัญชีนี้';
     });
     $('sideMenu').appendChild(b);
@@ -967,6 +968,26 @@ async function renderAdvisorReview(){
   }
  }catch(e){a.textContent='โหลดรายการตรวจหัวข้อไม่สำเร็จ: '+e.message;}
 }
+async function renderAdminOverview(){
+ const a=$('sectionText');
+ a.textContent='';
+ const metrics=currentDashboard&&currentDashboard.metrics?currentDashboard.metrics:{};
+ const box=el('div',{className:'notice'});
+ box.append(el('h2',{},'ภาพรวมระบบ'),el('p',{},'สรุปสถานะบัญชีผู้ใช้และข้อมูลรายชื่อนักศึกษาที่ระบบโหลดได้'));
+ const stats=el('div',{className:'admin-row'});
+ [
+  ['บัญชีผู้ใช้ทั้งหมด',metrics.users],
+  ['Session ที่ยังใช้งาน',metrics.sessions],
+  ['นักศึกษาในทะเบียน',metrics.roster]
+ ].forEach(([label,value])=>{
+  const item=el('div',{className:'metric'});
+  item.append(el('div',{className:'metric-label'},label),el('div',{className:'metric-value'},value===undefined?'—':String(value)));
+  stats.append(item);
+ });
+ box.append(stats);
+ a.append(box);
+}
+
 async function renderOverview(){
  const a=$('sectionText');a.textContent='กำลังโหลดภาพรวมการให้คำปรึกษา...';
  try{
