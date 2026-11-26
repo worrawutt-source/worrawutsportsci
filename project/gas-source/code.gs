@@ -441,23 +441,8 @@ function apiGetAdvisorAssignedGroups(token){
   return sanitizeForClient_(getAdvisorAssignedGroups_(ctx.user.USER_ID));
 }
 
-function advisorWorkspaceSummary_(advisorUserId){
+function advisorWorkspaceDetails_(advisorUserId){
   const groups=getAdvisorAssignedGroups_(advisorUserId),ids=new Set(groups.map(g=>String(g.groupId)));
-  const reports=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>ids.has(String(r.GROUP_ID||'')));
-  const topics=readObjectsFresh_('RESEARCH_TOPIC_VERSIONS').filter(r=>ids.has(String(r.GROUP_ID||'')));
-  const meetings=readObjectsFresh_('MEETING_RECORDS').filter(r=>ids.has(String(r.GROUP_ID||'')));
-  const feedback=readObjectsFresh_('ADVISOR_FEEDBACK').filter(r=>ids.has(String(r.GROUP_ID||''))&&String(r.STATUS||'ACTIVE').toUpperCase()==='ACTIVE');
-  const pendingReports=reports.filter(r=>['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').toUpperCase()));
-  const pendingTopics=topics.filter(r=>String(r.REVIEW_STATUS||'').toUpperCase()==='PENDING');
-  return {groups,metrics:{assignedGroups:groups.length,pendingReports:pendingReports.length,pendingTopics:pendingTopics.length,meetingsRecorded:new Set(meetings.map(r=>String(r.GROUP_ID)+'|'+String(r.MEETING_NO))).size,feedbackProvided:feedback.length}};
-}
-
-/** Advisor workspace summary: one server round-trip for dashboard and group monitoring. */
-function apiGetAdvisorWorkspaceSummary(token){
-  const ctx=requireSession_(token,[ROLE.ADVISOR]);
-  const summary=advisorWorkspaceSummary_(ctx.user.USER_ID);
-  const groups=summary.groups;
-  const ids=new Set(groups.map(g=>String(g.groupId)));
   const reports=readObjectsFresh_('PROGRESS_REPORTS').filter(r=>ids.has(String(r.GROUP_ID||'')));
   const topics=readObjectsFresh_('RESEARCH_TOPIC_VERSIONS').filter(r=>ids.has(String(r.GROUP_ID||'')));
   const files=readObjectsFresh_('PROPOSAL_FILES').filter(r=>ids.has(String(r.GROUP_ID||''))&&String(r.STATUS||'').toUpperCase()==='ACTIVE');
@@ -487,6 +472,7 @@ function apiGetAdvisorWorkspaceSummary(token){
     const g=groups.find(x=>String(x.groupId)===String(r.GROUP_ID));
     return {groupId:r.GROUP_ID,groupName:g?g.groupName:'',versionNo:r.VERSION_NO,titleTh:r.TITLE_TH,submittedAt:r.SUBMITTED_AT,versionId:r.VERSION_ID};
   });
+  const dashboardMetrics={meetingsRecorded:new Set(meetings.map(r=>String(r.GROUP_ID)+'|'+String(r.MEETING_NO))).size};
   return sanitizeForClient_({
     metrics:{
       assignedGroups:groups.length,
@@ -496,9 +482,15 @@ function apiGetAdvisorWorkspaceSummary(token){
       feedbackProvided:feedback.length,
       openTasks:tasks.length
     },
+    dashboardMetrics,
     groups:groupSummaries,pendingReports,pendingTopics,
     assessmentWindowA4:assessmentSettingsFresh_().WINDOW_A4||'CLOSED'
   });
+}
+
+function apiGetAdvisorWorkspaceSummary(token){
+  const ctx=requireSession_(token,[ROLE.ADVISOR]);
+  return advisorWorkspaceDetails_(ctx.user.USER_ID);
 }
 
 /** Dashboard bootstrap: all authorization is performed on the server. */
@@ -516,8 +508,9 @@ function apiGetDashboard(token) {
     base.metrics = {users:readObjects_('SYS_USERS').length, sessions:readObjects_('SYS_SESSIONS').filter(s=>!s.REVOKED_AT && new Date(s.EXPIRES_AT)>new Date()).length, roster:readObjects_('STUDENTS').length};
     base.menu = ['ภาพรวมระบบ','จัดการกลุ่มวิจัย','กำหนดอาจารย์ที่ปรึกษา','บันทึกการเข้าพบ','จัดการรายงานความก้าวหน้า','จัดการงานกลุ่ม','ติดตามจริยธรรม','สัญญาณเตือนความเสี่ยง','ประเมินผล A1–A6','บัญชีผู้ใช้','นำเข้ารายชื่อนักศึกษา','บันทึกระบบ','การตั้งค่าระบบ'];
     } else if (role === ROLE.ADVISOR) {
-    const advisorSummary=advisorWorkspaceSummary_(ctx.user.USER_ID);
-    base.metrics={assignedGroups:advisorSummary.metrics.assignedGroups,pendingReports:advisorSummary.metrics.pendingReports,pendingTopics:advisorSummary.metrics.pendingTopics,meetingsRecorded:advisorSummary.metrics.meetingsRecorded};
+    const advisorSummary=advisorWorkspaceDetails_(ctx.user.USER_ID);
+    base.advisorWorkspaceSummary=advisorSummary;
+    base.metrics={assignedGroups:advisorSummary.metrics.assignedGroups,pendingReports:advisorSummary.metrics.pendingReports,pendingTopics:advisorSummary.metrics.pendingTopics,meetingsRecorded:advisorSummary.dashboardMetrics.meetingsRecorded};
     base.menu = ['ภาพรวมการให้คำปรึกษา','กลุ่มที่ได้รับมอบหมาย','บันทึกการพบอาจารย์','ประเมิน A4'];
   } else if (role === ROLE.STUDENT) {
     // Derive dashboard group status from the active membership relationship.
