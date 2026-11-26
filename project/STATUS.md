@@ -777,7 +777,7 @@ Next Action: deploy approved branch to TEST only, verify Advisor sees only assig
 - Base branch: `integration/phase2-perf-topic-fixes`
 - Base commit: `802e5974a4ac9fe2efed61d4c6381cdcfab39957`
 - Refactor branch: `refactor/phase2-code-modules`
-- Branch comparison: 15 commits ahead, 0 behind (14 source-file commits + 1 STATUS checkpoint); source changes are `project/gas-source/code.gs` and 13 new numbered `.gs` modules, plus this STATUS update.
+- Branch comparison: 17 commits ahead, 0 behind (14 source-file commits + 3 STATUS checkpoint commits); source changes are `project/gas-source/code.gs` and 13 new numbered `.gs` modules, plus this STATUS update.
 
 ### Change Scope
 - Replaced `project/gas-source/code.gs` implementation with a module-structure note.
