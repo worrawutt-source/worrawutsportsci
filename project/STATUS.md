@@ -734,3 +734,36 @@ Verification:
 - Production: UNCHANGED
 
 Next Action: deploy approved branch to TEST only, verify Advisor sees only assigned groups, click each status and confirm report content, legacy PDF behavior, review controls, role denial for non-Advisor, and regression of Student save/submit and Admin monitoring; then UAT.
+
+
+## Integration Checkpoint — Phase 2 Source Base
+
+ปรับปรุงล่าสุด: 27 พฤศจิกายน 2026
+
+### Source Base
+- Integration branch: `integration/phase2-perf-topic-fixes`
+- Technical base: `perf/perf-01-advisor-dashboard-load`
+- Base commit: `87915a7a69ee636d22fa66080271e95e3f6e1d17`
+- Integrated topic fix source: `feature/research-topic-lock-review`
+- Research Topic source commit: `efc9a97b722081a6923a37738267c5796e634137`
+- Integration commits: `765221fe9fea362ba02198222287463d12834354` (backend), `af655243ea8982fd9288e7a8f88899d137deca40` (frontend)
+
+### Integrated Changes
+- Backend: ported only `apiGetResearchTopicDraft` and `apiSaveResearchTopicDraft` from the Research Topic lock/review branch into the perf technical base.
+- Draft timestamp fields are converted to serializable millisecond/string values before returning through `google.script.run`.
+- Draft save now verifies persisted row identity/status and reads back saved values; response distinguishes verified save from mismatch.
+- Frontend: ported verified-save handling and a read-back fallback to `apiGetResearchTopicDraft` when the save response is missing or not successful.
+- Preserved the performance branch's Advisor/Meeting code; did not merge the topic branch wholesale.
+
+### Validation
+- Static source checks: PASS — one definition each for draft get/save functions; timestamp serialization and read-back verification present; frontend success/fallback handling present; Advisor Meeting and Topic review APIs remain present.
+- Branch comparison against technical base: 2 commits ahead, 0 behind; only `project/gas-source/code.gs` and `project/frontend/Client.html` changed.
+- Runtime tests: NOT TESTED.
+- TEST deployment / UAT: NOT STARTED.
+- Production: NOT changed; no deployment performed.
+
+### Next Action
+1. Review the two-file diff on the integration branch.
+2. Run syntax/static checks and regression tests against a TEST spreadsheet and TEST deployment.
+3. Verify draft create/update, reload/read-back, duplicate save, invalid payload, leader-only permissions, and topic submit/review regression.
+4. Complete UAT before proposing merge or deployment.
