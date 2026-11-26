@@ -127,7 +127,7 @@ function doPost(e){
 const FRONTEND_CONFIG = Object.freeze({
   OWNER: 'worrawutt-source',
   REPOSITORY: 'worrawutsportsci',
-  COMMIT_SHA: '7124f0ca5eeebb9954551424718b4ff9798ddc17',
+  COMMIT_SHA: '7b115f67c0a3cd5d985a1d036f385c7ecad1412e',
   BASE_PATH: 'project/frontend/',
   CACHE_SECONDS: 21600,
   CACHE_CHUNK_SIZE: 20000
@@ -1997,7 +1997,7 @@ function apiAllowResearchTopicRevision(token,versionId,comment){
 
 function apiGetResearchTopicDraft(token){
   const ctx=requireSession_(token,[ROLE.STUDENT]);const {groupId}=assertStudentGroupLeader_(ctx);
-  const row=readObjectsFresh_('RESEARCH_TOPIC_DRAFTS').find(x=>String(x.GROUP_ID)===String(groupId)&&x.STATUS==='DRAFT');
+  const row=readObjectsFresh_('RESEARCH_TOPIC_DRAFTS').find(x=>String(x.GROUP_ID||'').trim()===String(groupId||'').trim()&&String(x.STATUS||'').trim().toUpperCase()==='DRAFT');
   if(row)return {draft:{titleTh:row.TITLE_TH||'',titleEn:row.TITLE_EN||'',problem:row.PROBLEM_STATEMENT||'',objectives:row.OBJECTIVES||'',significance:row.RESEARCH_SIGNIFICANCE||'',updatedAt:row.UPDATED_AT instanceof Date?row.UPDATED_AT.getTime():String(row.UPDATED_AT||''),source:'DRAFT'}};
   const latest=latestResearchTopicVersion_(groupId);
   if(latest&&latest.REVIEW_STATUS==='REVISION_REQUIRED')return {draft:{titleTh:latest.TITLE_TH||'',titleEn:latest.TITLE_EN||'',problem:latest.PROBLEM_STATEMENT||'',objectives:latest.OBJECTIVES||'',significance:latest.RESEARCH_SIGNIFICANCE||'',updatedAt:latest.SUBMITTED_AT instanceof Date?latest.SUBMITTED_AT.getTime():String(latest.SUBMITTED_AT||''),source:'REVISION_REQUIRED',versionNo:Number(latest.VERSION_NO)||0,reviewComment:latest.REVIEW_COMMENT||''}};
@@ -2029,7 +2029,7 @@ function apiSaveResearchTopicDraft(token,payload){
       throw new Error('บันทึกร่างแล้ว แต่ไม่สามารถยืนยันแถวข้อมูลที่บันทึกได้ กรุณาตรวจสอบชีตร่างหัวข้อ');
     }
     const persisted={titleTh:String(saved.TITLE_TH||''),titleEn:String(saved.TITLE_EN||''),problem:String(saved.PROBLEM_STATEMENT||''),objectives:String(saved.OBJECTIVES||''),significance:String(saved.RESEARCH_SIGNIFICANCE||''),updatedAt:saved.UPDATED_AT||now};
-    const normalize=value=>String(value===undefined||value===null?'':value).replace(/\\r\\n?/g,'\\n').trim();
+    const normalize=value=>String(value===undefined||value===null?'':value).replace(/\r\n?/g,'\n').trim();
     const fieldMap={TITLE_TH:'titleTh',TITLE_EN:'titleEn',PROBLEM_STATEMENT:'problem',OBJECTIVES:'objectives',RESEARCH_SIGNIFICANCE:'significance'};
     const verified=Object.keys(values).every(k=>normalize(persisted[fieldMap[k]])===normalize(values[k]));
     if(!verified)return {ok:false,saved:true,verified:false,message:'บันทึกร่างลงชีตแล้ว แต่ข้อมูลที่อ่านกลับยังไม่ตรงกับข้อมูลที่ส่ง กรุณาตรวจสอบข้อมูลร่างก่อนส่งซ้ำ',updatedAt:persisted.updatedAt instanceof Date?persisted.updatedAt.getTime():String(persisted.updatedAt||''),draft:Object.assign({},persisted,{updatedAt:persisted.updatedAt instanceof Date?persisted.updatedAt.getTime():String(persisted.updatedAt||'')})};
