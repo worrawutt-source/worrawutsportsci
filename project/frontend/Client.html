@@ -558,12 +558,41 @@ async function renderMeetingAttendance(){
  try{
   if(role==='ADMIN'){
    const d=await callApi('apiAdminGetMeetingMonitoring',sessionToken);a.textContent='';
-   const sum=el('div',{className:'stats-grid'});
-   [['กลุ่มทั้งหมด',d.summary.groups],['รายการนัดหมาย',d.summary.total],['ส่งแล้ว',d.summary.submitted],['ตรวจสอบแล้ว',d.summary.verified],['ยังไม่ส่ง',d.summary.notSubmitted],['ส่งกลับแก้ไข',d.summary.revision]].forEach(x=>{const c=el('div',{className:'stat-card'});c.append(el('div',{className:'brand-sub'},x[0]),el('h2',{},String(x[1])));sum.append(c)});
-   a.append(el('h2',{},'ติดตามบันทึกการเข้าพบอาจารย์ที่ปรึกษา'),el('p',{},'หน้านี้ใช้ตรวจสอบสถานะการส่งเอกสารของแต่ละกลุ่มเท่านั้น Admin ไม่มีหน้าที่บันทึกการเข้าพบหรืออัปโหลดเอกสารแทนนักศึกษา'),sum);
-   const filter=el('input',{type:'search',placeholder:'ค้นหาชื่อกลุ่มหรืออาจารย์ที่ปรึกษา'}),statusFilter=el('select');[['ALL','ทุกสถานะ'],['NOT_SUBMITTED','ยังไม่ส่ง'],['SUBMITTED','ส่งแล้ว/รอตรวจ'],['VERIFIED','ตรวจสอบแล้ว'],['REVISION_REQUIRED','ส่งกลับแก้ไข']].forEach(x=>statusFilter.append(el('option',{value:x[0]},x[1])));
-   const list=el('div');function draw(){list.textContent='';d.groups.filter(g=>(!filter.value||(g.groupName+' '+g.advisor).toLowerCase().includes(filter.value.toLowerCase()))&&g.meetings.some(m=>statusFilter.value==='ALL'||(statusFilter.value==='SUBMITTED'?['SUBMITTED','ACTIVE'].includes(m.status):m.status===statusFilter.value))).forEach(g=>{const box=el('div',{className:'notice'});box.append(el('h3',{},g.groupName+' · ที่ปรึกษา '+g.advisor));const table=el('div',{className:'table-wrap'}),t=el('table'),h=el('tr');['ครั้ง/สัปดาห์','สถานะ','วันที่ส่ง','เอกสาร'].forEach(v=>h.append(el('th',{},v)));t.append(h);g.meetings.forEach(m=>{const tr=el('tr');tr.append(el('td',{},'ครั้งที่ '+m.meetingNo+' · สัปดาห์ '+m.week),el('td',{},({NOT_SUBMITTED:'ยังไม่ส่ง',SUBMITTED:'รอตรวจสอบ',ACTIVE:'รอตรวจสอบ',VERIFIED:'ตรวจสอบแล้ว',REVISION_REQUIRED:'ส่งกลับแก้ไข'})[m.status]||m.status),el('td',{},m.uploadedAt?new Date(m.uploadedAt).toLocaleString('th-TH'):'—'));const td=el('td');if(m.url)td.append(el('a',{href:m.url,target:'_blank',rel:'noopener noreferrer'},m.fileName||'เปิด PDF'));else td.textContent='—';tr.append(td);t.append(tr)});table.append(t);box.append(table);list.append(box)});}
-   filter.oninput=draw;statusFilter.onchange=draw;a.append(el('label',{},'ค้นหา'),filter,el('label',{},'สถานะ'),statusFilter,list);draw();return;
+   const sum=el('div',{className:'meeting-monitor-summary-grid'});
+   [['กลุ่มทั้งหมด',d.summary.groups],['รายการนัดหมาย',d.summary.total],['ส่งแล้ว',d.summary.submitted],['ตรวจสอบแล้ว',d.summary.verified],['ยังไม่ส่ง',d.summary.notSubmitted],['ส่งกลับแก้ไข',d.summary.revision]].forEach(x=>{const c=el('div',{className:'meeting-monitor-stat-card'});c.append(el('span',{},x[0]),el('strong',{},String(x[1])));sum.append(c)});
+   a.append(el('h2',{},'ติดตามบันทึกการเข้าพบอาจารย์ที่ปรึกษา'),el('p',{},'ติดตามสถานะการส่งบันทึกของแต่ละกลุ่ม อาจารย์ประจำวิชาใช้ตรวจสอบภาพรวมและค้นหารายการที่ต้องติดตาม'),sum);
+   const filter=el('input',{type:'search',placeholder:'ค้นหาชื่อกลุ่มหรืออาจารย์ที่ปรึกษ'}),statusFilter=el('select');
+   [['ALL','ทุกสถานะ'],['NOT_SUBMITTED','ยังไม่ส่ง'],['SUBMITTED','ส่งแล้ว/รอตรวจ'],['VERIFIED','ตรวจสอบแล้ว'],['REVISION_REQUIRED','ส่งกลับแก้ไข']].forEach(x=>statusFilter.append(el('option',{value:x[0]},x[1])));
+   const toolbar=el('div',{className:'meeting-monitor-toolbar'});
+   toolbar.append(el('label',{className:'meeting-monitor-filter'},'ค้นหากลุ่ม/อาจารย์ที่ปรึกษา',filter),el('label',{className:'meeting-monitor-filter'},'สถานะที่ต้องการติดตาม',statusFilter));
+   const list=el('div',{className:'meeting-monitor-table-wrap'});
+   const statusText={NOT_SUBMITTED:'ยังไม่ส่ง',SUBMITTED:'รอตรวจ',ACTIVE:'รอตรวจ',VERIFIED:'ตรวจแล้ว',REVISION_REQUIRED:'ส่งกลับแก้ไข'};
+   const matchesStatus=m=>statusFilter.value==='ALL'||(statusFilter.value==='SUBMITTED'?['SUBMITTED','ACTIVE'].includes(m.status):m.status===statusFilter.value);
+   function draw(){
+    list.textContent='';
+    const groups=d.groups.filter(g=>(!filter.value||(g.groupName+' '+g.advisor).toLowerCase().includes(filter.value.toLowerCase()))&&(statusFilter.value==='ALL'||g.meetings.some(matchesStatus)));
+    if(!groups.length){list.append(el('div',{className:'notice'},'ไม่พบกลุ่มหรือรายการตามเงื่อนไข'));return;}
+    const table=el('table',{className:'meeting-monitor-table'}),head=el('thead'),hr=el('tr');
+    hr.append(el('th',{},'กลุ่มวิจัย / อาจารย์ที่ปรึกษา'));
+    [2,4,6,8,10,12,14].forEach((w,i)=>hr.append(el('th',{},'ครั้งที่ '+(i+1),el('small',{},'สัปดาห์ '+w))));
+    head.append(hr);table.append(head);
+    const body=el('tbody');
+    groups.forEach(g=>{
+     const tr=el('tr'),groupCell=el('td',{className:'meeting-monitor-group-cell'});
+     groupCell.append(el('strong',{},g.groupName),el('small',{},'ที่ปรึกษา: '+(g.advisor||'ยังไม่กำหนด')));tr.append(groupCell);
+     g.meetings.forEach(m=>{
+      const td=el('td',{className:'meeting-monitor-status-cell'+(matchesStatus(m)?' is-filter-match':'')});
+      const badge=el('span',{className:'meeting-monitor-status-badge status-'+String(m.status||'').toLowerCase()},statusText[m.status]||m.status);
+      td.append(badge);
+      if(m.uploadedAt)td.append(el('small',{},new Date(m.uploadedAt).toLocaleDateString('th-TH')));
+      if(m.url)td.append(el('a',{href:m.url,target:'_blank',rel:'noopener noreferrer',className:'meeting-monitor-file-link'},'เปิด PDF'));
+      tr.append(td);
+     });
+     body.append(tr);
+    });
+    table.append(body);list.append(table);
+   }
+   filter.oninput=draw;statusFilter.onchange=draw; a.append(toolbar,list);draw();return;
   }
   const report=await callApi('apiGetAssessmentReport',sessionToken);a.textContent='';
   if(!report.length){a.append(el('p',{},'ยังไม่พบกลุ่มวิจัยที่เชื่อมโยงกับบัญชีนี้'));return;}
