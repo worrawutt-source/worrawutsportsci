@@ -633,3 +633,24 @@ Latest UI correction source references:
 UI correction review note (2026-11-26): The screenshots exposed that the existing `el()` helper accepts only one text argument and ignores nested controls passed as additional arguments. The meeting-report form now uses a local DOM builder/field helper that appends each control explicitly. This fix is scoped to the meeting-report workflow; the global helper was not changed to avoid unrelated UI regression.
 
 Latest Client commit after duplicate heading removal: `8252ee9dd9136b57699640fc92895d6e3d0ae420`.
+
+
+## 22. MEETING-ONLINE — Full-width form fields and meeting-specific data behavior (2026-11-26)
+
+User requested wider writing fields and clarified behavior when changing meeting number.
+
+Implemented on `perf/perf-01-advisor-dashboard-load`:
+- Form uses a single-column layout; each topic's textarea spans the full available content width.
+- Textareas have a 150px minimum height and increased padding/line-height for readability.
+- Follow-up tasks are stacked vertically; each task description occupies full width, with its due-date selector below.
+- Each meeting report is retrieved and saved by the composite key `GROUP_ID + MEETING_NO`; switching meeting number loads the saved report for that specific meeting. If no report exists, the fields are cleared to a new blank form. Existing saved reports are not copied between meetings.
+- Unsaved edits are detected before changing meeting number; browser confirmation warns that unsaved content will be discarded if the user proceeds. Cancel restores the previous meeting selection.
+
+Source refs:
+- Client commit / immutable Frontend pin: `81215bae9ffabdf59eca7b0d52e5082f1bdf8e19`
+- Backend pin commit: `ea6ac4e227ca51762b8d5e8a67aa66beb3d85ae1`
+- Styles commit: `65e4729baef41f67cd2e647c891fef78141ad383`
+- Client and GAS syntax checks: PASS
+- Static CSS/data-key/pin checks: PASS
+- GAS Runtime, browser behavior, TEST deployment and UAT: NOT TESTED / PENDING
+- Production: unchanged
