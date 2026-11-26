@@ -40,6 +40,7 @@ const SCHEMA = Object.freeze({
   ADVISOR_MAGIC_LINKS: ['LINK_ID','USER_ID','EMAIL','TOKEN_HASH','EXPIRES_AT','CREATED_AT','USED_AT'],
   MEETING_RECORDS: ['MEETING_ID','GROUP_ID','MEETING_NO','MEETING_WEEK','MEETING_DATE','STUDENT_ID','ATTENDANCE_STATUS','NOTES','RECORDED_BY','UPDATED_AT'],
   MEETING_FILES: ['FILE_RECORD_ID','GROUP_ID','MEETING_NO','MEETING_WEEK','FILE_NAME','MIME_TYPE','FILE_SIZE','DRIVE_FILE_ID','DRIVE_URL','UPLOADED_BY','UPLOADED_AT','STATUS','NOTES','VERIFIED_BY','VERIFIED_AT','REVIEW_COMMENT'],
+  MEETING_REPORTS: ['REPORT_ID','GROUP_ID','MEETING_NO','MEETING_WEEK','MEETING_DATE','PREPARATION_PROGRESS','AGENDA_1','AGENDA_2','AGENDA_3','PROBLEMS','CONSULTATION_SUMMARY','NEXT_ACTION_1','DUE_DATE_1','NEXT_ACTION_2','DUE_DATE_2','NEXT_ACTION_3','DUE_DATE_3','STATUS','CREATED_BY','UPDATED_BY','CREATED_AT','UPDATED_AT','SUBMITTED_AT','REVIEWED_BY','REVIEWED_AT','REVIEW_COMMENT','VERSION'],
   ASSESSMENT_SETTINGS: ['SETTING_KEY','SETTING_VALUE','UPDATED_AT','UPDATED_BY'],
   GROUP_SCORES: ['GROUP_ID','A1_SCORE','A2_SCORE','A3_SCORE','A4_GROUP_SCORE','A4_ADVISOR_USER_ID','UPDATED_AT','UPDATED_BY'],
   INDIVIDUAL_SCORES: ['STUDENT_ID','GROUP_ID','A4_INDIVIDUAL_SCORE','A5_SCORE','A6_SCORE','ADMIN_NOTE','UPDATED_AT','UPDATED_BY'],
@@ -1475,6 +1476,92 @@ function apiRecordMeetingAttendance(token,payload){
 }
 
 /**
+ * Online meeting report form: one current report per group and meeting number.
+ * Students may save drafts or submit; assigned advisors may read/review.
+ */
+function apiListMeetingReports(token,groupId,meetingNo){
+  const ctx=requireSession_(token,[ROLE.STUDENT,ROLE.ADVISOR,ROLE.ADMIN]);
+  groupId=String(groupId||'').trim();meetingNo=Number(meetingNo);
+  if(!groupId||!Number.isInteger(meetingNo)||meetingNo<1||meetingNo>7)throw new Error('ข้อมูลกลุ่มหรือครั้งที่เข้าพบไม่ถูกต้อง');
+  assertGroupAccess_(ctx,groupId);
+  const rows=readObjectsFresh_('MEETING_REPORTS').filter(r=>String(r.GROUP_ID)===groupId&&Number(r.MEETING_NO)===meetingNo)
+    .sort((a,b)=>Number(b.VERSION||0)-Number(a.VERSION||0)||new Date(b.UPDATED_AT||0)-new Date(a.UPDATED_AT||0));
+  const r=rows[0];
+  if(!r)return {report:null,canEdit:ctx.user.ROLE_ID===ROLE.STUDENT,canReview:ctx.user.ROLE_ID===ROLE.ADVISOR};
+  return sanitizeForClient_({report:{
+    reportId:String(r.REPORT_ID),groupId:String(r.GROUP_ID),meetingNo:Number(r.MEETING_NO),meetingWeek:Number(r.MEETING_WEEK),
+    meetingDate:r.MEETING_DATE?formatDateOnly_(r.MEETING_DATE):'',preparationProgress:String(r.PREPARATION_PROGRESS||''),
+    agenda:[String(r.AGENDA_1||''),String(r.AGENDA_2||''),String(r.AGENDA_3||'')],problems:String(r.PROBLEMS||''),
+    consultationSummary:String(r.CONSULTATION_SUMMARY||''),
+    nextActions:[String(r.NEXT_ACTION_1||''),String(r.NEXT_ACTION_2||''),String(r.NEXT_ACTION_3||'')],
+    dueDates:[r.DUE_DATE_1?formatDateOnly_(r.DUE_DATE_1):'',r.DUE_DATE_2?formatDateOnly_(r.DUE_DATE_2):'',r.DUE_DATE_3?formatDateOnly_(r.DUE_DATE_3):''],
+    status:String(r.STATUS||'DRAFT'),createdAt:r.CREATED_AT?new Date(r.CREATED_AT).toISOString():'',
+    updatedAt:r.UPDATED_AT?new Date(r.UPDATED_AT).toISOString():'',
+    submittedAt:r.SUBMITTED_AT?new Date(r.SUBMITTED_AT).toISOString():'',
+    reviewedAt:r.REVIEWED_AT?new Date(r.REVIEWED_AT).toISOString():'',
+    reviewComment:String(r.REVIEW_COMMENT||''),version:Number(r.VERSION||1)
+  },canEdit:ctx.user.ROLE_ID===ROLE.STUDENT&&['DRAFT','REVISION_REQUIRED'].includes(String(r.STATUS)),canReview:ctx.user.ROLE_ID===ROLE.ADVISOR&&['SUBMITTED','REVISION_REQUIRED'].includes(String(r.STATUS))});
+}
+
+/** Student group representative saves or submits structured meeting report. */
+function apiSaveMeetingReport(token,payload){
+  const ctx=requireSession_(token,[ROLE.STUDENT]);payload=payload||{};
+  const groupId=String(payload.groupId||'').trim(),no=Number(payload.meetingNo),week=[2,4,6,8,10,12,14][no-1];
+  if(!groupId||!week)throw new Error('กรุณาเลือกกลุ่มและครั้งที่เข้าพบให้ถูกต้อง');
+  assertGroupAccess_(ctx,groupId);
+  const text=(v,max)=>String(v||'').trim().slice(0,max);
+  const p={
+    meetingDate:String(payload.meetingDate||'').trim(),
+    preparationProgress:text(payload.preparationProgress,4000),
+    agenda:(Array.isArray(payload.agenda)?payload.agenda:[]).slice(0,3).map(x=>text(x,1200)),
+    problems:text(payload.problems,4000),
+    consultationSummary:text(payload.consultationSummary,5000),
+    nextActions:(Array.isArray(payload.nextActions)?payload.nextActions:[]).slice(0,3).map(x=>text(x,1200)),
+    dueDates:(Array.isArray(payload.dueDates)?payload.dueDates:[]).slice(0,3).map(x=>String(x||'').trim())
+  };
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(p.meetingDate)||isNaN(new Date(p.meetingDate+'T00:00:00').getTime()))throw new Error('กรุณาระบุวันที่เข้าพบ');
+  if(!p.preparationProgress||p.agenda.some(x=>!x)||!p.problems||!p.consultationSummary||p.nextActions.some(x=>!x)||p.dueDates.some(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x)))throw new Error('กรุณากรอกข้อมูลที่จำเป็นให้ครบ รวมถึง Agenda 3 ประเด็นและงานที่ต้องดำเนินการ 3 รายการ');
+  const lock=LockService.getScriptLock();lock.waitLock(60000);
+  try{
+    const sh=sheet_('MEETING_REPORTS'),rows=readObjectsFresh_('MEETING_REPORTS').filter(r=>String(r.GROUP_ID)===groupId&&Number(r.MEETING_NO)===no).sort((a,b)=>Number(b.VERSION||0)-Number(a.VERSION||0));
+    const old=rows[0],now=new Date(),status=String(payload.action||'DRAFT')==='SUBMIT'?'SUBMITTED':'DRAFT';
+    if(old&&!['DRAFT','REVISION_REQUIRED'].includes(String(old.STATUS)))throw new Error('บันทึกครั้งนี้ถูกส่งแล้วหรืออาจารย์ตรวจแล้ว ไม่สามารถแก้ไขได้');
+    const vals={
+      REPORT_ID:old?old.REPORT_ID:Utilities.getUuid(),GROUP_ID:groupId,MEETING_NO:no,MEETING_WEEK:week,MEETING_DATE:new Date(p.meetingDate+'T00:00:00'),
+      PREPARATION_PROGRESS:p.preparationProgress,AGENDA_1:p.agenda[0],AGENDA_2:p.agenda[1],AGENDA_3:p.agenda[2],PROBLEMS:p.problems,
+      CONSULTATION_SUMMARY:p.consultationSummary,NEXT_ACTION_1:p.nextActions[0],DUE_DATE_1:new Date(p.dueDates[0]+'T00:00:00'),
+      NEXT_ACTION_2:p.nextActions[1],DUE_DATE_2:new Date(p.dueDates[1]+'T00:00:00'),NEXT_ACTION_3:p.nextActions[2],DUE_DATE_3:new Date(p.dueDates[2]+'T00:00:00'),
+      STATUS,CREATED_BY:old?old.CREATED_BY:ctx.user.USER_ID,UPDATED_BY:ctx.user.USER_ID,CREATED_AT:old?old.CREATED_AT:now,UPDATED_AT:now,
+      SUBMITTED_AT:status==='SUBMITTED'?now:'',REVIEWED_BY:'',REVIEWED_AT:'',REVIEW_COMMENT:'',VERSION:old?Number(old.VERSION||1):1
+    };
+    if(old){const headers=SCHEMA.MEETING_REPORTS;headers.forEach((h,i)=>sh.getRange(old._row,i+1).setValue(vals[h]===undefined?'':vals[h]));}
+    else appendObject_('MEETING_REPORTS',vals);
+    SpreadsheetApp.flush();logSystem_(status==='SUBMITTED'?'MEETING_REPORT_SUBMITTED':'MEETING_REPORT_DRAFT_SAVED','GROUP',groupId,{meetingNo:no,reportId:vals.REPORT_ID},ctx.user.USER_ID);
+    return {ok:true,message:status==='SUBMITTED'?'ส่งบันทึกการเข้าพบแล้ว':'บันทึกฉบับร่างแล้ว',status};
+  }finally{lock.releaseLock();}
+}
+
+/** Assigned advisor reviews a structured online meeting report. */
+function apiAdvisorReviewMeetingReport(token,reportId,decision,comment){
+  const ctx=requireSession_(token,[ROLE.ADVISOR]);
+  if(!['VERIFIED','REVISION_REQUIRED'].includes(String(decision)))throw new Error('สถานะตรวจสอบไม่ถูกต้อง');
+  const lock=LockService.getScriptLock();lock.waitLock(60000);
+  try{
+    const rows=readObjectsFresh_('MEETING_REPORTS'),row=rows.find(r=>String(r.REPORT_ID)===String(reportId));
+    if(!row)throw new Error('ไม่พบแบบบันทึกการเข้าพบ');
+    assertGroupAccess_(ctx,String(row.GROUP_ID));
+    const latest=rows.filter(r=>String(r.GROUP_ID)===String(row.GROUP_ID)&&Number(r.MEETING_NO)===Number(row.MEETING_NO)).sort((a,b)=>Number(b.VERSION||0)-Number(a.VERSION||0))[0];
+    if(!latest||String(latest.REPORT_ID)!==String(row.REPORT_ID))throw new Error('บันทึกนี้ไม่ใช่ฉบับล่าสุด');
+    if(!['SUBMITTED','REVISION_REQUIRED'].includes(String(row.STATUS)))throw new Error('สถานะบันทึกไม่สามารถตรวจได้');
+    const sh=sheet_('MEETING_REPORTS'),headers=SCHEMA.MEETING_REPORTS,now=new Date();
+    const vals={STATUS:decision,REVIEWED_BY:ctx.user.USER_ID,REVIEWED_AT:now,REVIEW_COMMENT:String(comment||'').trim().slice(0,2000),UPDATED_BY:ctx.user.USER_ID,UPDATED_AT:now};
+    Object.keys(vals).forEach(k=>{const i=headers.indexOf(k);if(i>=0)sh.getRange(row._row,i+1).setValue(vals[k]);});
+    SpreadsheetApp.flush();logSystem_('MEETING_REPORT_REVIEWED','GROUP',row.GROUP_ID,{meetingNo:row.MEETING_NO,reportId,decision},ctx.user.USER_ID);
+    return {ok:true,message:decision==='VERIFIED'?'อาจารย์ตรวจบันทึกแล้ว':'ส่งบันทึกกลับให้นักศึกษาแก้ไขแล้ว'};
+  }finally{lock.releaseLock();}
+}
+
+/**
  * Student-only meeting report submission to a private Drive folder.
  * Maximum upload size: 8 MB. Advisor verifies; Admin has read-only monitoring.
  */
@@ -1556,12 +1643,22 @@ function apiListMeetingPdfs(token,groupId,meetingNo){
 function apiAdminGetMeetingMonitoring(token){
   requireSession_(token,[ROLE.ADMIN]);
   const groups=readObjectsFresh_('RESEARCH_GROUPS').filter(g=>g.STATUS==='ACTIVE');
+  const reports=readObjectsFresh_('MEETING_REPORTS').filter(r=>['SUBMITTED','VERIFIED','REVISION_REQUIRED'].includes(String(r.STATUS)));
   const files=readObjectsFresh_('MEETING_FILES').filter(f=>['SUBMITTED','VERIFIED','REVISION_REQUIRED','ACTIVE'].includes(String(f.STATUS)));
   const assignments=readObjectsFresh_('ADVISOR_ASSIGNMENTS').filter(a=>a.STATUS==='APPROVED');
-  const users=readObjectsFresh_('SYS_USERS');
-  const weeks=[2,4,6,8,10,12,14];
-  const rows=groups.map(g=>{const as=assignments.find(a=>a.GROUP_ID===g.GROUP_ID);const au=as&&users.find(u=>u.USER_ID===as.ADVISOR_USER_ID);const meetings=weeks.map((w,i)=>{const ff=files.filter(f=>String(f.GROUP_ID)===String(g.GROUP_ID)&&Number(f.MEETING_NO)===i+1).sort((a,b)=>new Date(b.UPLOADED_AT)-new Date(a.UPLOADED_AT));const latest=ff[0];return {meetingNo:i+1,week:w,status:!latest?'NOT_SUBMITTED':String(latest.STATUS),fileName:latest?latest.FILE_NAME:'',uploadedAt:latest&&latest.UPLOADED_AT?new Date(latest.UPLOADED_AT).toISOString():'',url:latest?latest.DRIVE_URL:'',reviewComment:latest?String(latest.REVIEW_COMMENT||''):''};});return {groupId:g.GROUP_ID,groupName:g.GROUP_NAME,advisor:au?au.DISPLAY_NAME:'ยังไม่กำหนด',meetings};});
-  const all=rows.flatMap(x=>x.meetings);return sanitizeForClient_({groups:rows,summary:{groups:rows.length,total:all.length,submitted:all.filter(x=>['SUBMITTED','VERIFIED','ACTIVE','REVISION_REQUIRED'].includes(x.status)).length,verified:all.filter(x=>x.status==='VERIFIED').length,notSubmitted:all.filter(x=>x.status==='NOT_SUBMITTED').length,revision:all.filter(x=>x.status==='REVISION_REQUIRED').length}});
+  const users=readObjectsFresh_('SYS_USERS'),weeks=[2,4,6,8,10,12,14];
+  const rows=groups.map(g=>{
+    const as=assignments.find(a=>a.GROUP_ID===g.GROUP_ID),au=as&&users.find(u=>u.USER_ID===as.ADVISOR_USER_ID);
+    const meetings=weeks.map((w,i)=>{
+      const online=reports.filter(r=>String(r.GROUP_ID)===String(g.GROUP_ID)&&Number(r.MEETING_NO)===i+1).sort((a,b)=>Number(b.VERSION||0)-Number(a.VERSION||0))[0];
+      const legacy=files.filter(f=>String(f.GROUP_ID)===String(g.GROUP_ID)&&Number(f.MEETING_NO)===i+1).sort((a,b)=>new Date(b.UPLOADED_AT)-new Date(a.UPLOADED_AT))[0];
+      const latest=online||legacy;
+      return {meetingNo:i+1,week:w,status:!latest?'NOT_SUBMITTED':String(latest.STATUS),reportId:online?String(online.REPORT_ID):'',fileName:legacy?String(legacy.FILE_NAME||''):'',uploadedAt:latest&&latest.SUBMITTED_AT?new Date(latest.SUBMITTED_AT).toISOString():latest&&latest.UPLOADED_AT?new Date(latest.UPLOADED_AT).toISOString():'',url:legacy?String(legacy.DRIVE_URL||''):'',reviewComment:latest?String(latest.REVIEW_COMMENT||''):''};
+    });
+    return {groupId:g.GROUP_ID,groupName:g.GROUP_NAME,advisor:au?au.DISPLAY_NAME:'ยังไม่กำหนด',meetings};
+  });
+  const all=rows.flatMap(x=>x.meetings);
+  return sanitizeForClient_({groups:rows,summary:{groups:rows.length,total:all.length,submitted:all.filter(x=>['SUBMITTED','VERIFIED','REVISION_REQUIRED','ACTIVE'].includes(x.status)).length,verified:all.filter(x=>x.status==='VERIFIED').length,notSubmitted:all.filter(x=>x.status==='NOT_SUBMITTED').length,revision:all.filter(x=>x.status==='REVISION_REQUIRED').length}});
 }
 
 /** Advisor verifies or requests revision of the latest group submission. */
@@ -2374,7 +2471,7 @@ const AUTO_CREATE_WORKFLOW_SHEETS_ = Object.freeze([
   'ADVISOR_FEEDBACK',
   'PROGRESS_WEEK_SETTINGS',
   'ADVISOR_INVITATIONS',
-  'ADVISOR_MAGIC_LINKS','GROUP_TASKS',
+  'ADVISOR_MAGIC_LINKS','MEETING_REPORTS','GROUP_TASKS',
   'NOTIFICATIONS','NOTIFICATION_QUEUE','NOTIFICATION_LOG','EARLY_WARNING_RULES','EARLY_WARNING_FLAGS',
   'ETHICS_TRACKING','TASK_COMMENTS','GRADE_RELEASES','GROUP_SCORE_AUDIT','GROUP_DEADLINE_EXTENSIONS'
 ]);
