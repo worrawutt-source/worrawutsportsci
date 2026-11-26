@@ -723,10 +723,35 @@ async function renderStudentTopics(){
     };
     problem.addEventListener('input',updateLengthHints);obj.addEventListener('input',updateLengthHints);updateLengthHints();
     saveDraft.addEventListener('click',async()=>{
-     formHint.textContent='';saveDraft.disabled=true;saveDraft.textContent='กำลังบันทึกร่าง...';
-     try{const r=await callApi('apiSaveResearchTopicDraft',sessionToken,payload());formHint.textContent=r.message;formHint.className='message success';savedHint.textContent='บันทึกล่าสุด: '+new Date(r.updatedAt).toLocaleString('th-TH');}
-     catch(x){formHint.textContent='บันทึกร่างไม่สำเร็จ: '+x.message;formHint.className='message error';}
-     finally{saveDraft.disabled=false;saveDraft.textContent='บันทึกร่างไว้ก่อน';}
+     formHint.textContent='';formHint.className='message';saveDraft.disabled=true;saveDraft.textContent='กำลังบันทึกร่าง...';
+     const requested=payload();
+     const matchesDraft=draft=>{
+      if(!draft)return false;
+      return ['titleTh','titleEn','problem','objectives','significance'].every(k=>String(draft[k]||'')===String(requested[k]||''));
+     };
+     try{
+      let result=null,saveError=null;
+      try{result=await callApi('apiSaveResearchTopicDraft',sessionToken,requested);}
+      catch(err){saveError=err;}
+      if(result&&result.ok===true){
+       formHint.textContent=result.message||'บันทึกร่างหัวข้อวิจัยแล้ว';formHint.className='message success';
+       savedHint.textContent='บันทึกล่าสุด: '+new Date(result.updatedAt||Date.now()).toLocaleString('th-TH');
+      }else{
+       let verified=null,verifyError=null;
+       try{const check=await callApi('apiGetResearchTopicDraft',sessionToken);verified=check&&check.draft||null;}
+       catch(err){verifyError=err;}
+       if(matchesDraft(verified)){
+        formHint.textContent='บันทึกแล้ว (ตรวจสอบจากข้อมูลร่างที่บันทึกไว้)';formHint.className='message success';
+        savedHint.textContent='บันทึกล่าสุด: '+new Date(verified.updatedAt||Date.now()).toLocaleString('th-TH');
+       }else{
+        const detail=(result&&result.message)||(saveError&&saveError.message)||(verifyError&&verifyError.message)||'เซิร์ฟเวอร์ไม่ส่งผลยืนยันการบันทึกร่าง และตรวจไม่พบข้อมูลที่ตรงกับที่กรอก';
+        throw new Error(detail);
+       }
+      }
+     }catch(x){
+      const message=x&&x.message?x.message:String(x||'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
+      formHint.textContent='บันทึกร่างไม่สำเร็จ: '+message;formHint.className='message error';
+     }finally{saveDraft.disabled=false;saveDraft.textContent='บันทึกร่างไว้ก่อน';}
     });
     f.append(el('label',{},'ชื่อเรื่องภาษาไทย'),th,el('label',{},'ชื่อเรื่องภาษาอังกฤษ'),en,el('label',{},'ที่มาและความสำคัญ'),problem,problemCount,problemHint,el('label',{},'วัตถุประสงค์'),obj,objCount,objHint,el('label',{},'ประโยชน์ที่คาดว่าจะได้รับ'),sig,savedHint,formHint,saveDraft,submit);
     f.onsubmit=async e=>{
