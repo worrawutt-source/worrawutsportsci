@@ -678,3 +678,39 @@ Student draft save showed: “เซิร์ฟเวอร์ไม่ส่�
 
 ### Required next action
 Deploy the matching Backend and Frontend versions to TEST, then test draft create and update with short and maximum-length field values. Verify the row in `RESEARCH_TOPIC_DRAFTS` and confirm the API returns `ok:true` with the persisted draft before marking UAT passed.
+
+
+## 24. Research Topic Draft Save Verification — Follow-up Fix
+
+สถานะ ณ 26 พฤศจิกายน 2026: **Source Code committed บน branch `feature/research-topic-lock-review`; ยังไม่ Deploy หลังการแก้ไขครั้งนี้ และยังไม่ผ่าน Runtime Test/UAT**
+
+### Root-cause refinement
+- ชีต TEST แสดงว่าข้อมูลร่างถูกเขียนแล้ว (รวม `TITLE_EN=test sys`) แต่ API/UI ยังแจ้งว่าไม่สำเร็จ
+- ขั้นตอนเดิมค้นหาแถวด้วย `GROUP_ID + STATUS` แล้วตรวจทุก field แบบ exact string จึงมีความเสี่ยงเลือก draft row ที่ไม่ใช่แถวที่เพิ่งเขียน และ false-negative จากรูปแบบข้อความ
+
+### Minimal change
+- Backend เก็บ/ติดตาม `DRAFT_ID` และหมายเลขแถวที่กำลังบันทึก จากนั้นอ่านยืนยันแถวเดียวกันหลัง `SpreadsheetApp.flush()`
+- ตรวจยืนยัน `DRAFT_ID`, `GROUP_ID` และ `STATUS=DRAFT` ก่อนตรวจค่าฟิลด์
+- เปรียบเทียบข้อความโดย normalize CRLF/CR เป็น LF และตัดช่องว่างหัวท้าย เพื่อไม่ให้รูปแบบข้อความทำให้การยืนยันล้มเหลว
+- หากพบแถวที่เขียนแล้วแต่ field mismatch ให้ส่งผลแบบ `saved:true, verified:false` พร้อมข้อความชัดเจน แทนการ throw error ที่ทำให้เข้าใจว่าข้อมูลไม่ถูกบันทึก
+- Frontend fallback verification ใช้ normalization แบบเดียวกัน
+- อัปเดต Backend immutable Frontend SHA ให้ตรงกับ Client commit ใหม่
+- ไม่เปลี่ยน Schema, workflow, permission หรือ Production data
+
+### Commits
+- `project/frontend/Client.html`: `7124f0ca5eeebb9954551424718b4ff9798ddc17`
+- `project/gas-source/code.gs`: `b6f27ce37a60a3cd5463d7088750a6ef6a7e3e15`
+- Frontend SHA pinned in Backend: `7124f0ca5eeebb9954551424718b4ff9798ddc17`
+
+### Validation
+- Backend tracks exact target row and verifies draft ID/group/status: **PASS by source inspection**
+- Backend and Frontend text normalization consistent: **PASS by source inspection**
+- Frontend SHA pin matches Client commit: **PASS by source inspection**
+- Schema/Database migration: **NO CHANGE**
+- GAS Runtime / browser test / repeated-save / duplicate-row scenario: **NOT TESTED**
+- TEST deployment: **NOT DEPLOYED after this fix**
+- UAT: **PENDING**
+- Production: **UNCHANGED**
+
+### Next action
+Update Backend in TEST to commit `b6f27ce37a60a3cd5463d7088750a6ef6a7e3e15` and verify the existing draft row updates in place; confirm UI shows success and no duplicate row is created. Do not run setup or migration.
