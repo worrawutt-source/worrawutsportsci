@@ -787,25 +787,56 @@ async function renderProgressReports(){
  try{
   const d=await getStudentResearchDataOrNoGroup();a.textContent='';
   if(!d.group){a.append(el('div',{className:'notice'},'กรุณาเข้าร่วมกลุ่มวิจัยก่อนส่งรายงานความก้าวหน้า'));return;}
-  const box=el('div',{className:'notice'});
+  const box=el('div',{className:'notice progress-report-workspace'});
   box.append(el('h3',{},'รายงานความก้าวหน้าร่วม · '+d.group.groupName));
-  box.append(el('p',{},d.group.leaderAssigned?'หัวหน้ากลุ่มที่ Admin กำหนดเป็นผู้ส่งรายงานอย่างเป็นทางการ':'สถานะ: รอกำหนดหัวหน้ากลุ่มโดย Admin · สมาชิกทุกคนร่วมจัดทำร่างได้ แต่ยังส่งรายงานอย่างเป็นทางการไม่ได้')); 
+  box.append(el('p',{},d.group.leaderAssigned?'หัวหน้ากลุ่มที่ Admin กำหนดเป็นผู้ส่งรายงานอย่างเป็นทางการ':'สถานะ: รอกำหนดหัวหน้ากลุ่มโดย Admin · สมาชิกทุกคนร่วมจัดทำร่างได้ แต่ยังส่งรายงานอย่างเป็นทางการไม่ได้'));
   const openWeeks=Array.isArray(d.openProgressWeeks)?d.openProgressWeeks:[];
   const allProgress=Array.isArray(d.progress)?d.progress:[];
+  const latestForWeek=week=>allProgress.filter(x=>Number(x.weekNo)===Number(week)).sort((x,y)=>new Date(y.submittedAt||0)-new Date(x.submittedAt||0))[0]||null;
+  const submittedStatuses=['SUBMITTED','RESUBMITTED','APPROVED','PENDING_REVIEW','UNDER_REVIEW'];
+  const needsAction=week=>{const r=latestForWeek(week);return !r||String(r.status||'').toUpperCase()==='REVISION_REQUIRED';};
+  const outstanding=openWeeks.filter(w=>needsAction(w.week)).length;
+  const submitted=openWeeks.filter(w=>{const r=latestForWeek(w.week);return r&&submittedStatuses.includes(String(r.status||'').toUpperCase());}).length;
+  const summary=el('div',{className:'progress-submit-summary'});
+  summary.append(el('div',{className:'progress-summary-item'},el('span',{},'ส่งรายงานแล้ว'),el('strong',{},String(submitted)+' / '+openWeeks.length)));
+  summary.append(el('div',{className:'progress-summary-item '+(outstanding?'needs-action':'all-submitted')},el('span',{},'งานที่ต้องดำเนินการ'),el('strong',{},String(outstanding))));
+  box.append(summary);
   if(!openWeeks.length)box.append(el('div',{className:'message'},'ขณะนี้ยังไม่มีสัปดาห์ที่เปิดรับรายงาน'));
   for(const w of openWeeks){
-    const latest=allProgress.filter(x=>Number(x.weekNo)===Number(w.week)).sort((x,y)=>new Date(y.submittedAt||0)-new Date(x.submittedAt||0))[0];
-    const canEdit=!latest||latest.status==='REVISION_REQUIRED';
+    const latest=latestForWeek(w.week),status=String(latest&&latest.status||'').toUpperCase();
+    const isSubmitted=!!latest&&submittedStatuses.includes(status);
+    const isRevision=!!latest&&status==='REVISION_REQUIRED';
+    const canEdit=!latest||isRevision;
     const isLeader=!!d.group.isLeader;
-    const card=el('div',{className:'notice'});
-    card.append(el('h3',{},'สัปดาห์ที่ '+w.week+' · '+w.title));
+    const card=el('div',{className:'notice progress-week-card '+(isSubmitted?'progress-week-submitted':canEdit?'progress-week-action':'')});
+    const heading=el('div',{className:'progress-week-heading'});
+    heading.append(el('h3',{},'สัปดาห์ที่ '+w.week+' · '+w.title));
+    const badgeText=isSubmitted?(status==='APPROVED'?'อนุมัติแล้ว':'ส่งรายงานแล้ว'):isRevision?'ต้องแก้ไข':'ยังไม่ส่ง';
+    const badgeClass=isSubmitted?'submitted':isRevision?'revision':'action';
+    heading.append(el('span',{className:'progress-state-badge '+badgeClass},badgeText));
+    card.append(heading);
     if(w.description)card.append(el('p',{},'รายละเอียด: '+w.description));
     if(w.deliverable)card.append(el('p',{},'ผลผลิตที่ต้องส่ง: '+w.deliverable));
     if(w.criteria)card.append(el('p',{},'เกณฑ์ตรวจสอบ: '+w.criteria));
     if(w.effectiveDueDate)card.append(el('p',{},'กำหนดส่ง: '+new Date(w.effectiveDueDate).toLocaleDateString('th-TH')));
     if(Number(w.week)===11)card.append(el('p',{className:'notice'},'ข้อควรพิจารณา: หากแผนงานมีการทดลองใช้เครื่องมือหรือ pilot test กับมนุษย์ ให้ตรวจสอบข้อกำหนด REC และการพิจารณาที่เหมาะสมกับกิจกรรมก่อนเริ่มเก็บข้อมูลจากผู้เข้าร่วม ทั้งนี้ไม่ควรสรุปว่าการทดลองใช้ทุกลักษณะใช้กระบวนการพิจารณาแบบเดียวกัน'));
-    if(latest){card.append(el('p',{},'สถานะ: '+progressStatusLabel(latest.status)+(latest.reviewComment?' · ข้อเสนอแนะ: '+latest.reviewComment:'')));if(latest.timelinessStatus)card.append(el('p',{},'สถานะเวลาส่ง: '+({ON_TIME:'ตรงเวลา',LATE:'ส่งล่าช้า',EXTENSION_GRANTED:'ได้รับขยายเวลา',NO_DUE_DATE:'ยังไม่ได้กำหนดวันส่ง'}[latest.timelinessStatus]||latest.timelinessStatus)));if(latest.revisionDueAt)card.append(el('p',{},'กำหนดส่งฉบับแก้ไข: '+new Date(latest.revisionDueAt).toLocaleString('th-TH')));}
-    if(canEdit){
+    if(latest){
+      card.append(el('p',{className:isSubmitted?'progress-submission-confirmation':'progress-status-line'},'สถานะ: '+progressStatusLabel(status)));
+      if(latest.submittedAt)card.append(el('p',{className:'progress-submitted-at'},'ส่งเมื่อ: '+new Date(latest.submittedAt).toLocaleString('th-TH')));
+      if(latest.timelinessStatus)card.append(el('p',{},'สถานะเวลาส่ง: '+({ON_TIME:'ตรงเวลา',LATE:'ส่งล่าช้า',EXTENSION_GRANTED:'ได้รับขยายเวลา',NO_DUE_DATE:'ยังไม่ได้กำหนดวันส่ง'}[latest.timelinessStatus]||latest.timelinessStatus)));
+      if(latest.revisionDueAt)card.append(el('p',{},'กำหนดส่งฉบับแก้ไข: '+new Date(latest.revisionDueAt).toLocaleString('th-TH')));
+      if(latest.reviewComment)card.append(el('div',{className:'progress-review-comment'},'ข้อเสนอแนะจากอาจารย์: '+latest.reviewComment));
+    }
+    if(isSubmitted){
+      const locked=el('div',{className:'progress-locked-panel'});
+      locked.append(el('div',{className:'progress-locked-title'},status==='APPROVED'?'รายงานได้รับอนุมัติแล้ว':'ยืนยันการส่งรายงานเรียบร้อยแล้ว'));
+      locked.append(el('p',{},status==='APPROVED'?'รายงานนี้เสร็จสมบูรณ์และไม่สามารถแก้ไขได้':'ระบบบันทึกรายงานแล้ว ขณะนี้อยู่ระหว่างรออาจารย์ตรวจสอบ ช่องข้อมูลถูกล็อกเพื่อป้องกันการแก้ไขหลังส่ง'));
+      [['งานที่ดำเนินการ',latest.workCompleted],['ปัญหาและอุปสรรค',latest.problems],['แผนดำเนินงานถัดไป',latest.nextActions]].forEach(([label,value])=>{
+        const field=el('label',{className:'progress-readonly-field'},label);
+        const input=el('textarea',{rows:label==='งานที่ดำเนินการ'?5:3,readOnly:'readonly',disabled:'disabled',className:'progress-readonly-input'});input.value=value||'—';field.append(input);locked.append(field);
+      });
+      card.append(locked);
+    } else if(canEdit){
       const existing=await callApi('apiGetGroupProgressDraft',sessionToken,Number(w.week));
       const draft=existing&&existing.draft||{};
       const f=el('form',{className:'form-view'});
@@ -813,11 +844,11 @@ async function renderProgressReports(){
       const problems=el('textarea',{rows:'3',placeholder:'ปัญหา/อุปสรรคที่พบ'});problems.value=draft.problems||'';
       const next=el('textarea',{rows:'3',placeholder:'แผนดำเนินงานถัดไป'});next.value=draft.nextActions||'';
       const save=el('button',{type:'button',className:'secondary'},'บันทึกร่างร่วม');
-      const submit=el('button',{type:'submit',className:'primary'},latest?'ส่งรายงานฉบับแก้ไข':'ยืนยันและส่งรายงาน');
+      const submit=el('button',{type:'submit',className:'primary'},isRevision?'ส่งรายงานฉบับแก้ไข':'ยืนยันและส่งรายงาน');
       const note=el('p',{className:'message'},'ฉบับร่างร่วมของกลุ่ม · ผู้แก้ไขล่าสุด '+(draft.updatedBy||'-')+' · รุ่น '+(draft.versionNo||0));
       save.onclick=async()=>{save.disabled=true;try{const r=await callApi('apiSaveGroupProgressDraft',sessionToken,{weekNo:Number(w.week),workCompleted:work.value,problems:problems.value,nextActions:next.value,lockVersion:draft.versionNo||0});note.textContent=r.message+' (รุ่น '+r.versionNo+')';showOperationStatus(r.message)}catch(e){showOperationStatus(e.message,true)}finally{save.disabled=false}};
       f.append(el('label',{},'งานที่ดำเนินการ (ร่างร่วม)'),work,el('label',{},'ปัญหาและอุปสรรค'),problems,el('label',{},'แผนดำเนินงานถัดไป'),next,note,save);
-      if(isLeader){f.append(submit);submit.disabled=false;f.onsubmit=async e=>{e.preventDefault();submit.disabled=true;try{await callApi('apiSaveGroupProgressDraft',sessionToken,{weekNo:Number(w.week),workCompleted:work.value,problems:problems.value,nextActions:next.value,lockVersion:draft.versionNo||0});const r=await callApi('apiStudentSubmitProgress',sessionToken,{weekNo:Number(w.week)});showOperationStatus(r.message);await renderProgressReports()}catch(x){showOperationStatus(x.message,true)}finally{submit.disabled=false}}}
+      if(isLeader){f.append(submit);submit.disabled=false;f.onsubmit=async e=>{e.preventDefault();submit.disabled=true;save.disabled=true;work.readOnly=true;problems.readOnly=true;next.readOnly=true;try{await callApi('apiSaveGroupProgressDraft',sessionToken,{weekNo:Number(w.week),workCompleted:work.value,problems:problems.value,nextActions:next.value,lockVersion:draft.versionNo||0});const r=await callApi('apiStudentSubmitProgress',sessionToken,{weekNo:Number(w.week)});showOperationStatus(r.message);await renderProgressReports()}catch(x){showOperationStatus(x.message,true);submit.disabled=false;save.disabled=false;work.readOnly=false;problems.readOnly=false;next.readOnly=false}}}
       else f.append(el('p',{className:'notice'},d.group.leaderAssigned?'คุณสามารถร่วมแก้ไขและบันทึกร่างได้ การส่งรายงานอย่างเป็นทางการทำได้โดยหัวหน้ากลุ่มที่ Admin กำหนด':'ยังไม่สามารถส่งรายงานอย่างเป็นทางการได้จนกว่า Admin จะกำหนดหัวหน้ากลุ่ม คุณยังสามารถร่วมแก้ไขและบันทึกร่างได้'));
       card.append(f);
       const activity=el('div',{className:'notice'});activity.append(el('h4',{},'ประวัติการทำงานร่วมกัน'));
