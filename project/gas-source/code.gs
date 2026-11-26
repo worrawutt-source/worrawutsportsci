@@ -127,7 +127,7 @@ function doPost(e){
 const FRONTEND_CONFIG = Object.freeze({
   OWNER: 'worrawutt-source',
   REPOSITORY: 'worrawutsportsci',
-  COMMIT_SHA: '0f64ba5cdb296f7e98a632c3c6b53c5b46ffc726',
+  COMMIT_SHA: '7124f0ca5eeebb9954551424718b4ff9798ddc17',
   BASE_PATH: 'project/frontend/',
   CACHE_SECONDS: 21600,
   CACHE_CHUNK_SIZE: 20000
@@ -2010,16 +2010,30 @@ function apiSaveResearchTopicDraft(token,payload){
   try{
     const latest=latestResearchTopicVersion_(groupId);if(latest)assertResearchTopicEditable_(latest);
     const sh=sheet_('RESEARCH_TOPIC_DRAFTS'),rows=readObjectsFresh_('RESEARCH_TOPIC_DRAFTS');
-    const current=rows.find(x=>String(x.GROUP_ID)===String(groupId)&&x.STATUS==='DRAFT'),now=new Date();
-    if(current){const headers=SCHEMA.RESEARCH_TOPIC_DRAFTS;Object.keys(values).forEach(k=>{const col=headers.indexOf(k);if(col<0)throw new Error('ไม่พบคอลัมน์ร่างหัวข้อ: '+k);sh.getRange(current._row,col+1).setValue(values[k]);});sh.getRange(current._row,headers.indexOf('UPDATED_BY')+1).setValue(ctx.user.USER_ID);sh.getRange(current._row,headers.indexOf('UPDATED_AT')+1).setValue(now);}
-    else appendObject_('RESEARCH_TOPIC_DRAFTS',Object.assign({DRAFT_ID:Utilities.getUuid(),GROUP_ID:groupId},values,{STATUS:'DRAFT',UPDATED_BY:ctx.user.USER_ID,UPDATED_AT:now}));
+    const current=rows.find(x=>String(x.GROUP_ID).trim()===String(groupId).trim()&&String(x.STATUS||'').trim().toUpperCase()==='DRAFT'),now=new Date();
+    const headers=SCHEMA.RESEARCH_TOPIC_DRAFTS,draftId=String(current&&current.DRAFT_ID||Utilities.getUuid());
+    let targetRow=current?Number(current._row):0;
+    if(current){
+      Object.keys(values).forEach(k=>{const col=headers.indexOf(k);if(col<0)throw new Error('ไม่พบคอลัมน์ร่างหัวข้อ: '+k);sh.getRange(targetRow,col+1).setValue(values[k]);});
+      const idCol=headers.indexOf('DRAFT_ID');if(idCol<0)throw new Error('ไม่พบคอลัมน์ DRAFT_ID ในชีตร่างหัวข้อ');
+      if(!current.DRAFT_ID)sh.getRange(targetRow,idCol+1).setValue(draftId);
+      sh.getRange(targetRow,headers.indexOf('UPDATED_BY')+1).setValue(ctx.user.USER_ID);
+      sh.getRange(targetRow,headers.indexOf('UPDATED_AT')+1).setValue(now);
+    }else{
+      appendObject_('RESEARCH_TOPIC_DRAFTS',Object.assign({DRAFT_ID:draftId,GROUP_ID:groupId},values,{STATUS:'DRAFT',UPDATED_BY:ctx.user.USER_ID,UPDATED_AT:now}));
+      targetRow=sh.getLastRow();
+    }
     SpreadsheetApp.flush();
-    const saved=readObjectsFresh_('RESEARCH_TOPIC_DRAFTS').find(x=>String(x.GROUP_ID)===String(groupId)&&x.STATUS==='DRAFT');
-    if(!saved)throw new Error('บันทึกร่างแล้วแต่ตรวจสอบไม่พบแถวข้อมูล กรุณาตรวจสอบชีต TEST และ deployment');
+    const saved=readObjectsFresh_('RESEARCH_TOPIC_DRAFTS').find(x=>Number(x._row)===targetRow);
+    if(!saved||String(saved.DRAFT_ID||'')!==draftId||String(saved.GROUP_ID||'').trim()!==String(groupId).trim()||String(saved.STATUS||'').trim().toUpperCase()!=='DRAFT'){
+      throw new Error('บันทึกร่างแล้ว แต่ไม่สามารถยืนยันแถวข้อมูลที่บันทึกได้ กรุณาตรวจสอบชีตร่างหัวข้อ');
+    }
     const persisted={titleTh:String(saved.TITLE_TH||''),titleEn:String(saved.TITLE_EN||''),problem:String(saved.PROBLEM_STATEMENT||''),objectives:String(saved.OBJECTIVES||''),significance:String(saved.RESEARCH_SIGNIFICANCE||''),updatedAt:saved.UPDATED_AT||now};
-    const verified=Object.keys(values).every(k=>String(persisted[{TITLE_TH:'titleTh',TITLE_EN:'titleEn',PROBLEM_STATEMENT:'problem',OBJECTIVES:'objectives',RESEARCH_SIGNIFICANCE:'significance'}[k]]||'')===String(values[k]||''));
-    if(!verified)throw new Error('บันทึกร่างแล้วแต่ข้อมูลที่อ่านกลับไม่ตรงกับข้อมูลที่ส่ง กรุณาลองใหม่หลังตรวจสอบสถานะ');
-    return {ok:true,message:'บันทึกร่างหัวข้อวิจัยแล้ว ยังไม่ส่งให้อาจารย์พิจารณา',updatedAt:persisted.updatedAt,draft:persisted};
+    const normalize=value=>String(value===undefined||value===null?'':value).replace(/\\r\\n?/g,'\\n').trim();
+    const fieldMap={TITLE_TH:'titleTh',TITLE_EN:'titleEn',PROBLEM_STATEMENT:'problem',OBJECTIVES:'objectives',RESEARCH_SIGNIFICANCE:'significance'};
+    const verified=Object.keys(values).every(k=>normalize(persisted[fieldMap[k]])===normalize(values[k]));
+    if(!verified)return {ok:false,saved:true,verified:false,message:'บันทึกร่างลงชีตแล้ว แต่ข้อมูลที่อ่านกลับยังไม่ตรงกับข้อมูลที่ส่ง กรุณาตรวจสอบข้อมูลร่างก่อนส่งซ้ำ',updatedAt:persisted.updatedAt,draft:persisted};
+    return {ok:true,saved:true,verified:true,message:'บันทึกร่างหัวข้อวิจัยแล้ว ยังไม่ส่งให้อาจารย์พิจารณา',updatedAt:persisted.updatedAt,draft:persisted};
   }finally{lock.releaseLock();}
 }
 function apiStudentSaveResearchTopic(token,payload){
