@@ -195,7 +195,8 @@ function renderDashboard(d){
       const routeLabel=normalizeMenuLabel_(label);
       const advisorRole=currentDashboard.user.roleId==='ADVISOR'||currentDashboard.user.roleId==='RESEARCH_ADVISOR';
       const advisorFallback=advisorRole?['overview','groups','meetings','a4'][i]:'';
-      $('sectionTitle').textContent=label;$('sectionText').textContent='กำลังโหลดข้อมูล...';
+      const isMeetingPage=routeLabel==='บันทึกการเข้าพบ'||routeLabel==='บันทึกการพบอาจารย์'||advisorFallback==='meetings';
+      $('sectionTitle').textContent=isMeetingPage?'':label;$('sectionText').textContent='กำลังโหลดข้อมูล...';
       if(routeLabel==='บัญชีผู้ใช้' && currentDashboard.user.roleId==='ADMIN') await renderUserAdmin();
       else if(routeLabel==='นำเข้ารายชื่อนักศึกษา' && currentDashboard.user.roleId==='ADMIN') await renderExcelImport();
       else if(routeLabel==='บันทึกระบบ' && currentDashboard.user.roleId==='ADMIN') await renderAuditLog();
