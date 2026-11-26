@@ -683,14 +683,14 @@ Approved menu order for STUDENT:
 4. รายงานความก้าวหน้า
 5. งานกลุ่ม
 6. ข้อเสนอแนะ
-7. ประเมินเพื่อน A5
+7. ประเมินเพื่อน
 
-Removed `หัวข้อวิจัย` and `ผลการประเมิน` from the student navigation menu only; their existing frontend functionality/API has not been deleted. `ความก้าวหน้า` was renamed in the menu to `รายงานความก้าวหน้า`; Client retains the old route label as a compatibility alias.
+Removed `หัวข้อวิจัย` and `ผลการประเมิน` from the student navigation menu only; their existing frontend functionality/API has not been deleted. `ความก้าวหน้า` was renamed in the menu to `รายงานความก้าวหน้า`; `ประเมินเพื่อน A5` was shortened to `ประเมินเพื่อน`. Client retains old route labels as compatibility aliases.
 
 Source refs:
-- Backend menu commit: `19217e33427d3028ff0fe910f5113e5d45f259dd`
-- Client route commit / immutable Frontend pin: `d00cfe57b75427def3cf33d02f9849d8633739a6`
-- Backend pin commit: `683576517438d7ca5a6f8731bb2952097c6bcbfd`
+- Backend menu order commit: `19217e33427d3028ff0fe910f5113e5d45f259dd`
+- Client route/label commit / immutable Frontend pin: `bc52450ace9fa702ebafe42781b902c9d8da8171`
+- Backend pin commit: `33a39fb1a1a43c10aa26bdfb2e053d96b9e475c3`
 - Static menu order, route alias, and pin checks: PASS
 - GAS Runtime, browser behavior, TEST deployment and UAT: NOT TESTED / PENDING
 - Production: unchanged
