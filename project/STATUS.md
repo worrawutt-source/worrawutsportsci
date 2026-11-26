@@ -563,13 +563,17 @@ Next Action:
 
 ## 21. MEETING-ONLINE — Structured Online Advisor Meeting Report
 
-สถานะ ณ 26 พฤศจิกายน 2026: **Source Code implementation committed on feature branch; Static cross-file checks and syntax compile PASS; Runtime/TEST/UAT pending**
+สถานะ ณ 26 พฤศจิกายน 2026: **UI correction implementation committed on feature branch; Static cross-file checks and syntax compile PASS; Runtime/TEST/UAT pending**
 
 อนุมัติจากผู้ใช้: เพิ่ม Schema แบบ additive สำหรับแบบบันทึกการเข้าพบออนไลน์ โดยเก็บข้อมูล PDF เดิมไว้ ไม่ลบหรือแก้ข้อมูลย้อนหลัง
 
 ขอบเขตที่ดำเนินการ:
 - เพิ่ม Schema `MEETING_REPORTS` สำหรับบันทึกเนื้อหาแบบ structured fields; เพิ่มชื่อชีตใน `AUTO_CREATE_WORKFLOW_SHEETS_` เพื่อสร้าง/ตรวจ schema แบบ additive เมื่อเรียกใช้ครั้งแรก โดยไม่แตะ `setup.gs`
-- นักศึกษากรอกวันที่, ความก้าวหน้าก่อนพบ, Agenda 3 ประเด็น, ปัญหา/อุปสรรค, สรุปคำปรึกษา, งานต่อ 3 รายการและกำหนดส่ง
+- นักศึกษากรอกวันที่, ความก้าวหน้าก่อนพบ, Agenda 3 ประเด็น, ปัญหา/อุปสรรค, สรุปคำปรึกษา, งานต่อ 3 รายการและกำหนดส่ง โดยทุกช่องสร้าง DOM controls จริงและแสดงพื้นที่พิมพ์ชัดเจน
+- Student UI แสดงชื่อกลุ่มเป็นข้อความคงที่ ไม่ใช้ dropdown; Advisor ยังคงเลือกกลุ่มที่รับผิดชอบได้
+- ใช้ date picker วัน/เดือน/ปี พ.ศ. ทั้งวันที่เข้าพบและกำหนดส่ง; แปลงเป็น ISO Gregorian ก่อนส่ง Backend และแสดงวันที่ประวัติเป็น พ.ศ.
+- เมื่อ SUBMITTED/VERIFIED ซ่อนแบบฟอร์มแก้ไขและแสดงสถานะ/ข้อมูลที่ส่ง; DRAFT และ REVISION_REQUIRED ยังแก้ไขได้ตามสิทธิ์
+- Save Draft รองรับข้อมูลบางส่วน; Submit ตรวจ required fields และวันที่ครบถ้วนฝั่ง Client และ Server
 - รองรับ Save Draft และ Submit; นักศึกษาแก้ไขได้เฉพาะ DRAFT/REVISION_REQUIRED
 - Advisor อ่านบันทึก, ยืนยันตรวจ หรือส่งกลับแก้ไขพร้อม comment; server-side session, role และ group access checks ใช้ API authorization เดิม
 - Admin monitoring อ่านสถานะออนไลน์และ PDF legacy; แสดง UPCOMING เมื่อยังไม่มี attendance record ของครั้งนั้น และนับ NOT_SUBMITTED เฉพาะครั้งที่มีการบันทึกการเข้าพบจริงแต่ยังไม่มีรายงาน
@@ -583,8 +587,8 @@ Next Action:
 - `project/STATUS.md`
 
 Frontend immutable pin:
-- Client snapshot: `b37f5d8dba2d6217c156b2713b85cc996c1d3192`
-- Backend pin commit: `3648f41775ae60d6cb3dec7c9de9a365309c7ff5`
+- Client snapshot: `59d0e43697fdc339b8c5d1e068e53972d8867cfc`
+- Backend pin commit: `76f1185a25076d8c0bae2306cb007a60843f4984`
 
 Static checks planned/completed:
 - Schema and auto-create list contain `MEETING_REPORTS`
@@ -599,9 +603,11 @@ Test status:
 - Schema declaration and safe auto-create allowlist: **PASS**
 - Student UI calls online report APIs; no PDF upload input/API call in meeting form: **PASS**
 - Advisor review API and UI actions present: **PASS**
-- Server validation for exactly 3 Agenda items, 3 next actions, and valid dates: **PASS**
+- Server validation requires complete Agenda 3 items, 3 next actions, and valid dates on SUBMIT; permits partial DRAFT: **PASS**
+- Student group dropdown removed; Thai Buddhist date controls and submitted-state form hiding: **PASS**
+- Local field builder explicitly appends child controls (root cause of missing input controls): **PASS**
 - Admin monitoring distinguishes UPCOMING from NOT_SUBMITTED using recorded meeting attendance: **PASS**
-- Immutable Frontend pin matches Client snapshot `b37f5d8dba2d6217c156b2713b85cc996c1d3192`: **PASS**
+- Immutable Frontend pin matches Client snapshot `59d0e43697fdc339b8c5d1e068e53972d8867cfc`: **PASS**
 - GAS runtime / browser test: **NOT TESTED**
 - TEST deployment: **NOT DEPLOYED**
 - UAT: **PENDING**
@@ -616,8 +622,11 @@ Next Action:
 - Perform static cross-file verification, deploy approved branch to TEST only, confirm new sheet schema, test Student draft/submit/revision, Advisor review, Admin monitoring counts, access control, duplicate/concurrent save, mobile layout and legacy PDF read-only history; then complete UAT. No production deployment without separate approval.
 
 
-Final source references for MEETING-ONLINE:
-- Backend commit: `71e65ff6d419626fe4593111b75d7d358bdc636c`
-- Client commit / immutable frontend pin: `b37f5d8dba2d6217c156b2713b85cc996c1d3192`
-- Styles commit: `e3b69badf9623d1f287e2de3e908372c382a101d`
-- STATUS update is recorded in this commit; Master Plan update is recorded separately on its existing documentation branch because the Master Plan file is not present in this implementation branch.
+Latest UI correction source references:
+- Backend pin commit: `76f1185a25076d8c0bae2306cb007a60843f4984`
+- Client commit / immutable frontend pin: `59d0e43697fdc339b8c5d1e068e53972d8867cfc`
+- Styles commit: `0e9c0c2eede8fa59d7e90035ab2da743f98159a5`
+- STATUS update is recorded in its latest commit; Master Plan update is recorded separately on its existing documentation branch because the Master Plan file is not present in this implementation branch.
+
+
+UI correction review note (2026-11-26): The screenshots exposed that the existing `el()` helper accepts only one text argument and ignores nested controls passed as additional arguments. The meeting-report form now uses a local DOM builder/field helper that appends each control explicitly. This fix is scoped to the meeting-report workflow; the global helper was not changed to avoid unrelated UI regression.
