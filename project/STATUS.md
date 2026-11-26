@@ -757,7 +757,7 @@ Next Action: deploy approved branch to TEST only, verify Advisor sees only assig
 
 ### Validation
 - Static source checks: PASS — one definition each for draft get/save functions; timestamp serialization and read-back verification present; frontend success/fallback handling present; Advisor Meeting and Topic review APIs remain present.
-- Branch comparison against technical base: 2 commits ahead, 0 behind; only `project/gas-source/code.gs` and `project/frontend/Client.html` changed.
+- Branch comparison against technical base: 3 commits ahead, 0 behind (2 source commits + 1 STATUS checkpoint); source changes are limited to `project/gas-source/code.gs` and `project/frontend/Client.html`.
 - Runtime tests: NOT TESTED.
 - TEST deployment / UAT: NOT STARTED.
 - Production: NOT changed; no deployment performed.
