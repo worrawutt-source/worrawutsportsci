@@ -1998,9 +1998,9 @@ function apiAllowResearchTopicRevision(token,versionId,comment){
 function apiGetResearchTopicDraft(token){
   const ctx=requireSession_(token,[ROLE.STUDENT]);const {groupId}=assertStudentGroupLeader_(ctx);
   const row=readObjectsFresh_('RESEARCH_TOPIC_DRAFTS').find(x=>String(x.GROUP_ID)===String(groupId)&&x.STATUS==='DRAFT');
-  if(row)return {draft:{titleTh:row.TITLE_TH||'',titleEn:row.TITLE_EN||'',problem:row.PROBLEM_STATEMENT||'',objectives:row.OBJECTIVES||'',significance:row.RESEARCH_SIGNIFICANCE||'',updatedAt:row.UPDATED_AT||'',source:'DRAFT'}};
+  if(row)return {draft:{titleTh:row.TITLE_TH||'',titleEn:row.TITLE_EN||'',problem:row.PROBLEM_STATEMENT||'',objectives:row.OBJECTIVES||'',significance:row.RESEARCH_SIGNIFICANCE||'',updatedAt:row.UPDATED_AT instanceof Date?row.UPDATED_AT.getTime():String(row.UPDATED_AT||''),source:'DRAFT'}};
   const latest=latestResearchTopicVersion_(groupId);
-  if(latest&&latest.REVIEW_STATUS==='REVISION_REQUIRED')return {draft:{titleTh:latest.TITLE_TH||'',titleEn:latest.TITLE_EN||'',problem:latest.PROBLEM_STATEMENT||'',objectives:latest.OBJECTIVES||'',significance:latest.RESEARCH_SIGNIFICANCE||'',updatedAt:latest.SUBMITTED_AT||'',source:'REVISION_REQUIRED',versionNo:Number(latest.VERSION_NO)||0,reviewComment:latest.REVIEW_COMMENT||''}};
+  if(latest&&latest.REVIEW_STATUS==='REVISION_REQUIRED')return {draft:{titleTh:latest.TITLE_TH||'',titleEn:latest.TITLE_EN||'',problem:latest.PROBLEM_STATEMENT||'',objectives:latest.OBJECTIVES||'',significance:latest.RESEARCH_SIGNIFICANCE||'',updatedAt:latest.SUBMITTED_AT instanceof Date?latest.SUBMITTED_AT.getTime():String(latest.SUBMITTED_AT||''),source:'REVISION_REQUIRED',versionNo:Number(latest.VERSION_NO)||0,reviewComment:latest.REVIEW_COMMENT||''}};
   return {draft:null};
 }
 function apiSaveResearchTopicDraft(token,payload){
@@ -2032,8 +2032,8 @@ function apiSaveResearchTopicDraft(token,payload){
     const normalize=value=>String(value===undefined||value===null?'':value).replace(/\\r\\n?/g,'\\n').trim();
     const fieldMap={TITLE_TH:'titleTh',TITLE_EN:'titleEn',PROBLEM_STATEMENT:'problem',OBJECTIVES:'objectives',RESEARCH_SIGNIFICANCE:'significance'};
     const verified=Object.keys(values).every(k=>normalize(persisted[fieldMap[k]])===normalize(values[k]));
-    if(!verified)return {ok:false,saved:true,verified:false,message:'บันทึกร่างลงชีตแล้ว แต่ข้อมูลที่อ่านกลับยังไม่ตรงกับข้อมูลที่ส่ง กรุณาตรวจสอบข้อมูลร่างก่อนส่งซ้ำ',updatedAt:persisted.updatedAt,draft:persisted};
-    return {ok:true,saved:true,verified:true,message:'บันทึกร่างหัวข้อวิจัยแล้ว ยังไม่ส่งให้อาจารย์พิจารณา',updatedAt:persisted.updatedAt,draft:persisted};
+    if(!verified)return {ok:false,saved:true,verified:false,message:'บันทึกร่างลงชีตแล้ว แต่ข้อมูลที่อ่านกลับยังไม่ตรงกับข้อมูลที่ส่ง กรุณาตรวจสอบข้อมูลร่างก่อนส่งซ้ำ',updatedAt:persisted.updatedAt instanceof Date?persisted.updatedAt.getTime():String(persisted.updatedAt||''),draft:Object.assign({},persisted,{updatedAt:persisted.updatedAt instanceof Date?persisted.updatedAt.getTime():String(persisted.updatedAt||'')})};
+    return {ok:true,saved:true,verified:true,message:'บันทึกร่างหัวข้อวิจัยแล้ว ยังไม่ส่งให้อาจารย์พิจารณา',updatedAt:persisted.updatedAt instanceof Date?persisted.updatedAt.getTime():String(persisted.updatedAt||''),draft:Object.assign({},persisted,{updatedAt:persisted.updatedAt instanceof Date?persisted.updatedAt.getTime():String(persisted.updatedAt||'')})};
   }finally{lock.releaseLock();}
 }
 function apiStudentSaveResearchTopic(token,payload){
