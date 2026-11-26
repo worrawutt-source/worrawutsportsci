@@ -777,7 +777,7 @@ Next Action: deploy approved branch to TEST only, verify Advisor sees only assig
 - Base branch: `integration/phase2-perf-topic-fixes`
 - Base commit: `802e5974a4ac9fe2efed61d4c6381cdcfab39957`
 - Refactor branch: `refactor/phase2-code-modules`
-- Branch comparison: 14 commits ahead, 0 behind; changes confined to `project/gas-source/code.gs` and 13 new numbered `.gs` modules.
+- Branch comparison: 15 commits ahead, 0 behind (14 source-file commits + 1 STATUS checkpoint); source changes are `project/gas-source/code.gs` and 13 new numbered `.gs` modules, plus this STATUS update.
 
 ### Change Scope
 - Replaced `project/gas-source/code.gs` implementation with a module-structure note.
@@ -792,8 +792,8 @@ Next Action: deploy approved branch to TEST only, verify Advisor sees only assig
 - Function inventory: 176 original / 176 split; duplicate function names: 0 — PASS.
 - API inventory: 84 original / 84 split — PASS.
 - Frontend literal `callApi()` references: 74; missing backend API definitions: 0 — PASS.
-- GAS syntax compile: NOT TESTED.
-- GAS Runtime / TEST deployment / browser regression / UAT: NOT TESTED / NOT STARTED.
+- JavaScript syntax parse for all 13 modules: PASS (each module parsed independently).
+- GAS project compile / Runtime / TEST deployment / browser regression / UAT: NOT TESTED / NOT STARTED.
 - Production data and deployment: UNCHANGED.
 
 ### Next Action
