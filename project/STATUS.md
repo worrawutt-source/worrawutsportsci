@@ -599,3 +599,45 @@ Commits:
 - TEST deployment: **NOT DEPLOYED**
 - Production: **UNCHANGED**
 - Required UAT: STUDENT submit/lock; draft-save and direct API attempts while locked; Advisor allow-edit; ADMIN allow-edit; new version submission; older version cannot be unlocked; unauthorized advisor blocked; duplicate action and notification failure handling.
+
+## 22. Student Dashboard Metrics and Safe Topic Submission Response
+
+สถานะ ณ 26 พฤศจิกายน 2026: **Source Code committed บน feature branch; ยังไม่ Deploy และยังไม่ผ่าน GAS Runtime/Browser/UAT**
+
+### ปัญหาที่ตรวจพบ
+- Student Dashboard ใน `apiGetDashboard()` กำหนด `milestones: 0` และ `feedback: 0` ตายตัว ทำให้ตัวเลขไม่สะท้อนข้อมูลจริง
+- Dashboard ไม่มี metric สำหรับจำนวนงานกลุ่มที่ยังดำเนินการ
+- หลังส่งหัวข้อ หาก Frontend ได้ response เป็น `null` อาจแสดง error ทั้งที่ Backend บันทึกเวอร์ชันแล้ว และฟอร์มเดิมยังเปิดให้พิมพ์ต่อได้
+
+### การแก้ไข
+1. คำนวณ `milestones` จากจำนวนสัปดาห์ที่มีรายงานความก้าวหน้าได้รับสถานะ `APPROVED` โดยนับสัปดาห์ไม่ซ้ำ
+2. คำนวณ `feedback` จากข้อเสนอแนะของกลุ่มที่ยังไม่ถูกลบ
+3. เพิ่ม `openTasks` จากงานกลุ่มสถานะ `OPEN`, `IN_PROGRESS`, `BLOCKED`; ไม่นับ `DONE`, `CANCELLED` และ `DELETED`
+4. ปรับ label ของ Dashboard ให้สื่อความหมายของตัวเลข
+5. ปรับการส่งหัวข้อให้ตรวจ response ก่อนอ่าน property และตรวจข้อมูลล่าสุดจาก Backend เมื่อ response ไม่ชัดเจน
+6. หากยืนยันได้ว่าบันทึกแล้ว ให้โหลดหน้าหัวข้อใหม่เพื่อแสดงสถานะล็อก; หากผลยังไม่แน่นอน ให้ล็อก controls และแจ้งนักศึกษาไม่ให้แก้ไข/ส่งซ้ำจนกว่าจะตรวจสอบ
+7. Backend ยังคงใช้ `assertResearchTopicEditable_` และ status workflow เดิม ไม่มีการเพิ่ม Schema
+
+### Files and commits
+- `project/frontend/Client.html`
+  - Commit: `48e8f223f0cf7406c2afbace649f0c10f97d3695`
+- `project/gas-source/code.gs`
+  - Commit: `656947b0e0b19aa21aea8db6e57fa972c966cf1c`
+  - Frontend immutable SHA pinned: `48e8f223f0cf7406c2afbace649f0c10f97d3695`
+- `project/STATUS.md`
+  - Updated in this commit
+
+### Static verification
+- Dashboard metrics no longer use fixed zero values: **PASS**
+- Open task status filter uses existing `GROUP_TASKS` statuses: **PASS**
+- Student topic submit handles null/missing response and verifies saved latest version: **PASS**
+- Frontend immutable SHA matches Client commit: **PASS**
+- Schema/migration: **NO CHANGE**
+
+### Test and release status
+- Static source inspection: **PASS**
+- GAS syntax/runtime: **NOT TESTED**
+- Browser interaction: **NOT TESTED**
+- TEST deployment: **NOT DEPLOYED**
+- UAT: **PENDING**
+- Production: **UNCHANGED**
