@@ -559,12 +559,12 @@ async function renderMeetingAttendance(){
   if(role==='ADMIN'){
    const d=await callApi('apiAdminGetMeetingMonitoring',sessionToken);a.textContent='';
    const sum=el('div',{className:'meeting-monitor-summary-grid'});
-   [['กลุ่มทั้งหมด',d.summary.groups],['รายการนัดหมาย',d.summary.total],['ส่งแล้ว',d.summary.submitted],['ตรวจสอบแล้ว',d.summary.verified],['ยังไม่ส่ง',d.summary.notSubmitted],['ส่งกลับแก้ไข',d.summary.revision]].forEach(x=>{const c=el('div',{className:'meeting-monitor-stat-card'});c.append(el('span',{},x[0]),el('strong',{},String(x[1])));sum.append(c)});
+   [['กลุ่มทั้งหมด',d.summary.groups],['ตามแผน',d.summary.total],['ถึงกำหนด',d.summary.due],['ยังไม่ถึงกำหนด',d.summary.upcoming],['ส่งแล้ว',d.summary.submitted],['ตรวจสอบแล้ว',d.summary.verified],['ยังไม่ส่ง',d.summary.notSubmitted],['ส่งกลับแก้ไข',d.summary.revision]].forEach(x=>{const c=el('div',{className:'meeting-monitor-stat-card'});c.append(el('span',{},x[0]),el('strong',{},String(x[1])));sum.append(c)});
    a.append(el('h2',{},'ติดตามบันทึกการเข้าพบอาจารย์ที่ปรึกษา'),el('p',{},'ติดตามสถานะบันทึกออนไลน์และเอกสารเดิมของแต่ละกลุ่ม'),sum);
    const filter=el('input',{type:'search',placeholder:'ค้นหาชื่อกลุ่มหรืออาจารย์ที่ปรึกษ'}),statusFilter=el('select');
-   [['ALL','ทุกสถานะ'],['NOT_SUBMITTED','ยังไม่ส่ง'],['SUBMITTED','ส่งแล้ว/รอตรวจ'],['VERIFIED','ตรวจสอบแล้ว'],['REVISION_REQUIRED','ส่งกลับแก้ไข']].forEach(x=>statusFilter.append(el('option',{value:x[0]},x[1])));
+   [['ALL','ทุกสถานะ'],['UPCOMING','ยังไม่ถึงกำหนด'],['NOT_SUBMITTED','ถึงกำหนดแต่ยังไม่ส่ง'],['SUBMITTED','ส่งแล้ว/รอตรวจ'],['VERIFIED','ตรวจสอบแล้ว'],['REVISION_REQUIRED','ส่งกลับแก้ไข']].forEach(x=>statusFilter.append(el('option',{value:x[0]},x[1])));
    const toolbar=el('div',{className:'meeting-monitor-toolbar'});toolbar.append(el('label',{className:'meeting-monitor-filter'},'ค้นหากลุ่ม/อาจารย์ที่ปรึกษา',filter),el('label',{className:'meeting-monitor-filter'},'สถานะที่ต้องการติดตาม',statusFilter));
-   const list=el('div',{className:'meeting-monitor-table-wrap'}),statusText={NOT_SUBMITTED:'ยังไม่ส่ง',SUBMITTED:'รอตรวจ',ACTIVE:'รอตรวจ',VERIFIED:'ตรวจแล้ว',REVISION_REQUIRED:'ส่งกลับแก้ไข'};
+   const list=el('div',{className:'meeting-monitor-table-wrap'}),statusText={UPCOMING:'ยังไม่ถึงกำหนด',NOT_SUBMITTED:'ถึงกำหนด · ยังไม่ส่ง',SUBMITTED:'รอตรวจ',ACTIVE:'รอตรวจ',VERIFIED:'ตรวจแล้ว',REVISION_REQUIRED:'ส่งกลับแก้ไข'};
    const matchesStatus=m=>statusFilter.value==='ALL'||(statusFilter.value==='SUBMITTED'?['SUBMITTED','ACTIVE'].includes(m.status):m.status===statusFilter.value);
    function draw(){
     list.textContent='';const groups=d.groups.filter(g=>(!filter.value||(g.groupName+' '+g.advisor).toLowerCase().includes(filter.value.toLowerCase()))&&(statusFilter.value==='ALL'||g.meetings.some(matchesStatus)));
@@ -608,7 +608,8 @@ async function renderMeetingAttendance(){
    if(files.length){legacyHistory.append(el('h4',{},'เอกสาร PDF เดิม'),...files.map(f=>el('p',{},el('a',{href:f.url,target:'_blank',rel:'noopener noreferrer'},f.fileName+' · '+f.status))))}
   }
   g.onchange=load;no.onchange=load;await load();
-  a.append(el('h2',{},isStudent?'บันทึกการเข้าพบอาจารย์ที่ปรึกษา':'ตรวจบันทึกการเข้าพบและการเข้าร่วม'),el('label',{},'กลุ่มวิจัย'),g,el('label',{},'ครั้งที่ / สัปดาห์'),no);
+  const selectedGroup=report[0];const groupInfo=el('div',{className:'meeting-report-history-card'},el('strong',{},'หัวข้องานวิจัย: '+(selectedGroup.topicTh||'ยังไม่ได้ระบุ')),el('p',{},'อาจารย์ที่ปรึกษา: '+(selectedGroup.advisor||'ยังไม่ได้แต่งตั้ง')),el('p',{},'สมาชิกกลุ่ม: '+selectedGroup.members.map(m=>m.studentName+' ('+m.studentId+')').join(' · ')));
+  a.append(el('h2',{},isStudent?'บันทึกการเข้าพบอาจารย์ที่ปรึกษา':'ตรวจบันทึกการเข้าพบและการเข้าร่วม'),el('label',{},'กลุ่มวิจัย'),g,el('label',{},'ครั้งที่ / สัปดาห์'),no,groupInfo);
   if(isStudent){
    a.append(el('p',{},'กรอกบันทึกการเข้าพบในระบบ ไม่ต้องแนบไฟล์ PDF โดยตัวแทนกลุ่มเป็นผู้บันทึกข้อมูล'),reportForm);
    async function save(action,btn){btn.disabled=true;status.textContent='กำลังบันทึก...';status.className='message';try{const result=await callApi('apiSaveMeetingReport',sessionToken,{groupId:g.value,meetingNo:Number(no.value),meetingDate:date.value,preparationProgress:progress.value,agenda:agenda.map(x=>x.value),problems:problems.value,consultationSummary:summary.value,nextActions:actions.map(x=>x.value),dueDates:due.map(x=>x.value),action});status.textContent=result.message;status.className='message success';disableForm(false);await load()}catch(e){status.textContent=e.message;status.className='message error'}finally{btn.disabled=false}}
