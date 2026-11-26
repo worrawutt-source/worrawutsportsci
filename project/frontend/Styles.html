@@ -208,19 +208,19 @@ html.ssrl-session-restoring #sessionRestoreView{display:flex!important}
 @media(max-width:600px){.meeting-monitor-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.meeting-monitor-stat-card{align-items:flex-start;flex-direction:column;gap:4px;padding:10px 12px}.meeting-monitor-stat-card strong{font-size:22px}.meeting-monitor-toolbar{grid-template-columns:minmax(0,1fr);gap:10px}.meeting-monitor-table{min-width:780px}}
 
 /* Structured online advisor meeting report */
-.meeting-report-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px;margin:16px 0;padding:22px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.meeting-report-form{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;margin:16px 0;padding:24px;border:1px solid var(--line);border-radius:14px;background:#fff}
 .meeting-report-form[hidden]{display:none!important}
 .meeting-report-form h3{grid-column:1/-1;margin:10px 0 0;padding:0 0 10px;border-bottom:1px solid #e5edf4;color:var(--navy);font-size:16px}
-.meeting-report-field{display:grid;gap:8px;align-content:start;min-width:0;font-size:13px;font-weight:700;color:var(--navy)}
+.meeting-report-field{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;align-content:start;width:100%;min-width:0;font-size:13px;font-weight:700;color:var(--navy)}
 .meeting-report-field>textarea,.meeting-report-field>input,.meeting-report-field select{width:100%;min-width:0;box-sizing:border-box;padding:11px 12px;border:1px solid #cbd9e6;border-radius:9px;font:inherit;font-size:14px;font-weight:400;color:var(--text);background:#fff;outline:none}
-.meeting-report-field>textarea{resize:vertical;min-height:96px;line-height:1.65}
+.meeting-report-field>textarea{display:block;width:100%;resize:vertical;min-height:150px;line-height:1.75;box-sizing:border-box;padding:13px 14px}
 .meeting-report-field>textarea:focus,.meeting-report-field select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(49,112,153,.12)}
 .thai-date-picker{display:grid;grid-template-columns:.75fr 1.5fr 1fr;gap:8px;width:100%;min-width:0}
 .thai-date-picker select{width:100%;min-width:0;padding:10px 8px;border:1px solid #cbd9e6;border-radius:9px;background:#fff;color:var(--text);font:inherit;font-size:14px}
-.meeting-report-task-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;width:100%}
-.meeting-report-task{display:grid;gap:10px;align-content:start;min-width:0;padding:14px;border:1px solid #e0e9f1;border-radius:11px;background:#f8fbfd}
+.meeting-report-task-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;width:100%;min-width:0}
+.meeting-report-task{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-content:start;min-width:0;padding:16px;border:1px solid #e0e9f1;border-radius:11px;background:#f8fbfd}
 .meeting-report-task .meeting-report-field{grid-column:1/-1}
-.meeting-report-task textarea{box-sizing:border-box;width:100%;min-width:0;min-height:96px;padding:10px 11px;border:1px solid #cbd9e6;border-radius:8px;font:inherit;font-size:14px;font-weight:400;line-height:1.6;background:#fff}
+.meeting-report-task textarea{display:block;box-sizing:border-box;width:100%;min-width:0;min-height:150px;padding:13px 14px;border:1px solid #cbd9e6;border-radius:8px;font:inherit;font-size:14px;font-weight:400;line-height:1.75;background:#fff}
 .meeting-report-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:6px}
 .meeting-report-form>.meeting-report-actions{grid-column:1/-1}
 .meeting-report-history-card{padding:16px 18px;margin:12px 0;border:1px solid var(--line);border-radius:12px;background:#f8fbfd;line-height:1.65}
