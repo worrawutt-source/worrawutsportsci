@@ -161,6 +161,7 @@ Change types:
 | 2026-11-26 | CHG-002 | Planning | Master Plan becomes continuously updated source of truth | Continuity across work sessions | v1.0 |
 | 2026-11-26 | CHG-001 | Planning | Adopt usable incremental releases | Course is in progress; students need system now | v1.0 |
 | 2026-11-26 | CHG-003 | C Workflow/Data Change (approved) | Add structured online advisor meeting report form; retain legacy PDF records; distinguish upcoming meetings from due reports | Replace student PDF upload with in-system form and prevent false pending counts; implementation branch `perf/perf-01-advisor-dashboard-load`, TEST/UAT pending | Approved; source implementation committed on feature branch, not deployed |
+| 2026-11-26 | CHG-004 | UI/Workflow correction (approved by user request) | Fix missing input controls; remove Student group dropdown; use Thai Buddhist date picker; show submitted state without disabled form; allow partial drafts | Screenshot review found local field controls were not appended; correct scoped DOM rendering and draft/submission UX | Source committed on feature branch; static checks PASS; TEST/UAT pending |
 
 ## 12. Release Log (actual delivery only)
 | Release | Date | Scope | Test evidence | User acceptance | Deployment | Status |
@@ -199,13 +200,26 @@ Approved scope:
 - Monitoring marks sessions UPCOMING until an actual meeting attendance record exists; only recorded meetings without a report count as NOT_SUBMITTED. Submitted reports remain visible regardless of attendance entry.
 - Preserve role and group authorization, audit logging, and use batched row updates. Do not edit `setup.gs`.
 
-Implementation evidence:
+Implementation evidence (latest UI correction):
 - Implementation branch: `perf/perf-01-advisor-dashboard-load`
-- Backend commit: `71e65ff6d419626fe4593111b75d7d358bdc636c`
-- Client commit / immutable Frontend pin: `b37f5d8dba2d6217c156b2713b85cc996c1d3192`
-- Styles commit: `e3b69badf9623d1f287e2de3e908372c382a101d`
-- Static cross-file checks: PASS
+- Backend pin commit: `76f1185a25076d8c0bae2306cb007a60843f4984`
+- Client commit / immutable Frontend pin: `59d0e43697fdc339b8c5d1e068e53972d8867cfc`
+- Styles commit: `0e9c0c2eede8fa59d7e90035ab2da743f98159a5`
+- Static cross-file and JavaScript syntax checks: PASS
 - GAS runtime, TEST deployment, and UAT: NOT TESTED / PENDING
 - Production: unchanged
 
 Note: The plan's earlier starting-status reference to `MEETING_SUBMISSIONS` reflects its earlier project context. This implementation branch's inspected baseline uses `MEETING_FILES`; the additive `MEETING_REPORTS` schema is separate and preserves that legacy sheet. Confirm the actual TEST database before any schema setup or deployment.
+
+
+## 17. CHG-004 — Meeting Report UI Correction (2026-11-26)
+
+After reviewing the student screenshots, the user requested these corrections:
+- Do not show the group selector to Students; show their assigned group name and research/advisor/member context as static information. Advisor group selection remains available.
+- The prior form fields were not interactive because the local `el()` helper accepts one text argument and ignored additional child controls. Scope the fix to the meeting report form using a DOM builder that explicitly appends controls; do not alter the global helper and risk unrelated screens.
+- Render visible textareas with clear labels/placeholders and separate Agenda 1–3 and follow-up action 1–3 fields.
+- Use explicit day/month/Buddhist Era year selects; convert selected dates to ISO Gregorian for the existing backend date schema. Display report and due dates in Thai Buddhist Era.
+- After SUBMITTED or VERIFIED, show submitted/review status and the saved record, and hide the edit form instead of leaving disabled controls on screen. Keep DRAFT and REVISION_REQUIRED editable as permitted.
+- Save Draft may persist partial content; Submit must validate required content and all dates on both client and server.
+
+Verification: Client and GAS JavaScript syntax compile PASS; static cross-file checks PASS; GAS runtime/browser, TEST deployment, and UAT remain pending. Production is unchanged.
