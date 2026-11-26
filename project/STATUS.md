@@ -469,3 +469,47 @@ Static verification:
 - ยังไม่ได้ Deploy เวอร์ชันนี้ไปยัง TEST Web App
 - Advisor index fallback อาศัยลำดับเมนูที่ Backend ส่งมา จึงต้องรักษาลำดับ 4 เมนูของ Advisor ให้ตรงกับที่กำหนด
 - Runtime Test/UAT: **PENDING**
+
+## 19. PERF-01 — Advisor Dashboard Initial Load Optimization
+
+สถานะ ณ 26 พฤศจิกายน 2026: **Implementation committed on TEST feature branch; static verification completed; Runtime/TEST/UAT pending**
+
+อนุมัติขอบเขต: ลดการอ่านข้อมูลซ้ำและ API call ระหว่าง Advisor Dashboard bootstrap กับ Overview โดยไม่เปลี่ยน Schema, Role/Permission หรือ Workflow
+
+การเปลี่ยนแปลง:
+- รวมการสร้าง Advisor Overview data ใน helper `advisorWorkspaceDetails_()` เพื่อให้ Dashboard bootstrap ได้ Summary, pending items และ group status ใน request เดียว
+- `apiGetAdvisorWorkspaceSummary()` ใช้ helper เดียวกันเพื่อรักษา fallback/API compatibility
+- Frontend `renderOverview()` ใช้ Summary ที่ได้จาก `apiGetDashboard` ก่อน และคง API fallback เมื่อ bootstrap summary ไม่มี
+- อัปเดต immutable Frontend pin ให้ตรงกับ Client snapshot ที่แก้ไขแล้ว
+- ไม่มีการแก้ Database Schema, setup.gs หรือ Production deployment
+
+ไฟล์ที่เปลี่ยน:
+- `project/gas-source/code.gs`
+- `project/frontend/Client.html`
+
+Branch:
+- `perf/perf-01-advisor-dashboard-load`
+- Base: `3037bac4f8b73b3e57f47fd4525096296e66d731`
+- Latest commit: `4caa18a1312b212cf736e1805ecf07d94609296f`
+
+Static Performance Analysis:
+- ก่อนแก้ เส้นทาง Dashboard → Overview มีการอ่านข้อมูล Fresh Read ประมาณ 22 sheet reads ตาม call path (Dashboard summary 8 + Overview API 14)
+- หลังแก้ เส้นทางเดียวกันมีประมาณ 10 sheet reads (Advisor assignments/groups/members/students 4 + Overview tables 6)
+- ลดลงเชิงโครงสร้าง 12 Spreadsheet reads หรือประมาณ 54.5% ใน call path นี้ และตัด Overview summary API call ซ้ำ 1 ครั้ง
+- ตัวเลขนี้เป็น Static call-path count ไม่ใช่ Runtime timing; ยังไม่มีผลวัดเวลา Response หรือ Browser load
+
+Static Verification:
+- Backend Dashboard ใช้ `advisorWorkspaceDetails_()` และแนบ `advisorWorkspaceSummary`
+- Frontend Overview เลือกใช้ bootstrap summary และยังคง fallback API
+- Backend immutable Frontend SHA ตรงกับ Client commit `bf38214c4588b29f26839c433846c044f18275e1`
+- Main branch ไม่ถูกแก้ไข; งานทั้งหมดอยู่ใน feature branch
+
+Test status:
+- Static source checks: **PASS**
+- Runtime / Browser test: **NOT TESTED**
+- TEST deployment: **NOT DEPLOYED**
+- UAT: **PENDING**
+- Production: **UNCHANGED**
+
+Next Action:
+- Deploy approved branch to TEST only, then compare Dashboard → Overview API count, Spreadsheet operations, payload size and response timing against the baseline; run Advisor regression tests before UAT.
