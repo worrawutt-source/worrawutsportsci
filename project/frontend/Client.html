@@ -560,69 +560,66 @@ async function renderMeetingAttendance(){
    const d=await callApi('apiAdminGetMeetingMonitoring',sessionToken);a.textContent='';
    const sum=el('div',{className:'meeting-monitor-summary-grid'});
    [['กลุ่มทั้งหมด',d.summary.groups],['รายการนัดหมาย',d.summary.total],['ส่งแล้ว',d.summary.submitted],['ตรวจสอบแล้ว',d.summary.verified],['ยังไม่ส่ง',d.summary.notSubmitted],['ส่งกลับแก้ไข',d.summary.revision]].forEach(x=>{const c=el('div',{className:'meeting-monitor-stat-card'});c.append(el('span',{},x[0]),el('strong',{},String(x[1])));sum.append(c)});
-   a.append(el('h2',{},'ติดตามบันทึกการเข้าพบอาจารย์ที่ปรึกษา'),el('p',{},'ติดตามสถานะการส่งบันทึกของแต่ละกลุ่ม อาจารย์ประจำวิชาใช้ตรวจสอบภาพรวมและค้นหารายการที่ต้องติดตาม'),sum);
+   a.append(el('h2',{},'ติดตามบันทึกการเข้าพบอาจารย์ที่ปรึกษา'),el('p',{},'ติดตามสถานะบันทึกออนไลน์และเอกสารเดิมของแต่ละกลุ่ม'),sum);
    const filter=el('input',{type:'search',placeholder:'ค้นหาชื่อกลุ่มหรืออาจารย์ที่ปรึกษ'}),statusFilter=el('select');
    [['ALL','ทุกสถานะ'],['NOT_SUBMITTED','ยังไม่ส่ง'],['SUBMITTED','ส่งแล้ว/รอตรวจ'],['VERIFIED','ตรวจสอบแล้ว'],['REVISION_REQUIRED','ส่งกลับแก้ไข']].forEach(x=>statusFilter.append(el('option',{value:x[0]},x[1])));
-   const toolbar=el('div',{className:'meeting-monitor-toolbar'});
-   toolbar.append(el('label',{className:'meeting-monitor-filter'},'ค้นหากลุ่ม/อาจารย์ที่ปรึกษา',filter),el('label',{className:'meeting-monitor-filter'},'สถานะที่ต้องการติดตาม',statusFilter));
-   const list=el('div',{className:'meeting-monitor-table-wrap'});
-   const statusText={NOT_SUBMITTED:'ยังไม่ส่ง',SUBMITTED:'รอตรวจ',ACTIVE:'รอตรวจ',VERIFIED:'ตรวจแล้ว',REVISION_REQUIRED:'ส่งกลับแก้ไข'};
+   const toolbar=el('div',{className:'meeting-monitor-toolbar'});toolbar.append(el('label',{className:'meeting-monitor-filter'},'ค้นหากลุ่ม/อาจารย์ที่ปรึกษา',filter),el('label',{className:'meeting-monitor-filter'},'สถานะที่ต้องการติดตาม',statusFilter));
+   const list=el('div',{className:'meeting-monitor-table-wrap'}),statusText={NOT_SUBMITTED:'ยังไม่ส่ง',SUBMITTED:'รอตรวจ',ACTIVE:'รอตรวจ',VERIFIED:'ตรวจแล้ว',REVISION_REQUIRED:'ส่งกลับแก้ไข'};
    const matchesStatus=m=>statusFilter.value==='ALL'||(statusFilter.value==='SUBMITTED'?['SUBMITTED','ACTIVE'].includes(m.status):m.status===statusFilter.value);
    function draw(){
-    list.textContent='';
-    const groups=d.groups.filter(g=>(!filter.value||(g.groupName+' '+g.advisor).toLowerCase().includes(filter.value.toLowerCase()))&&(statusFilter.value==='ALL'||g.meetings.some(matchesStatus)));
+    list.textContent='';const groups=d.groups.filter(g=>(!filter.value||(g.groupName+' '+g.advisor).toLowerCase().includes(filter.value.toLowerCase()))&&(statusFilter.value==='ALL'||g.meetings.some(matchesStatus)));
     if(!groups.length){list.append(el('div',{className:'notice'},'ไม่พบกลุ่มหรือรายการตามเงื่อนไข'));return;}
-    const table=el('table',{className:'meeting-monitor-table'}),head=el('thead'),hr=el('tr');
-    hr.append(el('th',{},'กลุ่มวิจัย / อาจารย์ที่ปรึกษา'));
-    [2,4,6,8,10,12,14].forEach((w,i)=>hr.append(el('th',{},'ครั้งที่ '+(i+1),el('small',{},'สัปดาห์ '+w))));
-    head.append(hr);table.append(head);
-    const body=el('tbody');
-    groups.forEach(g=>{
-     const tr=el('tr'),groupCell=el('td',{className:'meeting-monitor-group-cell'});
-     groupCell.append(el('strong',{},g.groupName),el('small',{},'ที่ปรึกษา: '+(g.advisor||'ยังไม่กำหนด')));tr.append(groupCell);
-     g.meetings.forEach(m=>{
-      const td=el('td',{className:'meeting-monitor-status-cell'+(matchesStatus(m)?' is-filter-match':'')});
-      const badge=el('span',{className:'meeting-monitor-status-badge status-'+String(m.status||'').toLowerCase()},statusText[m.status]||m.status);
-      td.append(badge);
-      if(m.uploadedAt)td.append(el('small',{},new Date(m.uploadedAt).toLocaleDateString('th-TH')));
-      if(m.url)td.append(el('a',{href:m.url,target:'_blank',rel:'noopener noreferrer',className:'meeting-monitor-file-link'},'เปิด PDF'));
-      tr.append(td);
-     });
-     body.append(tr);
-    });
+    const table=el('table',{className:'meeting-monitor-table'}),head=el('thead'),hr=el('tr');hr.append(el('th',{},'กลุ่มวิจัย / อาจารย์ที่ปรึกษ'));
+    [2,4,6,8,10,12,14].forEach((w,i)=>hr.append(el('th',{},'ครั้งที่ '+(i+1),el('small',{},'สัปดาห์ '+w))));head.append(hr);table.append(head);const body=el('tbody');
+    groups.forEach(g=>{const tr=el('tr'),groupCell=el('td',{className:'meeting-monitor-group-cell'});groupCell.append(el('strong',{},g.groupName),el('small',{},'ที่ปรึกษา: '+(g.advisor||'ยังไม่กำหนด')));tr.append(groupCell);
+     g.meetings.forEach(m=>{const td=el('td',{className:'meeting-monitor-status-cell'+(matchesStatus(m)?' is-filter-match':'')});td.append(el('span',{className:'meeting-monitor-status-badge status-'+String(m.status||'').toLowerCase()},statusText[m.status]||m.status));if(m.uploadedAt)td.append(el('small',{},new Date(m.uploadedAt).toLocaleDateString('th-TH')));if(m.url)td.append(el('a',{href:m.url,target:'_blank',rel:'noopener noreferrer',className:'meeting-monitor-file-link'},'PDF เดิม'));tr.append(td)});body.append(tr)});
     table.append(body);list.append(table);
    }
-   filter.oninput=draw;statusFilter.onchange=draw; a.append(toolbar,list);draw();return;
+   filter.oninput=draw;statusFilter.onchange=draw;a.append(toolbar,list);draw();return;
   }
   const report=await callApi('apiGetAssessmentReport',sessionToken);a.textContent='';
   if(!report.length){a.append(el('p',{},'ยังไม่พบกลุ่มวิจัยที่เชื่อมโยงกับบัญชีนี้'));return;}
-  const g=el('select'),no=el('select'),status=el('div',{className:'message'}),pdfList=el('div');report.forEach(x=>g.append(el('option',{value:x.groupId},x.groupName)));
+  const g=el('select'),no=el('select'),status=el('div',{className:'message'}),history=el('div'),legacyHistory=el('div');
+  report.forEach(x=>g.append(el('option',{value:x.groupId},x.groupName)));
   [2,4,6,8,10,12,14].forEach((w,i)=>no.append(el('option',{value:i+1},'ครั้งที่ '+(i+1)+' · สัปดาห์ '+w)));
   const isStudent=role==='STUDENT',isAdvisor=role==='ADVISOR';
-  const fileInput=el('input',{type:'file',accept:'application/pdf'}),fileNotes=el('input',{type:'text',placeholder:'หมายเหตุ/สรุปประเด็นการเข้าพบ (ถ้ามี)'}),upload=el('button',{type:'button',className:'primary'},'ส่งบันทึกการเข้าพบ (PDF)');
+  const date=el('input',{type:'date'}),progress=el('textarea',{rows:'3',placeholder:'ความก้าวหน้าที่ดำเนินการก่อนเข้าพบ'}),agenda=[];
+  for(let i=0;i<3;i++)agenda.push(el('textarea',{rows:'2',placeholder:'ประเด็นปรึกษา (Agenda) '+(i+1)}));
+  const problems=el('textarea',{rows:'3',placeholder:'ปัญหาและอุปสรรคที่ต้องการความช่วยเหลือ'}),summary=el('textarea',{rows:'4',placeholder:'สรุปข้อเสนอแนะและแนวทางแก้ไขจากอาจารย์ที่ปรึกษา'}),actions=[],due=[];
+  for(let i=0;i<3;i++){actions.push(el('textarea',{rows:'2',placeholder:'สิ่งที่กลุ่มต้องดำเนินการต่อ '+(i+1)}));due.push(el('input',{type:'date'}));}
+  const reportForm=el('div',{className:'meeting-report-form'}),reportButtons=el('div',{className:'meeting-report-actions'}),saveDraft=el('button',{type:'button',className:'secondary'},'บันทึกฉบับร่าง'),submitReport=el('button',{type:'button',className:'primary'},'ส่งบันทึกให้อาจารย์ที่ปรึกษา');
   const attendanceBox=el('div'),attendanceDate=el('input',{type:'date'}),attendanceNotes=el('input',{placeholder:'หมายเหตุการเข้าพบ'}),saveAttendance=el('button',{type:'button',className:'primary'},'บันทึกการเข้าพบและตรวจสอบการเข้าร่วม');
+  const setDateDefault=()=>{const d=new Date();date.value=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
+  setDateDefault();
+  function field(label,node){const wrap=el('label',{className:'meeting-report-field'},label,node);return wrap;}
+  reportForm.append(el('h3',{},'ส่วนที่ 1 · ข้อมูลทั่วไป'),field('วันที่เข้าพบ',date),el('h3',{},'ส่วนที่ 2 · การเตรียมตัวก่อนเข้าพบ'),field('ความก้าวหน้าที่ดำเนินการ',progress),field('ประเด็นที่ต้องการปรึกษา (Agenda) · 3 ประเด็น',agenda[0],agenda[1],agenda[2]),field('ปัญหาและอุปสรรค',problems),el('h3',{},'ส่วนที่ 3 · สรุปผลการปรึกษา'),field('ข้อเสนอแนะและแนวทางแก้ไขจากอาจารย์',summary),field('สิ่งที่กลุ่มต้องดำเนินการต่อและกำหนดส่ง',el('div',{className:'meeting-report-task-grid'},...actions.map((x,i)=>el('div',{className:'meeting-report-task'},x,due[i])))));
+  reportButtons.append(saveDraft,submitReport);reportForm.append(reportButtons,status);
+  function setForm(r){if(!r)return;date.value=r.meetingDate||date.value;progress.value=r.preparationProgress||'';agenda.forEach((x,i)=>x.value=(r.agenda||[])[i]||'');problems.value=r.problems||'';summary.value=r.consultationSummary||'';actions.forEach((x,i)=>{x.value=(r.nextActions||[])[i]||'';due[i].value=(r.dueDates||[])[i]||''});}
+  function disableForm(disabled){[date,progress,...agenda,problems,summary,...actions,...due,saveDraft,submitReport].forEach(x=>x.disabled=disabled);}
   async function load(){
-   pdfList.textContent='กำลังโหลดรายการ...';const files=await callApi('apiListMeetingPdfs',sessionToken,g.value,Number(no.value));pdfList.textContent='';
-   if(!files.length)pdfList.append(el('p',{},'ยังไม่มีการส่งบันทึกการเข้าพบครั้งนี้'));
-   files.forEach(f=>{const row=el('div',{className:'admin-row'}),info=el('div');info.append(el('a',{href:f.url,target:'_blank',rel:'noopener noreferrer'},f.fileName),el('div',{className:'brand-sub'},'ส่งเมื่อ '+(f.uploadedAt?new Date(f.uploadedAt).toLocaleString('th-TH'):'')+' · สถานะ '+({SUBMITTED:'รอตรวจสอบ',ACTIVE:'รอตรวจสอบ',VERIFIED:'ตรวจสอบแล้ว',REVISION_REQUIRED:'ส่งกลับแก้ไข'}[f.status]||f.status)+(f.reviewComment?' · '+f.reviewComment:'')));
-    row.append(info);
-    if(isAdvisor&&['SUBMITTED','ACTIVE','REVISION_REQUIRED'].includes(f.status)){const comment=el('input',{placeholder:'ข้อเสนอแนะ (กรณีส่งกลับแก้ไข)'});['VERIFIED','REVISION_REQUIRED'].forEach(dec=>{const b=el('button',{type:'button',className:'secondary'},dec==='VERIFIED'?'ยืนยันตรวจสอบ':'ส่งกลับแก้ไข');b.onclick=async()=>{b.disabled=true;try{const r=await callApi('apiAdvisorReviewMeetingSubmission',sessionToken,f.fileRecordId,dec,comment.value);showOperationStatus(r.message);await load()}catch(e){showOperationStatus(e.message,true);b.disabled=false}};row.append(b)});row.append(comment)}
-    pdfList.append(row);
-   });
+   history.textContent='กำลังโหลดบันทึก...';legacyHistory.textContent='';
+   const [online,files]=await Promise.all([callApi('apiListMeetingReports',sessionToken,g.value,Number(no.value)),callApi('apiListMeetingPdfs',sessionToken,g.value,Number(no.value))]);
+   history.textContent='';const r=online.report;
+   if(r){
+    history.append(el('div',{className:'meeting-report-history-card'},el('div',{className:'meeting-report-history-head'},el('strong',{},'สถานะ: '+({DRAFT:'ฉบับร่าง',SUBMITTED:'ส่งแล้ว · รอตรวจ',VERIFIED:'ตรวจสอบแล้ว',REVISION_REQUIRED:'ส่งกลับแก้ไข'}[r.status]||r.status)),el('small',{},'อัปเดต '+(r.updatedAt?new Date(r.updatedAt).toLocaleString('th-TH'):''))),el('p',{},'ความก้าวหน้า: '+r.preparationProgress),el('p',{},'Agenda: '+r.agenda.join(' · ')),el('p',{},'ปัญหา/อุปสรรค: '+r.problems),el('p',{},'สรุปผลการปรึกษา: '+r.consultationSummary),el('p',{},'งานต่อไป: '+r.nextActions.map((x,i)=>x+' (กำหนด '+(r.dueDates[i]||'—')+')').join(' · ')),r.reviewComment?el('p',{className:'meeting-report-review-comment'},'ข้อเสนอแนะอาจารย์: '+r.reviewComment):null));
+    if(isStudent){setForm(r);disableForm(!online.canEdit);if(r.status==='REVISION_REQUIRED'){status.textContent='อาจารย์ส่งกลับแก้ไข กรุณาปรับข้อมูลแล้วส่งใหม่';status.className='message error'}else if(r.status==='VERIFIED'){status.textContent='อาจารย์ตรวจสอบบันทึกนี้แล้ว';status.className='message success'}else status.textContent='';}
+    if(isAdvisor&&online.canReview){const comment=el('textarea',{rows:'2',placeholder:'ข้อเสนอแนะ (หากส่งกลับแก้ไข)'}),btns=el('div',{className:'meeting-report-actions'});['VERIFIED','REVISION_REQUIRED'].forEach(dec=>{const btn=el('button',{type:'button',className:dec==='VERIFIED'?'primary':'secondary'},dec==='VERIFIED'?'ยืนยันตรวจแล้ว':'ส่งกลับแก้ไข');btn.onclick=async()=>{btn.disabled=true;try{const out=await callApi('apiAdvisorReviewMeetingReport',sessionToken,r.reportId,dec,comment.value);showOperationStatus(out.message);await load()}catch(e){showOperationStatus(e.message,true);btn.disabled=false}};btns.append(btn)});history.append(comment,btns);}
+   }else{history.append(el('p',{},'ยังไม่มีบันทึกออนไลน์สำหรับครั้งนี้'));}
+   if(files.length){legacyHistory.append(el('h4',{},'เอกสาร PDF เดิม'),...files.map(f=>el('p',{},el('a',{href:f.url,target:'_blank',rel:'noopener noreferrer'},f.fileName+' · '+f.status))))}
   }
   g.onchange=load;no.onchange=load;await load();
-  a.append(el('h2',{},isStudent?'ส่งบันทึกการเข้าพบอาจารย์ที่ปรึกษา': 'ตรวจสอบบันทึกการเข้าพบและการเข้าร่วม'),el('label',{},'กลุ่มวิจัย'),g,el('label',{},'ครั้งที่ / สัปดาห์'),no);
+  a.append(el('h2',{},isStudent?'บันทึกการเข้าพบอาจารย์ที่ปรึกษา':'ตรวจบันทึกการเข้าพบและการเข้าร่วม'),el('label',{},'กลุ่มวิจัย'),g,el('label',{},'ครั้งที่ / สัปดาห์'),no);
   if(isStudent){
-   a.append(el('p',{},'นักศึกษาหรือผู้แทนกลุ่มเป็นผู้ส่งบันทึกการเข้าพบและแนบ PDF ด้วยตนเอง อาจารย์ประจำวิชาไม่ต้องอัปโหลดแทนกลุ่ม'),el('label',{},'ไฟล์บันทึกการเข้าพบ (PDF ไม่เกิน 8 MB)'),fileInput,el('label',{},'หมายเหตุ'),fileNotes,upload,status);
-   upload.onclick=async()=>{const f=fileInput.files&&fileInput.files[0];if(!f){status.textContent='กรุณาเลือกไฟล์ PDF';status.className='message error';return;}if(f.size>8*1024*1024||(!/\.pdf$/i.test(f.name)&&f.type!=='application/pdf')){status.textContent='กรุณาเลือก PDF ขนาดไม่เกิน 8 MB';status.className='message error';return;}upload.disabled=true;status.textContent='กำลังส่งเอกสาร...';try{const data=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result||'').split(',')[1]||'');r.onerror=()=>rej(new Error('อ่านไฟล์ไม่สำเร็จ'));r.readAsDataURL(f)});const result=await callApi('apiUploadMeetingPdf',sessionToken,{groupId:g.value,meetingNo:Number(no.value),fileName:f.name,base64:data,notes:fileNotes.value});status.textContent=result.message;status.className='message success';fileInput.value='';fileNotes.value='';await load()}catch(e){status.textContent=e.message;status.className='message error'}finally{upload.disabled=false}};
+   a.append(el('p',{},'กรอกบันทึกการเข้าพบในระบบ ไม่ต้องแนบไฟล์ PDF โดยตัวแทนกลุ่มเป็นผู้บันทึกข้อมูล'),reportForm);
+   async function save(action,btn){btn.disabled=true;status.textContent='กำลังบันทึก...';status.className='message';try{const result=await callApi('apiSaveMeetingReport',sessionToken,{groupId:g.value,meetingNo:Number(no.value),meetingDate:date.value,preparationProgress:progress.value,agenda:agenda.map(x=>x.value),problems:problems.value,consultationSummary:summary.value,nextActions:actions.map(x=>x.value),dueDates:due.map(x=>x.value),action});status.textContent=result.message;status.className='message success';disableForm(false);await load()}catch(e){status.textContent=e.message;status.className='message error'}finally{btn.disabled=false}}
+   saveDraft.onclick=()=>save('DRAFT',saveDraft);submitReport.onclick=()=>save('SUBMIT',submitReport);
   }else if(isAdvisor){
-   a.append(el('p',{},'ตรวจสอบเอกสารที่นักศึกษาส่ง และยืนยันหรือส่งกลับเพื่อแก้ไขได้ ส่วนการบันทึกการเข้าร่วมให้บันทึกตามข้อมูลการเข้าพบจริง'),el('label',{},'วันที่เข้าพบ'),attendanceDate,el('label',{},'หมายเหตุ'),attendanceNotes,attendanceBox,saveAttendance,status);
-   const selected=report.find(x=>x.groupId===g.value);(selected?selected.members:[]).forEach(m=>{const label=el('label',{},m.studentId+' · '+m.studentName),cb=el('input',{type:'checkbox',value:m.studentId});cb.checked=String((m.meetingStatuses||{})[no.value]||'')==='PRESENT';label.prepend(cb);attendanceBox.append(label)});
+   a.append(el('p',{},'อ่านบันทึกออนไลน์และตรวจสอบ/ส่งกลับแก้ไขได้ การบันทึกการเข้าร่วมให้ดำเนินการตามการเข้าพบจริง'),history,el('h3',{},'บันทึกการเข้าร่วม'),field('วันที่เข้าพบ',attendanceDate),field('หมายเหตุ',attendanceNotes),attendanceBox,saveAttendance,status);
    async function refreshRoster(){attendanceBox.textContent='';const selected=report.find(x=>x.groupId===g.value);(selected?selected.members:[]).forEach(m=>{const label=el('label',{},m.studentId+' · '+m.studentName),cb=el('input',{type:'checkbox',value:m.studentId});cb.checked=String((m.meetingStatuses||{})[no.value]||'')==='PRESENT';label.prepend(cb);attendanceBox.append(label)});}
-   g.onchange=async()=>{await refreshRoster();await load()};no.onchange=async()=>{await refreshRoster();await load()};
-   saveAttendance.onclick=async()=>{saveAttendance.disabled=true;const attendance={};attendanceBox.querySelectorAll('input').forEach(x=>attendance[x.value]=x.checked?'PRESENT':'ABSENT');try{const week=[2,4,6,8,10,12,14][Number(no.value)-1],r=await callApi('apiRecordMeetingAttendance',sessionToken,{groupId:g.value,meetingNo:Number(no.value),meetingWeek:week,meetingDate:attendanceDate.value,notes:attendanceNotes.value,attendance});status.textContent=r.message;status.className='message success'}catch(e){status.textContent=e.message;status.className='message error'}finally{saveAttendance.disabled=false}};
+   await refreshRoster();g.onchange=async()=>{await refreshRoster();await load()};no.onchange=async()=>{await refreshRoster();await load()};
+   saveAttendance.onclick=async()=>{saveAttendance.disabled=true;const attendance={};attendanceBox.querySelectorAll('input').forEach(x=>attendance[x.value]=x.checked?'PRESENT':'ABSENT');try{const week=[2,4,6,8,10,12,14][Number(no.value)-1],out=await callApi('apiRecordMeetingAttendance',sessionToken,{groupId:g.value,meetingNo:Number(no.value),meetingWeek:week,meetingDate:attendanceDate.value,notes:attendanceNotes.value,attendance});status.textContent=out.message;status.className='message success'}catch(e){status.textContent=e.message;status.className='message error'}finally{saveAttendance.disabled=false}};
   }
-  a.append(el('h3',{},'ประวัติการส่งบันทึก'),pdfList);
+  a.append(el('h3',{},'ประวัติการบันทึก'),history,legacyHistory);
  }catch(e){a.textContent='โหลดข้อมูลการเข้าพบไม่สำเร็จ: '+e.message;}
 }
 
