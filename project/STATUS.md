@@ -634,6 +634,24 @@ UI correction review note (2026-11-26): The screenshots exposed that the existin
 
 Latest Client commit after duplicate heading removal: `8252ee9dd9136b57699640fc92895d6e3d0ae420`.
 
+## 23. MEETING-ONLINE — Consolidate agenda and next actions; rename menu (2026-11-26)
+
+Approved UI refinement from user screenshots:
+- Remove Agenda 2 and Agenda 3; provide one full-width “ประเด็นที่ต้องการปรึกษา” textarea for all consultation points.
+- Replace numbered next-action cards 1–3 with one full-width “งานที่ต้องดำเนินการ” textarea and one Thai Buddhist Era due-date picker.
+- Rename the menu item for Student, Advisor, and Admin to “บันทึกการเข้าพบที่ปรึกษา”; retain legacy route labels in Client for saved-menu compatibility.
+- Backend validates one agenda field and one next-action field on Submit, writes the values to existing first columns and clears unused legacy columns 2/3. No schema migration or new sheet.
+- When loading legacy reports, combine prior agenda entries into the single textarea and combine prior action entries with their dates in the single action textarea to retain their text. The first existing due date is preselected in the single due-date picker.
+
+Implementation refs:
+- Client commit / immutable Frontend pin: `ad55f12d49832a347ff8d8a20a94af618cb6a3ae`
+- Backend single-field behavior commit: `e99dc4f05cf7c6ff6fe1bc380fb7e0c67426e037`
+- Backend pin commit: `17c9279e47ac410a9a18d58c2402c9e2bc027f01`
+- JavaScript syntax and static cross-file/legacy compatibility checks: PASS
+- GAS Runtime, browser test, TEST deployment and UAT: NOT TESTED / PENDING
+- Production: unchanged
+
+
 
 ## 22. MEETING-ONLINE — Full-width form fields and meeting-specific data behavior (2026-11-26)
 
