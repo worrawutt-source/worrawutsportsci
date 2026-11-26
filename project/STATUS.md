@@ -559,3 +559,51 @@ Test status:
 
 Next Action:
 - Deploy branch to TEST only after approval; verify summary, search/status filters, table overflow on desktop/mobile, links and current meeting statuses; then run UAT. Do not claim runtime/performance improvement before measuring.
+
+
+## 21. MEETING-ONLINE — Structured Online Advisor Meeting Report
+
+สถานะ ณ 26 พฤศจิกายน 2026: **Source Code implementation committed on feature branch; Static checks pending final verification; Runtime/TEST/UAT pending**
+
+อนุมัติจากผู้ใช้: เพิ่ม Schema แบบ additive สำหรับแบบบันทึกการเข้าพบออนไลน์ โดยเก็บข้อมูล PDF เดิมไว้ ไม่ลบหรือแก้ข้อมูลย้อนหลัง
+
+ขอบเขตที่ดำเนินการ:
+- เพิ่ม Schema `MEETING_REPORTS` สำหรับบันทึกเนื้อหาแบบ structured fields; เพิ่มชื่อชีตใน `AUTO_CREATE_WORKFLOW_SHEETS_` เพื่อสร้าง/ตรวจ schema แบบ additive เมื่อเรียกใช้ครั้งแรก โดยไม่แตะ `setup.gs`
+- นักศึกษากรอกวันที่, ความก้าวหน้าก่อนพบ, Agenda 3 ประเด็น, ปัญหา/อุปสรรค, สรุปคำปรึกษา, งานต่อ 3 รายการและกำหนดส่ง
+- รองรับ Save Draft และ Submit; นักศึกษาแก้ไขได้เฉพาะ DRAFT/REVISION_REQUIRED
+- Advisor อ่านบันทึก, ยืนยันตรวจ หรือส่งกลับแก้ไขพร้อม comment; server-side session, role และ group access checks ใช้ API authorization เดิม
+- Admin monitoring อ่านสถานะออนไลน์และ PDF legacy; แสดง UPCOMING เมื่อยังไม่มี attendance record ของครั้งนั้น และนับ NOT_SUBMITTED เฉพาะครั้งที่มีการบันทึกการเข้าพบจริงแต่ยังไม่มีรายงาน
+- คง API/ชีต PDF เดิมไว้สำหรับอ่านประวัติ ไม่แสดงตัวเลือกอัปโหลด PDF ใน Student UI ใหม่
+- ใช้ batch setValues สำหรับ update row ของ draft/review เพื่อลด Spreadsheet write operations
+
+ไฟล์ที่เปลี่ยน:
+- `project/gas-source/code.gs`
+- `project/frontend/Client.html`
+- `project/frontend/Styles.html`
+- `project/STATUS.md`
+
+Frontend immutable pin:
+- Client snapshot: `b37f5d8dba2d6217c156b2713b85cc996c1d3192`
+- Backend pin commit: `3648f41775ae60d6cb3dec7c9de9a365309c7ff5`
+
+Static checks planned/completed:
+- Schema and auto-create list contain `MEETING_REPORTS`
+- API endpoints present: `apiListMeetingReports`, `apiSaveMeetingReport`, `apiAdvisorReviewMeetingReport`
+- Student UI uses online report API and no longer calls `apiUploadMeetingPdf`
+- Admin status distinguishes `UPCOMING` from `NOT_SUBMITTED` based on `MEETING_RECORDS`
+- Frontend immutable pin must match exact Client snapshot
+
+Test status:
+- Static source consistency: **PASS pending final cross-file verification**
+- GAS runtime / browser test: **NOT TESTED**
+- TEST deployment: **NOT DEPLOYED**
+- UAT: **PENDING**
+- Production: **UNCHANGED**
+
+Risks/notes:
+- `MEETING_REPORTS` is auto-created by the existing safe workflow-sheet mechanism on first API read/write; confirm sheet headers and permissions in TEST.
+- Legacy PDF records remain visible as historical entries; they are not migrated into structured report fields.
+- The online form is a course workflow record and does not represent REC approval or authorization to collect research data.
+
+Next Action:
+- Perform static cross-file verification, deploy approved branch to TEST only, confirm new sheet schema, test Student draft/submit/revision, Advisor review, Admin monitoring counts, access control, duplicate/concurrent save, mobile layout and legacy PDF read-only history; then complete UAT. No production deployment without separate approval.
