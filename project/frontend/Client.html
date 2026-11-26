@@ -203,6 +203,7 @@ function renderDashboard(d){
       else if(routeLabel==='กำหนดอาจารย์ที่ปรึกษา' && currentDashboard.user.roleId==='ADMIN') await renderAdvisorAssignment();
       else if(routeLabel==='บันทึกการเข้าพบ' || routeLabel==='บันทึกการพบอาจารย์' || advisorFallback==='meetings') await renderMeetingAttendance();
       else if(routeLabel==='จัดการรายงานความก้าวหน้า' && currentDashboard.user.roleId==='ADMIN') await renderAdminProgressManagement();
+      else if(routeLabel==='จัดการหัวข้องานวิจัย' && currentDashboard.user.roleId==='ADMIN') await renderAdminResearchTopicManagement();
       else if(routeLabel==='จัดการงานกลุ่ม' && currentDashboard.user.roleId==='ADMIN') await renderAdminTaskBoard();
       else if(routeLabel==='ติดตามจริยธรรม' && currentDashboard.user.roleId==='ADMIN') await renderAdminEthicsTracking();
       else if(routeLabel==='สัญญาณเตือนความเสี่ยง' && currentDashboard.user.roleId==='ADMIN') await renderAdminEarlyWarnings();
@@ -727,7 +728,7 @@ async function renderStudentTopics(){
      catch(x){formHint.textContent='บันทึกร่างไม่สำเร็จ: '+x.message;formHint.className='message error';}
      finally{saveDraft.disabled=false;saveDraft.textContent='บันทึกร่างไว้ก่อน';}
     });
-    f.append(el('label',{},'ชื่อเรื่องภาษาไทย'),th,el('label',{},'ชื่อเรื่องภาษาอังกฤษ'),en,el('label',{},'ปัญหาวิจัย'),problem,problemCount,problemHint,el('label',{},'วัตถุประสงค์'),obj,objCount,objHint,el('label',{},'ความสำคัญของการวิจัย'),sig,savedHint,formHint,saveDraft,submit);
+    f.append(el('label',{},'ชื่อเรื่องภาษาไทย'),th,el('label',{},'ชื่อเรื่องภาษาอังกฤษ'),en,el('label',{},'ที่มาและความสำคัญ'),problem,problemCount,problemHint,el('label',{},'วัตถุประสงค์'),obj,objCount,objHint,el('label',{},'ประโยชน์ที่คาดว่าจะได้รับ'),sig,savedHint,formHint,saveDraft,submit);
     f.onsubmit=async e=>{
      e.preventDefault();formHint.textContent='';formHint.className='message';
      const p=problem.value.trim().length,o=obj.value.trim().length;
@@ -749,7 +750,7 @@ async function renderStudentTopics(){
    item.append(el('h4',{},'เวอร์ชัน '+t.versionNo+' · '+(t.titleTh||'ไม่ระบุชื่อเรื่อง')));
    if(t.titleEn)item.append(el('p',{},'ชื่อเรื่องภาษาอังกฤษ: '+t.titleEn));
    item.append(el('p',{},'สถานะ: '+(t.reviewStatus||t.status||'—')));
-   item.append(el('p',{},'ปัญหาวิจัย: '+(t.problem||'—')),el('p',{},'วัตถุประสงค์: '+(t.objectives||'—')),el('p',{},'ความสำคัญของการวิจัย: '+(t.significance||'—')));
+   item.append(el('p',{},'ที่มาและความสำคัญ: '+(t.problem||'—')),el('p',{},'วัตถุประสงค์: '+(t.objectives||'—')),el('p',{},'ประโยชน์ที่คาดว่าจะได้รับ: '+(t.significance||'—')));
    if(t.reviewComment)item.append(el('p',{className:'notice'},'ข้อเสนอแนะจากอาจารย์ที่ปรึกษา: '+t.reviewComment));
    history.append(item);
   });
@@ -822,6 +823,69 @@ async function renderProgressReports(){
   allProgress.forEach(x=>{const item=el('div',{className:'admin-row'});item.append(el('div',{},'สัปดาห์ '+x.weekNo+' · '+x.milestone+'\n'+x.workCompleted+'\nสถานะ: '+progressStatusLabel(x.status)+(x.reviewComment?'\nข้อเสนอแนะ: '+x.reviewComment:'')));list.append(item)});
   a.append(list);
  }catch(e){a.textContent='โหลดความก้าวหน้าไม่สำเร็จ: '+e.message;}
+}
+
+async function renderAdminResearchTopicManagement(){
+ const a=$('sectionText');a.textContent='กำลังโหลดหัวข้องานวิจัยทุกกลุ่ม...';
+ try{
+  const groups=await callApi('apiAdminGetResearchTopicManagement',sessionToken);a.textContent='';
+  const intro=el('div',{className:'notice'});intro.append(el('h3',{},'จัดการหัวข้องานวิจัย'),el('p',{},'อาจารย์ประจำวิชาสามารถตรวจสอบหัวข้อทุกกลุ่ม ให้ผลพิจารณา และสั่งให้แก้ไขได้ การสั่งให้แก้ไขจะปลดล็อกการส่งหัวข้อของหัวหน้ากลุ่ม'));
+  const search=el('input',{type:'search',placeholder:'ค้นหากลุ่ม / หัวข้อ / อาจารย์ที่ปรึกษา'});
+  const filter=el('select');[['ALL','ทุกสถานะ'],['PENDING','รอพิจารณา'],['REVISION_REQUIRED','ให้แก้ไข'],['APPROVED','เห็นชอบ'],['REJECTED','ไม่เห็นชอบ'],['NONE','ยังไม่เสนอ']].forEach(([v,l])=>filter.append(el('option',{value:v},l)));
+  const list=el('div');
+  function latestStatus(x){return x.latest?String(x.latest.reviewStatus||x.latest.status||''):'NONE';}
+  function renderRows(){
+   list.textContent='';
+   const q=search.value.trim().toLocaleLowerCase();
+   const rows=groups.filter(g=>{
+    const st=latestStatus(g),qMatch=!q||[g.groupName,g.topicTitle,g.advisorName,g.latest&&g.latest.titleTh].join(' ').toLocaleLowerCase().includes(q);
+    const stMatch=filter.value==='ALL'||(filter.value==='APPROVED'?['APPROVED','ADVISOR_APPROVED'].includes(st):filter.value===st)||(filter.value==='NONE'&&!g.latest);
+    return qMatch&&stMatch;
+   });
+   if(!rows.length){list.append(el('p',{className:'notice'},'ไม่พบกลุ่มตามเงื่อนไข'));return;}
+   rows.forEach(g=>{
+    const card=el('div',{className:'notice'});card.append(el('h3',{},g.groupName),el('p',{},'อาจารย์ที่ปรึกษา: '+(g.advisorName||'ยังไม่ได้กำหนด')));
+    if(!g.latest){card.append(el('p',{},'ยังไม่มีการเสนอหัวข้องานวิจัย'));list.append(card);return;}
+    const t=g.latest,st=String(t.reviewStatus||t.status||'');
+    card.append(el('h4',{},'เวอร์ชัน '+t.versionNo+' · '+(t.titleTh||'—')),el('p',{},'ชื่อเรื่องภาษาอังกฤษ: '+(t.titleEn||'—')),el('p',{},'สถานะ: '+st),
+     el('p',{},'ที่มาและความสำคัญ: '+(t.problem||'—')),el('p',{},'วัตถุประสงค์: '+(t.objectives||'—')),el('p',{},'ประโยชน์ที่คาดว่าจะได้รับ: '+(t.significance||'—')));
+    if(t.reviewComment)card.append(el('p',{className:'notice'},'ข้อเสนอแนะล่าสุด: '+t.reviewComment));
+    if(st==='PENDING'){
+     const decision=el('select');[['APPROVED','เห็นชอบ'],['REVISION_REQUIRED','ให้แก้ไข'],['REJECTED','ไม่เห็นชอบ']].forEach(([v,l])=>decision.append(el('option',{value:v},l)));
+     const comment=el('textarea',{rows:'3',placeholder:'ข้อเสนอแนะ / เหตุผล (จำเป็นเมื่อให้แก้ไขหรือไม่เห็นชอบ)'});
+     const reviewButton=el('button',{type:'button',className:'primary'},'บันทึกผลพิจารณา');
+     reviewButton.onclick=async()=>{
+      if(['REVISION_REQUIRED','REJECTED'].includes(decision.value)&&comment.value.trim().length<5){showOperationStatus('กรุณาระบุข้อเสนอแนะอย่างน้อย 5 ตัวอักษร',true);comment.focus();return;}
+      if(!confirm('ยืนยันผลพิจารณาหัวข้อของ '+g.groupName+' หรือไม่?'))return;
+      reviewButton.disabled=true;
+      try{const r=await callApi('apiAdvisorReviewResearchTopic',sessionToken,t.versionId,decision.value,comment.value);showOperationStatus(r.message);await renderAdminResearchTopicManagement();}
+      catch(e){showOperationStatus(e.message,true);reviewButton.disabled=false;}
+     };
+     card.append(el('label',{},'ผลการพิจารณา'),decision,el('label',{},'ข้อเสนอแนะ'),comment,reviewButton);
+    }
+    if(st!=='REVISION_REQUIRED'){
+     const note=el('textarea',{rows:'2',placeholder:'เหตุผลในการให้แก้ไข (อย่างน้อย 5 ตัวอักษร)'});
+     const allow=el('button',{type:'button',className:'secondary'},'ให้แก้ไข');
+     allow.onclick=async()=>{
+      if(note.value.trim().length<5){showOperationStatus('กรุณาระบุเหตุผลให้แก้ไขอย่างน้อย 5 ตัวอักษร',true);note.focus();return;}
+      if(!confirm('อนุญาตให้กลุ่ม '+g.groupName+' แก้ไขหัวข้องานวิจัยเวอร์ชันล่าสุดหรือไม่?'))return;
+      allow.disabled=true;
+      try{const r=await callApi('apiAllowResearchTopicRevision',sessionToken,t.versionId,note.value);showOperationStatus(r.message);await renderAdminResearchTopicManagement();}
+      catch(e){showOperationStatus(e.message,true);allow.disabled=false;}
+     };
+     card.append(el('label',{},'เหตุผลการให้แก้ไข'),note,allow);
+    }else card.append(el('p',{className:'notice'},'นักศึกษาสามารถแก้ไขและส่งเป็นเวอร์ชันใหม่ได้แล้ว'));
+    if(Array.isArray(g.history)&&g.history.length>1){
+     const hist=el('div',{className:'admin-row'});hist.append(el('h4',{},'ประวัติเวอร์ชัน'));
+     g.history.forEach(v=>hist.append(el('p',{},'V'+v.versionNo+' · '+(v.titleTh||'—')+' · '+(v.reviewStatus||v.status||'')+(v.reviewComment?' · '+v.reviewComment:''))));
+     card.append(hist);
+    }
+    list.append(card);
+   });
+  }
+  search.addEventListener('input',renderRows);filter.addEventListener('change',renderRows);
+  intro.append(el('label',{},'ค้นหา'),search,el('label',{},'กรองสถานะ'),filter);a.append(intro,list);renderRows();
+ }catch(e){a.textContent='โหลดการจัดการหัวข้องานวิจัยไม่สำเร็จ: '+e.message;}
 }
 
 async function renderAdminProgressManagement(){
@@ -949,9 +1013,9 @@ async function renderAdvisorReview(){
    d.topics.filter(t=>t.reviewStatus==='PENDING').forEach(t=>{
     box.append(el('h4',{},'หัวข้อวิจัยเวอร์ชัน '+t.versionNo+' · '+(t.titleTh||'—')));
     if(t.titleEn)box.append(el('p',{},'ชื่อเรื่องภาษาอังกฤษ: '+t.titleEn));
-    box.append(el('p',{},'ปัญหาวิจัย: '+(t.problem||'—')),el('p',{},'วัตถุประสงค์: '+(t.objectives||'—')),el('p',{},'ความสำคัญของการวิจัย: '+(t.significance||'—')));
+    box.append(el('p',{},'ที่มาและความสำคัญ: '+(t.problem||'—')),el('p',{},'วัตถุประสงค์: '+(t.objectives||'—')),el('p',{},'ความสำคัญของการวิจัย: '+(t.significance||'—')));
     const comment=el('textarea',{rows:'3',placeholder:'ข้อเสนอแนะจากอาจารย์ที่ปรึกษา (จำเป็นเมื่อให้ปรับปรุงหรือไม่เห็นชอบ)'});
-    const sel=el('select');[['APPROVED','เห็นชอบ'],['REVISION_REQUIRED','ให้ปรับปรุง'],['REJECTED','ไม่เห็นชอบ']].forEach(([v,l])=>sel.append(el('option',{value:v},l)));
+    const sel=el('select');[['APPROVED','เห็นชอบ'],['REVISION_REQUIRED','ให้แก้ไข'],['REJECTED','ไม่เห็นชอบ']].forEach(([v,l])=>sel.append(el('option',{value:v},l)));
     const hint=el('small',{className:'muted'},'การเห็นชอบของอาจารย์ที่ปรึกษาเป็นการสิ้นสุด RW-01 ในระดับที่ปรึกษา ไม่ใช่การอนุมัติจาก Course Coordinator หรือ REC');
     const b=el('button',{type:'button',className:'secondary'},'บันทึกผลพิจารณา');
     b.onclick=async()=>{
@@ -960,8 +1024,30 @@ async function renderAdvisorReview(){
      try{const r=await callApi('apiAdvisorReviewResearchTopic',sessionToken,t.versionId,sel.value,comment.value);showOperationStatus(r.message);await renderAdvisorReview();}
      catch(e){showOperationStatus(e.message,true);b.disabled=false;}
     };
-    box.append(sel,comment,hint,b);
+    const allowEdit=el('button',{type:'button',className:'secondary'},'ให้แก้ไข');
+    allowEdit.onclick=async()=>{
+     if(comment.value.trim().length<5){showOperationStatus('กรุณาระบุเหตุผลให้แก้ไขอย่างน้อย 5 ตัวอักษร',true);comment.focus();return;}
+     if(!confirm('ส่งหัวข้อวิจัยของ '+g.groupName+' กลับไปแก้ไขหรือไม่?'))return;
+     allowEdit.disabled=true;
+     try{const r=await callApi('apiAllowResearchTopicRevision',sessionToken,t.versionId,comment.value);showOperationStatus(r.message);await renderAdvisorReview();}
+     catch(e){showOperationStatus(e.message,true);allowEdit.disabled=false;}
+    };
+    box.append(sel,comment,hint,b,allowEdit);
    });
+   const latestTopic=d.topics.slice().sort((x,y)=>Number(y.versionNo||0)-Number(x.versionNo||0))[0]||null;
+   if(latestTopic&&['APPROVED','ADVISOR_APPROVED','REJECTED'].includes(String(latestTopic.reviewStatus||''))){
+    const reopen=el('div',{className:'notice'});reopen.append(el('h4',{},'หัวข้องานวิจัยล่าสุด · V'+latestTopic.versionNo+' · '+(latestTopic.titleTh||'—')),el('p',{},'สถานะ: '+latestTopic.reviewStatus),el('p',{},'หัวข้อนี้ล็อกการแก้ไขอยู่ หากต้องการให้นักศึกษาแก้ไข กรุณาระบุเหตุผลแล้วกด “ให้แก้ไข”'));
+    const reopenNote=el('textarea',{rows:'2',placeholder:'เหตุผล/ข้อเสนอแนะในการให้แก้ไข (อย่างน้อย 5 ตัวอักษร)'});
+    const reopenButton=el('button',{type:'button',className:'secondary'},'ให้แก้ไข');
+    reopenButton.onclick=async()=>{
+     if(reopenNote.value.trim().length<5){showOperationStatus('กรุณาระบุเหตุผลให้แก้ไขอย่างน้อย 5 ตัวอักษร',true);reopenNote.focus();return;}
+     if(!confirm('อนุญาตให้กลุ่ม '+g.groupName+' แก้ไขหัวข้องานวิจัยเวอร์ชันล่าสุดหรือไม่?'))return;
+     reopenButton.disabled=true;
+     try{const r=await callApi('apiAllowResearchTopicRevision',sessionToken,latestTopic.versionId,reopenNote.value);showOperationStatus(r.message);await renderAdvisorReview();}
+     catch(e){showOperationStatus(e.message,true);reopenButton.disabled=false;}
+    };
+    reopen.append(el('label',{},'เหตุผลการให้แก้ไข'),reopenNote,reopenButton);box.append(reopen);
+   }
    if(d.files.length){box.append(el('h4',{},'เอกสารโครงร่าง'));d.files.forEach(file=>{const link=el('a',{href:file.url,target:'_blank',rel:'noopener noreferrer'},file.fileName);box.append(el('p',{},file.chapter+' · '),link);});}
    const reportList=d.progress.slice(0,5);reportList.forEach(r=>{box.append(el('p',{},'รายงานสัปดาห์ '+r.weekNo+' · '+r.workCompleted));const feedbackComment=el('textarea',{rows:'2',placeholder:'ข้อเสนอแนะต่อรายงานนี้'});const feedbackButton=el('button',{type:'button',className:'secondary'},'ส่งข้อเสนอแนะ');feedbackButton.onclick=async()=>{feedbackButton.disabled=true;try{const x=await callApi('apiAdvisorAddFeedback',sessionToken,{groupId:g.groupId,relatedType:'PROGRESS',relatedId:r.reportId,comment:feedbackComment.value});showOperationStatus(x.message);feedbackButton.textContent='ส่งแล้ว';}catch(e){showOperationStatus(e.message,true);feedbackButton.disabled=false;}};box.append(feedbackComment,feedbackButton);});
    a.append(box);
