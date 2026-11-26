@@ -241,3 +241,21 @@ Implementation branch: `perf/perf-01-advisor-dashboard-load`
 - Static syntax and consistency checks: PASS
 - GAS runtime/browser test, TEST deployment, UAT: PENDING / NOT TESTED
 - Production: unchanged
+
+
+## 19. MEETING-ONLINE — Single agenda and next-action fields; menu label (2026-11-26)
+
+Approved refinement superseding the earlier three-agenda/three-task UI arrangement:
+- Student meeting report has one full-width consultation-points textarea. Agenda 2 and Agenda 3 inputs are removed; students enter all points in this single field.
+- Follow-up plan has one full-width next-actions textarea and one Thai Buddhist Era due-date picker. Numbered task 1/2/3 cards are removed.
+- Student, Advisor, and Admin menu label is standardized as “บันทึกการเข้าพบที่ปรึกษา”. Legacy route names remain accepted to preserve saved-menu compatibility.
+- Backend uses existing MEETING_REPORTS schema: stores the single agenda and next-action text in the first legacy columns, clears unused columns 2/3, and validates one field each. No schema migration/new sheet.
+- Legacy reports are presented compatibly: old agenda text is combined into the new consultation textarea; old action descriptions and due dates are combined into the single action textarea, with the first prior due date selected in the date picker.
+
+Implementation branch: `perf/perf-01-advisor-dashboard-load`
+- Client commit / immutable Frontend pin: `ad55f12d49832a347ff8d8a20a94af618cb6a3ae`
+- Backend behavior commit: `e99dc4f05cf7c6ff6fe1bc380fb7e0c67426e037`
+- Backend pin commit: `17c9279e47ac410a9a18d58c2402c9e2bc027f01`
+- Static syntax and consistency checks: PASS
+- Runtime, Browser, TEST deployment and UAT: NOT TESTED / PENDING
+- Production: unchanged
