@@ -578,7 +578,7 @@ async function renderMeetingAttendance(){
    }
    filter.oninput=draw;statusFilter.onchange=draw;a.append(toolbar,list);draw();return;
   }
-  const report=await callApi('apiGetAssessmentReport',sessionToken);a.textContent='';
+  const [report,advisorMonitoring]=role==='ADVISOR'?await Promise.all([callApi('apiGetAssessmentReport',sessionToken),callApi('apiAdvisorGetMeetingMonitoring',sessionToken)]):[await callApi('apiGetAssessmentReport',sessionToken),null];a.textContent='';
   if(!report.length){a.append(el('p',{},'ยังไม่พบกลุ่มวิจัยที่เชื่อมโยงกับบัญชีนี้'));return;}
   const g=el('select'),no=el('select'),status=el('div',{className:'message'}),history=el('div'),legacyHistory=el('div');
   report.forEach(x=>g.append(el('option',{value:x.groupId},x.groupName)));
@@ -627,9 +627,32 @@ async function renderMeetingAttendance(){
   }
   g.onchange=load;no.onchange=async()=>{if(isStudent&&formSnapshot()!==loadedFormSnapshot){const proceed=window.confirm('มีข้อมูลที่ยังไม่ได้บันทึกในครั้งที่ '+loadedMeetingNo+' ต้องการเปลี่ยนครั้งที่เข้าพบหรือไม่? ข้อมูลที่ยังไม่บันทึกจะไม่ถูกเก็บ');if(!proceed){no.value=String(loadedMeetingNo);return;}}await load();};await load();
   const groupInfo=el('div',{className:'meeting-report-history-card'});function updateGroupInfo(){const selectedGroup=report.find(x=>String(x.groupId)===String(g.value))||report[0];groupInfo.textContent='';groupInfo.append(node('strong',{},'หัวข้องานวิจัย: '+(selectedGroup.topicTh||'ยังไม่ได้ระบุ')),node('p',{},'อาจารย์ที่ปรึกษา: '+(selectedGroup.advisor||'ยังไม่ได้แต่งตั้ง')),node('p',{},'สมาชิกกลุ่ม: '+selectedGroup.members.map(m=>m.studentName+' ('+m.studentId+')').join(' · ')));}updateGroupInfo();
+  const advisorStatusPanel=el('div',{className:'advisor-meeting-status-panel'});
+  if(isAdvisor&&advisorMonitoring){
+   advisorStatusPanel.append(el('h3',{},'สถานะบันทึกการเข้าพบของกลุ่มที่ปรึกษา'),el('p',{},'กดสถานะที่มีบันทึกเพื่อเปิดอ่านรายละเอียดของครั้งนั้น'));
+   const wrap=el('div',{className:'meeting-monitor-table-wrap'}),table=el('table',{className:'meeting-monitor-table'}),thead=el('thead'),hr=el('tr');
+   hr.append(el('th',{},'กลุ่มวิจัย'));
+   [2,4,6,8,10,12,14].forEach((w,i)=>hr.append(el('th',{},'ครั้งที่ '+(i+1),el('small',{},'สัปดาห์ '+w))));
+   thead.append(hr);table.append(thead);const tbody=el('tbody');
+   const labels={UPCOMING:'ยังไม่ถึงกำหนด',NOT_SUBMITTED:'ยังไม่ส่ง',DRAFT:'ฉบับร่าง',SUBMITTED:'ส่งแล้ว · รอตรวจ',ACTIVE:'ส่งแล้ว · รอตรวจ',VERIFIED:'ตรวจแล้ว',REVISION_REQUIRED:'ส่งกลับแก้ไข'};
+   advisorMonitoring.groups.forEach(group=>{
+    const tr=el('tr'),groupCell=el('td',{className:'meeting-monitor-group-cell'});groupCell.append(el('strong',{},group.groupName));tr.append(groupCell);
+    group.meetings.forEach(m=>{
+     const td=el('td',{className:'meeting-monitor-status-cell'}),label=labels[m.status]||m.status;
+     if(m.hasReport||m.hasLegacy){
+      const btn=el('button',{type:'button',className:'meeting-monitor-open-button','aria-label':'เปิดบันทึก '+group.groupName+' ครั้งที่ '+m.meetingNo},label);
+      const stamp=m.updatedAt||m.uploadedAt;if(stamp)btn.append(el('small',{},new Date(stamp).toLocaleDateString('th-TH')));
+      btn.onclick=()=>{g.value=String(group.groupId);no.value=String(m.meetingNo);g.dispatchEvent(new Event('change'));};
+      td.append(btn);
+     }else td.append(el('span',{className:'meeting-monitor-status-badge status-'+String(m.status||'').toLowerCase()},label));
+     tr.append(td);
+    });tbody.append(tr);
+   });
+   table.append(tbody);wrap.append(table);advisorStatusPanel.append(wrap);
+  }
   const meetingTitle=el('h2',{},isStudent?'บันทึกการเข้าพบที่ปรึกษา':'ติดตามบันทึกการเข้าพบที่ปรึกษา');
   if(isStudent)a.append(meetingTitle,el('p',{},'กลุ่มวิจัย: '+report[0].groupName),el('label',{},'ครั้งที่ / สัปดาห์'),no,groupInfo);
-  else a.append(meetingTitle,el('label',{},'กลุ่มวิจัย'),g,el('label',{},'ครั้งที่ / สัปดาห์'),no,groupInfo);
+  else a.append(meetingTitle,el('p',{},'ติดตามบันทึกของกลุ่มที่ได้รับมอบหมาย เลือกจากตารางเพื่อเปิดรายละเอียด'),advisorStatusPanel,el('label',{},'กลุ่มวิจัย'),g,el('label',{},'ครั้งที่ / สัปดาห์'),no,groupInfo);
   g.addEventListener('change',updateGroupInfo);
   if(isStudent){
    a.append(el('p',{},'กรอกข้อมูลในช่องที่กำหนด ไม่ต้องแนบไฟล์ PDF โดยตัวแทนกลุ่มเป็นผู้บันทึกข้อมูล'),reportForm,status);
