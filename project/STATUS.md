@@ -1,11 +1,56 @@
 # SPORT SCIENCE RESEARCH LAB — Project Status & Handover
 
 > **เอกสารส่งมอบสถานะโครงการ (Living Handover Document)**  
-> ปรับปรุงล่าสุด: 24 พฤศจิกายน 2026  
+> ปรับปรุงล่าสุด: 27 พฤศจิกายน 2026  
 > Repository: `worrawutt-source/worrawutsportsci`  
-> Branch: `main`
+> Branch: `release/phase2-test-rc-2026-11-27` (Source Integration Candidate; not a deployment)
 
 เอกสารนี้เป็นจุดเริ่มต้นสำหรับผู้พัฒนาหรือผู้ช่วย AI ที่เข้ามารับช่วงงานต่อ ให้อ่านเอกสารนี้ก่อนแก้ไขโค้ดทุกครั้ง และตรวจสอบ Source Code บน branch `main` อีกครั้งก่อนดำเนินการ เพราะสถานะในเอกสารอาจล้าหลังการเปลี่ยนแปลงล่าสุดได้
+
+---
+
+
+## 0. Current checkpoint — 27 พฤศจิกายน 2569
+
+> ส่วนนี้เป็นสถานะล่าสุดที่ตรวจสอบจาก GitHub Source และข้อยืนยันของผู้รับผิดชอบโครงการ ให้ใช้แทน snapshot เก่าที่ระบุในหัวข้อด้านล่างเมื่อข้อมูลขัดกัน
+
+### Operating model ที่ยืนยันแล้ว
+
+- พัฒนาและใช้งานระบบ GAS/Google Sheet ชุดเดิมควบคู่กัน
+- ไม่มี TEST GAS หรือ TEST Sheet แยก และไม่สร้างชุดใหม่โดยอัตโนมัติ
+- GitHub branch ใช้ตรวจ Source/diff เท่านั้น ไม่ใช่ deployment
+- ไม่ได้แก้ Production data, ไม่ได้ Deploy GAS และไม่ได้เปลี่ยน `setup.gs` ในงานรอบนี้
+
+### Source Integration Candidate
+
+- Branch: `release/phase2-test-rc-2026-11-27`
+- Head ก่อน commit สถานะรอบนี้: `283b77fb32e4e681e4bbee803ac65cc8673ba901`
+- Source base: `feat/responsive-workspace-layout` @ `abd6a7127c589fc6869277e54f4fa692209c84c6`
+- Compare base → RC ก่อนเอกสารรอบนี้: ahead 4, behind 0; changed files มีเฉพาะ Master Plan, STATUS และ GAS README (ไม่มี application source เปลี่ยนในขั้นประกอบ RC)
+- GAS modules: 13 numbered `.gs` files; `setup.gs` คงเดิม (SHA `299203df5478e0a220c7dda6c2b57f7df7c4ca23`)
+- Frontend pinned SHA ใน RC: `d3666d978fc8f3447d67ca8edf2f59ea258d540f`
+- Static API consistency: 88 backend API definitions, 88 unique; 77 unique literal Client `callApi()` names; missing backend API = 0; duplicate API definitions = 0
+- Frontend source hashes: Client `6cb3d15cdd8ccf9960ce3f357b21dbdc469f08d3`, Index `0f5399fd256f845a1125522bd96e181e89c4a03b`, Styles `459b30c7d5946f7000ec796fa0a49d8564625174`
+
+### Source review findings — Advisor / Coordinator
+
+- `apiGetAdvisorReviewQueue` ตรวจ session เป็น ADVISOR และดึงเฉพาะกลุ่มจาก `getAdvisorAssignedGroups_()` ตาม Source
+- `apiAdvisorReviewProgressReport` ตรวจ ADVISOR, ตรวจ report ในกลุ่มที่ assigned, จำกัดสถานะ SUBMITTED/RESUBMITTED และบันทึกผู้ตรวจ/เวลา/feedback
+- `apiAdvisorReviewResearchTopic` อนุญาต ADMIN/ADVISOR และใช้ `assertGroupAccess_()` ก่อนบันทึกผล
+- `apiAdminGetCoordinatorDashboard` ตรวจ ADMIN; `apiGetMenuTaskCounts` แยกผลตาม role ใน Source
+- Performance concern ที่ควรตรวจด้วยข้อมูลจริง: Coordinator Dashboard อ่านหลายตารางและวนตามกลุ่ม/สัปดาห์; ยังไม่มี runtime measurement จึงยังไม่เสนอให้ refactor โดยไม่มี profiling
+- Queue API ส่งข้อมูล topic/progress หลายสถานะให้ Client; ต้องยืนยันด้วย Browser/UAT ว่า UI กรองรายการ pending/returned/completed ถูกต้องและไม่แสดง Draft/ข้อมูลที่ไม่ควรเห็น
+
+### Environment / deployment mismatch — BLOCKED
+
+Source มี Build `0.4.0.2-MEETING-MONITORING-TEST`, comment `Deploy TEST only` และหน้า Login แสดง label `TEST`. ผู้รับผิดชอบยืนยันว่าระบบกำลังพัฒนาและใช้งานควบคู่กัน แต่ยังไม่มีหลักฐานจาก GAS Deployment/Script Properties ว่า RC นี้ตรงกับ deployment และ database ที่ใช้งานอยู่ จึงห้ามนำ RC ไปแทน Source ที่ใช้งานจริงจนกว่าจะตรวจสอบความตรงกัน
+
+### Validation status
+
+- PASS: static API caller consistency; source-level role/access guards inspected for the endpoints listed above
+- NOT TESTED: GAS runtime, Spreadsheet reads/writes, browser workflow, real deployment identity, end-to-end Advisor/Student/Coordinator UAT, performance under live data
+- BLOCKED: compare RC against currently deployed GAS source and confirm actual frontend pin/database target (no GAS/Sheets connector or deployment source available in this session)
+- Next Action: inspect/export current deployed Apps Script source and confirm deployment version + frontend pin + database target; then run the Advisor workflow walkthrough in the existing environment with user-approved low-risk actions. Do not create a second GAS/Sheet.
 
 ---
 
@@ -41,7 +86,7 @@ Repository หลัก: [worrawutt-source/worrawutsportsci](https://github.com/
 
 ### Frontend Commit SHA ที่ Backend อ้างอิง
 
-`ada41b9f2ce321d3f190ed092a1629c497ebeff0`
+`d3666d978fc8f3447d67ca8edf2f59ea258d540f`
 
 หากมีการแก้ไข Frontend และสร้าง commit ใหม่ ต้องปรับ SHA ที่ Backend อ้างอิงให้ตรงกับ commit ที่ต้องการใช้งาน การแก้ไข Frontend บน `main` อย่างเดียวไม่ได้ทำให้ Web App เปลี่ยนตามโดยอัตโนมัติ หาก Backend ยัง pin SHA เดิม
 
@@ -50,10 +95,10 @@ Repository หลัก: [worrawutt-source/worrawutsportsci](https://github.com/
 | รายการ | สถานะ/ข้อมูล |
 |---|---|
 | Backend | `project/gas-source/code.gs` |
-| Backend blob SHA ที่ตรวจสอบล่าสุด | `d94ff2e3b15c0656437a77d51c451ba43b435971` |
+| Backend blob SHA ที่ตรวจสอบล่าสุด | `bedaec5330aba961c87f694b655d545f569a1012` |
 | Build string ในหัวไฟล์ | `0.4.0.2-MEETING-MONITORING-TEST` |
 | Frontend pinned SHA | `ada41b9f2ce321d3f190ed092a1629c497ebeff0` |
-| API functions ที่ตรวจนับได้ | 78 |
+| API functions ที่ตรวจนับได้ | 88 (Source Integration Candidate; static count) |
 | ชื่อ API ซ้ำ | ไม่พบจากการตรวจครั้งล่าสุด |
 | Frontend callApi ที่ไม่มี API รองรับ | ไม่พบจากการตรวจครั้งล่าสุด |
 
