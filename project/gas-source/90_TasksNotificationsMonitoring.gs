@@ -97,21 +97,23 @@ function apiGetGroupAdvisorFeedbackStatus(token,groupId){const ctx=requireSessio
  */
 function apiAdminGetCoordinatorDashboard(token){
   requireSession_(token,[ROLE.ADMIN]);
-  const groups=readObjects_('RESEARCH_GROUPS').filter(g=>String(g.STATUS||'').toUpperCase()==='ACTIVE');
-  const assignments=readObjects_('ADVISOR_ASSIGNMENTS');
-  const users=readObjects_('SYS_USERS').filter(u=>String(u.STATUS||'').toUpperCase()==='ACTIVE');
-  const settings=readObjects_('PROGRESS_WEEK_SETTINGS').map(w=>({week:Number(w.WEEK_NO),title:String(w.TITLE||''),isOpen:String(w.IS_OPEN||'').toUpperCase()==='TRUE',dueDate:w.DUE_DATE?formatDateOnly_(w.DUE_DATE):''})).sort((a,b)=>a.week-b.week);
-  const reports=readObjects_('PROGRESS_REPORTS');
-  const extensions=readObjects_('GROUP_DEADLINE_EXTENSIONS').filter(x=>String(x.STATUS||'').toUpperCase()==='APPROVED');
-  const meetingReports=readObjects_('MEETING_REPORTS');
-  const meetingFiles=readObjects_('MEETING_FILES');
-  const meetingRecords=readObjects_('MEETING_RECORDS');
-  const groupTasks=readObjects_('GROUP_TASKS');
-  const warnings=readObjects_('EARLY_WARNING_FLAGS');
-  const groupScores=readObjects_('GROUP_SCORES');
-  const individualScores=readObjects_('INDIVIDUAL_SCORES');
-  const members=readObjects_('GROUP_MEMBERS').filter(m=>String(m.STATUS||'').toUpperCase()==='ACTIVE');
-  const peerAssessments=readObjects_('PEER_ASSESSMENTS');
+  const dashboardDb=db_();
+  const readTable=name=>dashboardDb.getSheetByName(name)?readObjectsFresh_(name):[];
+  const groups=readTable('RESEARCH_GROUPS').filter(g=>String(g.STATUS||'').toUpperCase()==='ACTIVE');
+  const assignments=readTable('ADVISOR_ASSIGNMENTS');
+  const users=readTable('SYS_USERS').filter(u=>String(u.STATUS||'').toUpperCase()==='ACTIVE');
+  const settings=readTable('PROGRESS_WEEK_SETTINGS').map(w=>({week:Number(w.WEEK_NO),title:String(w.TITLE||''),isOpen:String(w.IS_OPEN||'').toUpperCase()==='TRUE',dueDate:w.DUE_DATE?formatDateOnly_(w.DUE_DATE):''})).sort((a,b)=>a.week-b.week);
+  const reports=readTable('PROGRESS_REPORTS');
+  const extensions=readTable('GROUP_DEADLINE_EXTENSIONS').filter(x=>String(x.STATUS||'').toUpperCase()==='APPROVED');
+  const meetingReports=readTable('MEETING_REPORTS');
+  const meetingFiles=readTable('MEETING_FILES');
+  const meetingRecords=readTable('MEETING_RECORDS');
+  const groupTasks=readTable('GROUP_TASKS');
+  const warnings=readTable('EARLY_WARNING_FLAGS');
+  const groupScores=readTable('GROUP_SCORES');
+  const individualScores=readTable('INDIVIDUAL_SCORES');
+  const members=readTable('GROUP_MEMBERS').filter(m=>String(m.STATUS||'').toUpperCase()==='ACTIVE');
+  const peerAssessments=readTable('PEER_ASSESSMENTS');
   const today=new Date();today.setHours(0,0,0,0);
   const dateOnly=v=>{
     if(!v)return null;
@@ -128,7 +130,7 @@ function apiAdminGetCoordinatorDashboard(token){
     if(status==='APPROVED')assignmentByGroup.set(key,a);
   });
   const pendingAssignments=assignments.filter(a=>String(a.STATUS||'').toUpperCase()==='PENDING'&&groupById.has(String(a.GROUP_ID)));
-  const invitations=readObjects_('ADVISOR_INVITATIONS');
+  const invitations=readTable('ADVISOR_INVITATIONS');
   const pendingInvitations=invitations.filter(i=>String(i.STATUS||'').toUpperCase()==='ACCEPTED'&&groupById.has(String(i.GROUP_ID)));
   const groupsNoAdvisor=groups.filter(g=>!assignmentByGroup.has(String(g.GROUP_ID))&&!pendingAssignments.some(a=>String(a.GROUP_ID)===String(g.GROUP_ID))&&!pendingInvitations.some(i=>String(i.GROUP_ID)===String(g.GROUP_ID)));
   const approvedAdvisorName=g=>{
@@ -194,7 +196,8 @@ function apiAdminGetCoordinatorDashboard(token){
   const individualByStudent=new Map(individualScores.map(s=>[String(s.STUDENT_ID),s]));
   const activeMembersByGroup=new Map();
   members.forEach(m=>{const k=String(m.GROUP_ID);if(!activeMembersByGroup.has(k))activeMembersByGroup.set(k,[]);activeMembersByGroup.get(k).push(m);});
-  const assessmentWindows=assessmentSettings_();
+  const assessmentWindows={WINDOW_A4:'CLOSED',WINDOW_A5:'CLOSED'};
+  readTable('ASSESSMENT_SETTINGS').forEach(r=>assessmentWindows[String(r.SETTING_KEY)]=String(r.SETTING_VALUE||''));
   const assessments=['A1','A2','A3','A4','A5'].map(code=>{
     let complete=0,recorded=0,expected=groups.length;
     groups.forEach(g=>{
