@@ -106,3 +106,10 @@ The Apps Script loader fetches these three files from `raw.githubusercontent.com
 - To validate RC, use a separate TEST Apps Script project/copy. Add the numbered modules and `code.gs`; retain `appsscript.json`, TEST Script Properties and the protected `setup.gs`. Verify the DB ID/environment points only to TEST before deployment.
 - Do not include or run the separate `MEETING_SUBMISSIONS` migration from the divergent meeting migration branch. Current modular source uses `MEETING_REPORTS`; any existing TEST sheet must remain untouched.
 - This is a source candidate, not a deployed release.
+
+
+## Current operating model (confirmed 2026-11-27)
+
+The project is developed and used concurrently in the existing Apps Script and Spreadsheet environment. There is no separate TEST GAS or TEST Sheet, and none should be created by default. GitHub branches are used for source review and validation only; a branch is not a deployment.
+
+The current Source Integration Candidate is `release/phase2-test-rc-2026-11-27`. It has not been confirmed as the deployed source. This RC contains TEST-only build/comment strings and the frontend currently displays a TEST environment label; verify the actual Apps Script deployment, pinned frontend SHA, Script Properties and database target with the system owner before any release. Do not change these markers or deploy without approval.
