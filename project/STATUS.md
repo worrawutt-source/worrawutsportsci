@@ -5,7 +5,7 @@
 > Repository: `worrawutt-source/worrawutsportsci`  
 > Branch: `release/phase2-test-rc-2026-11-27` (Source Integration Candidate; not a deployment)
 
-เอกสารนี้เป็นจุดเริ่มต้นสำหรับผู้พัฒนาหรือผู้ช่วย AI ที่เข้ามารับช่วงงานต่อ ให้อ่านเอกสารนี้ก่อนแก้ไขโค้ดทุกครั้ง และตรวจสอบ Source Code บน branch `main` อีกครั้งก่อนดำเนินการ เพราะสถานะในเอกสารอาจล้าหลังการเปลี่ยนแปลงล่าสุดได้
+เอกสารนี้เป็นจุดเริ่มต้นสำหรับผู้พัฒนาหรือผู้ช่วย AI ที่เข้ามารับช่วงงานต่อ ให้อ่านเอกสารนี้ก่อนแก้ไขโค้ดทุกครั้ง และตรวจสอบ branch/commit ที่กำลังใช้งานและ Source Integration Candidate ล่าสุดก่อนดำเนินการ เพราะสถานะในเอกสารอาจล้าหลังการเปลี่ยนแปลงล่าสุดได้
 
 ---
 
@@ -39,6 +39,12 @@
 - `apiAdvisorReviewResearchTopic` อนุญาต ADMIN/ADVISOR และใช้ `assertGroupAccess_()` ก่อนบันทึกผล
 - `apiAdminGetCoordinatorDashboard` ตรวจ ADMIN; `apiGetMenuTaskCounts` แยกผลตาม role ใน Source
 - Performance concern ที่ควรตรวจด้วยข้อมูลจริง: Coordinator Dashboard อ่านหลายตารางและวนตามกลุ่ม/สัปดาห์; ยังไม่มี runtime measurement จึงยังไม่เสนอให้ refactor โดยไม่มี profiling
+- เทียบกับข้อกำหนด Advisor Menu ที่แนบ: Dashboard มี 5 cards แต่ card สุดท้ายเป็น Feedback ที่บันทึก ไม่ใช่ “งานเสร็จแล้ว”; ยังไม่พบ KPI แยก “งานที่รอนักศึกษา” จาก Advisor workload ใน UI นี้
+- Action Inbox ปัจจุบันแสดงรายการหัวข้อ/รายงานและ overdue แต่ปุ่มส่วนใหญ่เปิดเมนู “งานของฉัน” หรือ “กลุ่มที่ปรึกษา” แบบทั่วไป ไม่ได้เปิด item-specific review; ไม่แสดง waiting duration/priority ordering ครบตาม requirement
+- Review Workspace มีการตรวจหัวข้อและรายงานความก้าวหน้าในหน้ารวม และแสดง feedback ครั้งก่อนของรายงาน แต่ยังไม่พบการบันทึก Feedback Draft แยกจากการส่งผลตรวจ; topic history/feedback history ยังไม่อยู่ในหน้าตรวจหลัก
+- Group Workspace ปัจจุบันเป็นรายชื่อกลุ่มพร้อม details แบบ lazy-loaded ไม่ใช่ 5 tabs ตามข้อเสนอ; รายละเอียด progress/feedback โหลดเมื่อเปิด accordion และไม่พบการดำเนินการต่อจากแต่ละรายการงานโดยตรง
+- ประเด็นข้างต้นเป็น Functional Gap จาก static UI review เทียบเอกสารที่แนบ ไม่ใช่ข้อยืนยัน runtime defect; เอกสารข้อกำหนดระบุเป็น Proposed Requirements จึงยังไม่แก้โค้ด/เปลี่ยน workflow โดยไม่ได้รับอนุมัติ
+
 - Queue API ส่งข้อมูล topic/progress หลายสถานะให้ Client; ต้องยืนยันด้วย Browser/UAT ว่า UI กรองรายการ pending/returned/completed ถูกต้องและไม่แสดง Draft/ข้อมูลที่ไม่ควรเห็น
 
 ### Environment / deployment mismatch — BLOCKED
@@ -97,7 +103,7 @@ Repository หลัก: [worrawutt-source/worrawutsportsci](https://github.com/
 | Backend | `project/gas-source/code.gs` |
 | Backend blob SHA ที่ตรวจสอบล่าสุด | `bedaec5330aba961c87f694b655d545f569a1012` |
 | Build string ในหัวไฟล์ | `0.4.0.2-MEETING-MONITORING-TEST` |
-| Frontend pinned SHA | `ada41b9f2ce321d3f190ed092a1629c497ebeff0` |
+| Frontend pinned SHA | `d3666d978fc8f3447d67ca8edf2f59ea258d540f` |
 | API functions ที่ตรวจนับได้ | 88 (Source Integration Candidate; static count) |
 | ชื่อ API ซ้ำ | ไม่พบจากการตรวจครั้งล่าสุด |
 | Frontend callApi ที่ไม่มี API รองรับ | ไม่พบจากการตรวจครั้งล่าสุด |
