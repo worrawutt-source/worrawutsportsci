@@ -262,3 +262,76 @@ function apiAdminGetCoordinatorDashboard(token){
     groups:groupRows,calendar,assessments
   });
 }
+
+/**
+ * Read-only sheet reader for menu task indicators.
+ * Unlike sheet_()/readObjectsFresh_(), this helper never auto-creates workflow sheets.
+ */
+function readMenuBadgeRows_(name,cache){
+  cache=cache||{};
+  if(Object.prototype.hasOwnProperty.call(cache,name))return cache[name];
+  const sh=db_().getSheetByName(name);
+  if(!sh){cache[name]=[];return cache[name];}
+  const lastRow=sh.getLastRow(),lastCol=sh.getLastColumn();
+  if(lastRow<2||lastCol<1){cache[name]=[];return cache[name];}
+  const values=sh.getRange(1,1,lastRow,lastCol).getValues();
+  const headers=values[0].map(String);
+  cache[name]=values.slice(1).map((row,i)=>{
+    const obj={_row:i+2};headers.forEach((h,j)=>obj[h]=row[j]);return obj;
+  }).filter(obj=>Object.keys(obj).some(k=>k!=='_row'&&obj[k]!==''&&obj[k]!==null));
+  return cache[name];
+}
+
+/** Aggregate role-scoped pending-work counts for numeric menu badges; read-only, no schema setup. */
+function apiGetMenuTaskCounts(token){
+  const ctx=requireSession_(token,null,true),role=ctx.user.ROLE_ID,cache={};
+  const rows=name=>readMenuBadgeRows_(name,cache);
+  const out={role,admin:{},advisor:{},student:{}};
+  const activeGroups=rows('RESEARCH_GROUPS').filter(g=>String(g.STATUS||'').toUpperCase()==='ACTIVE');
+  const groupIds=new Set(activeGroups.map(g=>String(g.GROUP_ID)));
+  if(role===ROLE.ADMIN){
+    const assignments=rows('ADVISOR_ASSIGNMENTS').filter(a=>groupIds.has(String(a.GROUP_ID||'')));
+    const approvedIds=new Set(assignments.filter(a=>String(a.STATUS||'').toUpperCase()==='APPROVED').map(a=>String(a.GROUP_ID)));
+    out.admin.groupsNeedsLeader=activeGroups.filter(g=>!String(g.GROUP_LEADER_USER_ID||'').trim()).length;
+    const pendingAdvisorIds=new Set(assignments.filter(a=>String(a.STATUS||'').toUpperCase()==='PENDING'&&!approvedIds.has(String(a.GROUP_ID))).map(a=>String(a.GROUP_ID)));
+    rows('ADVISOR_INVITATIONS').filter(x=>String(x.STATUS||'').toUpperCase()==='ACCEPTED'&&groupIds.has(String(x.GROUP_ID||''))&&!approvedIds.has(String(x.GROUP_ID||''))).forEach(x=>pendingAdvisorIds.add(String(x.GROUP_ID)));
+    out.admin.advisorAssignment=pendingAdvisorIds.size;
+    out.admin.progressManagement=rows('PROGRESS_REPORTS').filter(x=>groupIds.has(String(x.GROUP_ID||''))&&['SUBMITTED','RESUBMITTED'].includes(String(x.STATUS||'').toUpperCase())).length;
+    out.admin.taskBoard=rows('GROUP_TASKS').filter(x=>groupIds.has(String(x.GROUP_ID||''))&&!['DONE','CANCELLED','DELETED'].includes(String(x.STATUS||'').toUpperCase())).length;
+    const ethics=rows('ETHICS_TRACKING');
+    out.admin.ethics=activeGroups.filter(g=>{const e=ethics.find(x=>String(x.GROUP_ID)===String(g.GROUP_ID));return !e||!String(e.ETHICS_PLAN||'').trim()||String(e.ETHICS_PLAN||'').toUpperCase()==='UNDECIDED';}).length;
+    out.admin.risk=rows('EARLY_WARNING_FLAGS').filter(x=>!['RESOLVED','CLOSED','DISMISSED','COMPLETED'].includes(String(x.STATUS||'').toUpperCase())).length;
+    out.admin.users=rows('SYS_INVITATIONS').filter(x=>['PENDING','PREPARING'].includes(String(x.STATUS||'').toUpperCase())&&(!x.EXPIRES_AT||new Date(x.EXPIRES_AT)>new Date())).length;
+    const scores=rows('GROUP_SCORES');
+    out.admin.assessment=activeGroups.filter(g=>{const x=scores.find(r=>String(r.GROUP_ID)===String(g.GROUP_ID))||{};return ['A1_SCORE','A2_SCORE','A3_SCORE','A4_GROUP_SCORE'].some(k=>x[k]===''||x[k]===null||x[k]===undefined);}).length;
+  }else if(role===ROLE.ADVISOR){
+    const assigned=getAdvisorAssignedGroups_(ctx.user.USER_ID),ids=new Set(assigned.map(g=>String(g.groupId)));
+    const reports=rows('PROGRESS_REPORTS').filter(x=>ids.has(String(x.GROUP_ID||''))&&['SUBMITTED','RESUBMITTED'].includes(String(x.STATUS||'').toUpperCase()));
+    const topics=rows('RESEARCH_TOPIC_VERSIONS').filter(x=>ids.has(String(x.GROUP_ID||''))&&String(x.REVIEW_STATUS||'').toUpperCase()==='PENDING');
+    out.advisor.groups=new Set([...reports,...topics].map(x=>String(x.GROUP_ID))).size;
+    const a4Open=String(assessmentSettingsFresh_().WINDOW_A4||'CLOSED').toUpperCase()==='OPEN';
+    if(a4Open){
+      const scores=rows('GROUP_SCORES'),individual=rows('INDIVIDUAL_SCORES'),members=rows('GROUP_MEMBERS').filter(x=>ids.has(String(x.GROUP_ID))&&String(x.STATUS||'').toUpperCase()==='ACTIVE');
+      out.advisor.a4=assigned.filter(g=>{const gs=scores.find(x=>String(x.GROUP_ID)===String(g.groupId))||{},ms=members.filter(x=>String(x.GROUP_ID)===String(g.groupId));return gs.A4_GROUP_SCORE===''||gs.A4_GROUP_SCORE===null||gs.A4_GROUP_SCORE===undefined||ms.some(m=>{const x=individual.find(y=>String(y.STUDENT_ID)===String(m.STUDENT_ID))||{};return x.A4_INDIVIDUAL_SCORE===''||x.A4_INDIVIDUAL_SCORE===null||x.A4_INDIVIDUAL_SCORE===undefined;});}).length;
+    }else out.advisor.a4=0;
+  }else if(role===ROLE.STUDENT){
+    const user=rows('SYS_USERS').find(x=>String(x.USER_ID)===String(ctx.user.USER_ID))||ctx.user;
+    const sid=normalizeStudentId_(user.STUDENT_ID||ctx.user.STUDENT_ID);
+    const member=rows('GROUP_MEMBERS').find(x=>(String(x.USER_ID)===String(ctx.user.USER_ID)||(sid&&normalizeStudentId_(x.STUDENT_ID)===sid))&&String(x.STATUS||'').toUpperCase()==='ACTIVE');
+    if(member){
+      const gid=String(member.GROUP_ID);
+      const weeks=rows('PROGRESS_WEEK_SETTINGS').filter(x=>['TRUE','1'].includes(String(x.IS_OPEN||'').toUpperCase()));
+      const reports=rows('PROGRESS_REPORTS').filter(x=>String(x.GROUP_ID)===gid);
+      out.student.progress=weeks.filter(w=>{const items=reports.filter(x=>Number(x.WEEK_NO)===Number(w.WEEK_NO)).sort((a,b)=>new Date(b.SUBMITTED_AT||0)-new Date(a.SUBMITTED_AT||0));const status=String(items[0]&&items[0].STATUS||'').toUpperCase();return status==='REVISION_REQUIRED'||!['SUBMITTED','RESUBMITTED','APPROVED'].includes(status);}).length;
+      const topicRows=rows('RESEARCH_TOPIC_VERSIONS').filter(x=>String(x.GROUP_ID)===gid).sort((a,b)=>Number(b.VERSION_NO||0)-Number(a.VERSION_NO||0));
+      out.student.topics=topicRows[0]&&String(topicRows[0].REVIEW_STATUS||'').toUpperCase()==='REVISION_REQUIRED'?1:0;
+      out.student.taskBoard=rows('GROUP_TASKS').filter(x=>String(x.GROUP_ID)===gid&&!['DONE','CANCELLED','DELETED'].includes(String(x.STATUS||'').toUpperCase())).filter(x=>!String(x.ASSIGNED_TO_USER_ID||'').trim()||String(x.ASSIGNED_TO_USER_ID)===String(ctx.user.USER_ID)).length;
+      if(String(assessmentSettingsFresh_().WINDOW_A5||'CLOSED').toUpperCase()==='OPEN'){
+        const members=rows('GROUP_MEMBERS').filter(x=>String(x.GROUP_ID)===gid&&String(x.STATUS||'').toUpperCase()==='ACTIVE'&&String(x.STUDENT_ID)!==String(member.STUDENT_ID));
+        const submitted=rows('PEER_ASSESSMENTS').filter(x=>String(x.GROUP_ID)===gid&&String(x.EVALUATOR_STUDENT_ID)===String(member.STUDENT_ID));
+        out.student.peerAssessment=Math.max(0,members.length-submitted.length);
+      }else out.student.peerAssessment=0;
+    }
+  }
+  return sanitizeForClient_(out);
+}
