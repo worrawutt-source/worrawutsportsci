@@ -327,5 +327,95 @@ html.ssrl-session-restoring #sessionRestoreView{display:flex!important}
 
 
 @media(max-width:720px){.advisor-review-summary{grid-template-columns:minmax(0,1fr)}.advisor-review-count{min-width:0}.advisor-review-card{padding:13px}.advisor-review-card-head{align-items:flex-start}}
+
+/* Responsive workspace refinement — larger usable canvas and readable text */
+.shell{width:min(100%,1680px);padding:clamp(18px,1.6vw,28px) clamp(18px,2.2vw,36px)}
+.welcome-row{gap:22px;padding:24px 0 22px}
+.welcome-row h1{font-size:clamp(28px,2.1vw,36px);line-height:1.35}
+.welcome-row p{font-size:17px;line-height:1.6}
+.dashboard-layout{grid-template-columns:250px minmax(0,1fr);gap:clamp(18px,1.8vw,28px)}
+.side-menu{padding:16px;gap:7px}
+.menu-item{font-size:16px;line-height:1.5;padding:14px 15px;min-height:50px}
+.content-area{gap:18px}
+.metric-grid{grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:14px}
+.metric{padding:18px 20px}
+.metric-label{font-size:15px;line-height:1.55}
+.metric-value{font-size:30px;line-height:1.2}
+.content-panel h2{font-size:clamp(23px,1.65vw,27px);line-height:1.45}
+.content-panel p{font-size:16px;line-height:1.8}
+.notice{font-size:15px;line-height:1.75}
+.advisor-review-summary{gap:12px}
+.advisor-review-count{font-size:15px;padding:14px 17px;line-height:1.5}
+.advisor-review-count strong{font-size:26px}
+.advisor-group-meta{font-size:14px}
+.advisor-review-card{padding:20px;gap:14px}
+.advisor-review-card h4{font-size:18px;line-height:1.55}
+.advisor-review-card p{font-size:15px;line-height:1.8}
+.advisor-status{font-size:13px;padding:6px 10px}
+.advisor-review-content{padding:14px 16px}
+.advisor-feedback-input,.advisor-decision{font-size:15px;line-height:1.7}
+.advisor-review-comment{font-size:15px;line-height:1.75}
+.advisor-document-list summary{font-size:15px}
+.advisor-table th{font-size:14px;padding:13px 14px}
+.advisor-table td{font-size:15px;padding:14px}
+.advisor-task-row strong{font-size:15px}
+.advisor-task-row small{font-size:14px}
+.advisor-empty{font-size:15px;padding:22px}
+@media(min-width:1440px){
+ .dashboard-layout{grid-template-columns:270px minmax(0,1fr);gap:28px}
+ .side-menu{padding:18px}
+ .menu-item{padding:15px 16px}
+ .content-area{gap:20px}
+ .metric-grid{gap:16px}
+ .metric{padding:20px 22px}
+}
+@media(max-width:1100px){
+ .shell{width:100%;padding:18px 22px}
+ .dashboard-layout{grid-template-columns:220px minmax(0,1fr);gap:16px}
+ .metric-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+ .metric-label{font-size:14px}
+ .content-panel h2{font-size:24px}
+ .advisor-review-card{padding:16px}
+}
+@media(max-width:900px){
+ .shell{padding:18px 20px}
+ .dashboard-layout{grid-template-columns:minmax(0,1fr)}
+ .side-menu{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .menu-item{font-size:15px;min-height:48px}
+ .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .metric-label{font-size:14px}
+ .welcome-row h1{font-size:30px}
+ .advisor-review-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:600px){
+ .shell{padding:12px 14px}
+ .welcome-row{gap:14px;padding:20px 0 16px}
+ .welcome-row h1{font-size:26px}
+ .welcome-row p{font-size:15px}
+ .side-menu{grid-template-columns:repeat(2,minmax(0,1fr));padding:10px;gap:6px}
+ .menu-item{font-size:14px;line-height:1.45;padding:11px 10px;min-height:46px}
+ .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .metric{padding:13px}
+ .metric-label{font-size:13px}
+ .metric-value{font-size:26px}
+ .content-panel h2{font-size:21px}
+ .content-panel p{font-size:15px}
+ .advisor-review-summary{grid-template-columns:minmax(0,1fr);gap:8px}
+ .advisor-review-count{font-size:14px;padding:11px 13px}
+ .advisor-review-count strong{font-size:22px}
+ .advisor-review-card{padding:14px}
+ .advisor-review-card h4{font-size:17px}
+ .advisor-review-card p{font-size:14px}
+ .advisor-feedback-input,.advisor-decision{font-size:16px}
+ .advisor-table th,.advisor-table td{font-size:14px}
+}
+@media(max-width:380px){
+ .shell{padding:10px}
+ .side-menu{grid-template-columns:minmax(0,1fr)}
+ .metric-grid{grid-template-columns:minmax(0,1fr)}
+ .welcome-actions{width:100%}
+ .welcome-actions button{flex:1;min-width:0;padding:11px 10px;font-size:14px}
+}
+
 </style>
 
