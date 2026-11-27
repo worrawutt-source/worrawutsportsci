@@ -217,6 +217,14 @@ function apiAdminGetCoordinatorDashboard(token){
     return {code,points:{A1:10,A2:30,A3:20,A4:30,A5:10}[code],complete,recorded,expected,windowState,
       isOpen:['OPEN'].includes(String(windowState).toUpperCase()),active:code==='A4'||code==='A5'?String(windowState).toUpperCase()==='OPEN':false};
   });
+  const meetingOneStatusCounts={notRecorded:meetingOne.filter(x=>x.status==='NOT_RECORDED').length,recordedNotSubmitted:meetingOne.filter(x=>x.status==='NOT_SUBMITTED').length,submitted:meetingOne.filter(x=>x.status==='SUBMITTED').length,verified:meetingOne.filter(x=>x.status==='VERIFIED').length,revision:meetingOne.filter(x=>x.status==='REVISION_REQUIRED').length};
+  const weekOneSetting=settings.find(w=>Number(w.week)===1)||null;
+  const weekOneStatusRows=groups.map(g=>{
+    const r=latestByGroupWeek.get(String(g.GROUP_ID)+'|1')||null,status=String(r&&r.STATUS||'NOT_SUBMITTED').toUpperCase();
+    const due=effectiveDue(g.GROUP_ID,1,weekOneSetting),dueDate=dateOnly(status==='REVISION_REQUIRED'&&r&&r.REVISION_DUE_AT?r.REVISION_DUE_AT:due);
+    return {status,overdue:!['SUBMITTED','RESUBMITTED','APPROVED'].includes(status)&&!!dueDate&&dueDate<today};
+  });
+  const progressWeekOneStatus={notSubmitted:weekOneStatusRows.filter(x=>x.status==='NOT_SUBMITTED'&&!x.overdue).length,submitted:weekOneStatusRows.filter(x=>['SUBMITTED','RESUBMITTED'].includes(x.status)).length,reviewed:weekOneStatusRows.filter(x=>x.status==='APPROVED').length,revision:weekOneStatusRows.filter(x=>x.status==='REVISION_REQUIRED').length,overdue:weekOneStatusRows.filter(x=>x.overdue).length};
   const groupRows=groups.map(g=>{
     const gid=String(g.GROUP_ID),assignment=assignmentByGroup.get(gid),advisor=approvedAdvisorName(g);
     const latest=latestReportByGroup.get(gid)||null;
@@ -246,7 +254,7 @@ function apiAdminGetCoordinatorDashboard(token){
       meetingOnePending,meetingOneRevision,taskOverdue,taskDueSoon,warnings:openWarnings.map(w=>({groupId:String(w.GROUP_ID),groupName:String((groupById.get(String(w.GROUP_ID))||{}).GROUP_NAME||''),severity:String(w.SEVERITY||''),status:String(w.STATUS||'')}))},
     activities:{advisorApproved:groups.filter(g=>assignmentByGroup.has(String(g.GROUP_ID))).length,advisorPending:pendingAssignments.length+pendingInvitations.length,
       meetingOneSubmitted:meetingOne.filter(x=>['SUBMITTED','VERIFIED','REVISION_REQUIRED','ACTIVE'].includes(x.status)).length,
-      meetingOneVerified:meetingOne.filter(x=>x.status==='VERIFIED').length,
+      meetingOneVerified:meetingOne.filter(x=>x.status==='VERIFIED').length,meetingOneStatusCounts,progressWeekOneStatus,
       progressWeekOpen:settings.filter(w=>w.isOpen).map(w=>({weekNo:Number(w.week),title:String(w.title||''),dueDate:isoDate(w.dueDate)}))},
     groups:groupRows,calendar,assessments
   });
