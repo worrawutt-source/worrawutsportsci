@@ -77,10 +77,10 @@ The Apps Script loader fetches these three files from `raw.githubusercontent.com
 
 - Fixed the duplicate “งานของฉัน” heading in the Advisor review workspace; the outer section title remains the single page title.
 - Improved review card wrapping for long Thai/English text, status labels, and feedback inputs; added narrow-screen summary layout to prevent overlap.
-- Restored role-scoped red outlined numeric menu badges. Badge counts are hidden at zero, show a compact 99+ label above 99, and expose the exact count in the tooltip/accessible label.
+- Restored role-scoped red outlined numeric menu badges. Badge counts are hidden at zero, show a compact 99+ label above 99, and expose the exact count in the tooltip/accessible label. Advisor “งานของฉัน” counts pending topic/report items; “กลุ่มที่ปรึกษา” counts groups.
 - Menu selection restoration now uses `data-menu-label`, so badge text does not break the saved-menu match.
 - Added `apiGetMenuTaskCounts(token)` to `90_TasksNotificationsMonitoring.gs`. The API is session-protected, returns aggregate counts by role, reads each sheet once per request, and uses a direct read-only sheet reader that does not auto-create workflow sheets.
 - Badge refresh runs at dashboard load and is debounced after successful mutation API calls.
-- Frontend immutable commit: `1bcdd398fe4fea57f7675955fc526c1c8fa31385`; loader pin updated in `00_AppConfigAndEntry.gs`.
+- Frontend immutable commit: `6f0b213c3d79709b8ff47dff7afe1660d9e36267`; loader pin updated in `00_AppConfigAndEntry.gs`.
 - No schema/migration, scoring, role permission, setup, or production-data changes. `setup.gs` unchanged.
-- Static source checks: pending final verification. GAS runtime, browser TEST, regression, UAT, and deployment: NOT TESTED / NOT PERFORMED.
+- Static source checks: PASS (API single definition/session guard, role mapping, stable menu labels, zero-hide badge, immutable frontend pin, no auto-create sheet path). GAS runtime, browser TEST, regression, UAT, and deployment: NOT TESTED / NOT PERFORMED.
