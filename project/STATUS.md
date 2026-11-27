@@ -1016,3 +1016,20 @@ Do not copy Client.html or Styles.html into GAS; they are loaded from GitHub at 
 - Static source/CSS checks: PASS. Actual browser visual QA on notebook, iPad/tablet, and mobile: NOT TESTED. GAS runtime, TEST deployment, and UAT: NOT PERFORMED.
 - TEST GAS sync remains required for previously changed modules `00_AppConfigAndEntry.gs`, `10_AuthAndUserAdministration.gs`, `50_Assessment.gs`, `60_ProgressManagement.gs`, and `90_TasksNotificationsMonitoring.gs`. Frontend `Client.html` and `Styles.html` load from the updated immutable GitHub pin; do not copy them as GAS files.
 - Next action: sync the five listed `.gs` files into the existing TEST GAS project, deploy TEST only, and perform visual UAT at desktop/notebook (1366px+), tablet (768–1199px), and mobile (320–767px) widths.
+
+## 2026-11-27 — TEST Release Candidate source integration (RC0)
+
+- RC branch: `release/phase2-test-rc-2026-11-27`.
+- Source base: `feat/responsive-workspace-layout` at `abd6a7127c589fc6869277e54f4fa692209c84c6`. RC was created from this exact source commit; documentation commits do not alter application source.
+- Source ancestry review: the latest modular source contains the earlier integration/performance, student-menu/Admin overview, Advisor Workspace/menu badge, Course Coordinator dashboard, and Responsive changes. Older ancestor branches were not merged again.
+- Canonical Master Plan: copied unchanged from its existing `feature/meeting-submissions-migration` location into `docs/4084901_PROJECT_DEVELOPMENT_MASTER_PLAN.md` because the canonical path was absent on this source base. Original source blob: `4c7edb1495f1a19924a9895b208e8f4dada29ff1`.
+- Backend inventory: 13 numbered modules (`00`, `05`, `10`, `20`, `30`, `40`, `50`, `60`, `70`, `80`, `90`, `95`, `99`) plus `code.gs` and protected `setup.gs`; frontend consists of `Client.html`, `Index.html`, and `Styles.html`.
+- Static JavaScript parse: PASS for all 15 GAS script files and Client.html.
+- API consistency: 88 backend API definitions (86 in modules 10–90 and 2 in 95); 77 unique literal Client callApi names checked against the backend, no missing references. Four recent APIs (Advisor review queue/report, Coordinator dashboard, role-scoped menu counts) have their expected role/session guards by static inspection.
+- Frontend immutable pin: `d3666d978fc8f3447d67ca8edf2f59ea258d540f`; pinned Client/Index/Styles content matches the RC source. Client brace count 1305/1305; Styles 486/486.
+- `setup.gs` unchanged; SHA `299203df5478e0a220c7dda6c2b57f7df7c4ca23`. No schema or migration files added to RC.
+- Branches `feature/admin-advisor-workspace`, `feature/student-research-topic-menu`, and `feature/meeting-submissions-migration` are divergent older source lines; they were not merged wholesale. Their required user-facing behavior is represented in the current modular source where verified.
+- `feature/meeting-submissions-migration` contains a separate manual `MEETING_SUBMISSIONS` migration, but current approved CHG-003 and modular meeting code use existing `MEETING_REPORTS`. The migration is excluded from RC to avoid introducing a parallel report schema. If a `MEETING_SUBMISSIONS` sheet already exists in TEST, leave it untouched; do not rerun or delete it.
+- `development` contains the separate Sport Nutrition Classroom project and is excluded.
+- Runtime status: GAS runtime/Spreadsheet execution, Browser TEST, regression/UAT, and TEST deployment: NOT TESTED / NOT PERFORMED. No production change.
+- Next action: create/use a separate TEST Apps Script copy for RC; preserve its existing `appsscript.json`, Script Properties, and `setup.gs`; sync the 13 numbered modules plus `code.gs`; verify TEST DB configuration before deployment; then run the R0/R1 smoke and regression matrix. Do not replace the current working deployment until TEST UAT is accepted.
