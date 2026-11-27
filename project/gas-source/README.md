@@ -7,8 +7,8 @@ This folder is the canonical GitHub source for the 4084901 SPORT SCIENCE RESEARC
 - Modular source branch: `refactor/phase2-code-modules`
 - Modular source commit: `28203600734dd7fc48a334db0031cb9d2d94d335`
 - Current bug-fix baseline: `fix/phase2-student-menu-admin-overview`
-- Latest Course Coordinator Dashboard frontend commit: `cd5696ce26f3ff102de10e83f5f1d414220102a1`
-- Latest loader pin commit: `c75a6cec561269995782dab96cae04d9ffc08ad2`
+- Latest Course Coordinator Dashboard frontend commit: `bac0de7d5d5c5e8b4cb2f86cfbed199557159593`
+- Latest loader pin commit: `ad0338990444e958d78cab14282fe7a893733299`
 - Current source inventory and race-fix record: `project/STATUS.md` (see latest Phase 2 UI race fix entry)
 - The bug-fix branch includes the modular source, Admin overview and Student topic-menu fixes, and the Course Coordinator Dashboard summary API. `apiAdminGetCoordinatorDashboard` returns operational status only and does not return report narratives, advisor feedback, meeting review comments, Drive URLs, or student personal details. The coordinator summary reads existing sheets without invoking workflow sheet auto-creation/seeding and returns only operational status. It is a development branch; runtime TEST/UAT and deployment are not yet complete.
 
