@@ -72,3 +72,15 @@ The Apps Script loader fetches these three files from `raw.githubusercontent.com
 - No spreadsheet schema or setup changes. setup.gs remains protected and unchanged. Production data/deployment unchanged.
 - Static syntax/API/permission checks: PASS. GAS runtime compile, Spreadsheet execution, browser TEST, regression and UAT: NOT TESTED.
 - TEST GAS files to sync: 00_AppConfigAndEntry.gs, 10_AuthAndUserAdministration.gs, 50_Assessment.gs, 60_ProgressManagement.gs. Frontend Client.html and Styles.html are loaded from the pinned GitHub commit and are not copied into GAS as source files.
+
+## 2026-11-27 — Advisor task layout and numeric menu badges (TEST source)
+
+- Fixed the duplicate “งานของฉัน” heading in the Advisor review workspace; the outer section title remains the single page title.
+- Improved review card wrapping for long Thai/English text, status labels, and feedback inputs; added narrow-screen summary layout to prevent overlap.
+- Restored role-scoped red outlined numeric menu badges. Badge counts are hidden at zero, show a compact 99+ label above 99, and expose the exact count in the tooltip/accessible label.
+- Menu selection restoration now uses `data-menu-label`, so badge text does not break the saved-menu match.
+- Added `apiGetMenuTaskCounts(token)` to `90_TasksNotificationsMonitoring.gs`. The API is session-protected, returns aggregate counts by role, reads each sheet once per request, and uses a direct read-only sheet reader that does not auto-create workflow sheets.
+- Badge refresh runs at dashboard load and is debounced after successful mutation API calls.
+- Frontend immutable commit: `1bcdd398fe4fea57f7675955fc526c1c8fa31385`; loader pin updated in `00_AppConfigAndEntry.gs`.
+- No schema/migration, scoring, role permission, setup, or production-data changes. `setup.gs` unchanged.
+- Static source checks: pending final verification. GAS runtime, browser TEST, regression, UAT, and deployment: NOT TESTED / NOT PERFORMED.
