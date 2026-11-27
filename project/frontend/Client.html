@@ -203,13 +203,18 @@ function renderDashboard(d){
       saveActiveMenu(label);
       const routeLabel=normalizeMenuLabel_(label);
       const advisorRole=currentDashboard.user.roleId==='ADVISOR'||currentDashboard.user.roleId==='RESEARCH_ADVISOR';
-      const advisorFallback=advisorRole?['overview','groups','meetings','a4'][i]:'';
+      const advisorFallback=advisorRole?['overview','tasks','groups','meetings','a4'][i]:'';
       const isMeetingPage=routeLabel==='บันทึกการเข้าพบที่ปรึกษา'||routeLabel==='บันทึกการเข้าพบ'||routeLabel==='บันทึกการพบอาจารย์'||advisorFallback==='meetings';
       $('sectionTitle').textContent=isMeetingPage?'':label;$('sectionText').textContent='กำลังโหลดข้อมูล...';
       menuRenderQueue=menuRenderQueue.catch(()=>{}).then(async()=>{
         if(requestId!==activeMenuRequestId)return;
         try{
-      if(routeLabel==='บัญชีผู้ใช้' && currentDashboard.user.roleId==='ADMIN') await renderUserAdmin();
+      if(advisorRole && routeLabel==='ภาพรวม') await renderAdvisorOverview();
+      else if(advisorRole && routeLabel==='งานของฉัน') await renderAdvisorReview();
+      else if(advisorRole && routeLabel==='กลุ่มที่ปรึกษา') await renderAdvisorGroups();
+      else if(advisorRole && routeLabel==='การให้คำปรึกษ') await renderMeetingAttendance();
+      else if(advisorRole && routeLabel==='การประเมิน') await renderAdvisorA4();
+      else if(routeLabel==='บัญชีผู้ใช้' && currentDashboard.user.roleId==='ADMIN') await renderUserAdmin();
       else if(routeLabel==='นำเข้ารายชื่อนักศึกษา' && currentDashboard.user.roleId==='ADMIN') await renderExcelImport();
       else if(routeLabel==='บันทึกระบบ' && currentDashboard.user.roleId==='ADMIN') await renderAuditLog();
       else if(routeLabel==='จัดการกลุ่มวิจัย' && currentDashboard.user.roleId==='ADMIN') await renderGroupAdmin();
@@ -1051,37 +1056,108 @@ async function renderFeedback(){
   d.feedback.forEach(x=>{const row=el('div',{className:'admin-row'});row.append(el('div',{},x.comment+'\n'+(x.createdAt?new Date(x.createdAt).toLocaleString('th-TH'):'')));box.append(row)});a.append(box);
  }catch(e){a.textContent='โหลดข้อเสนอแนะไม่สำเร็จ: '+e.message;}
 }
-async function renderAdvisorReview(){
- const a=$('sectionText');a.textContent='กำลังโหลดหัวข้อและรายงานที่ต้องให้ข้อเสนอแนะ...';
- try{
-  const groups=await callApi('apiGetAssessmentReport',sessionToken);a.textContent='';
-  if(!groups.length){a.textContent='ยังไม่มีกลุ่มที่ได้รับมอบหมาย';return;}
-  for(const g of groups){
-   const d=await callApi('apiGetStudentResearchData',sessionToken,g.groupId);
-   if(!d.group||d.group.groupId!==g.groupId)continue;
-   const box=el('div',{className:'notice'});box.append(el('h3',{},g.groupName));
-   d.topics.filter(t=>t.reviewStatus==='PENDING').forEach(t=>{
-    box.append(el('h4',{},'หัวข้อวิจัยเวอร์ชัน '+t.versionNo+' · '+(t.titleTh||'—')));
-    if(t.titleEn)box.append(el('p',{},'ชื่อเรื่องภาษาอังกฤษ: '+t.titleEn));
-    box.append(el('p',{},'ปัญหาวิจัย: '+(t.problem||'—')),el('p',{},'วัตถุประสงค์: '+(t.objectives||'—')),el('p',{},'ความสำคัญของการวิจัย: '+(t.significance||'—')));
-    const comment=el('textarea',{rows:'3',placeholder:'ข้อเสนอแนะจากอาจารย์ที่ปรึกษา (จำเป็นเมื่อให้ปรับปรุงหรือไม่เห็นชอบ)'});
-    const sel=el('select');[['APPROVED','เห็นชอบ'],['REVISION_REQUIRED','ให้ปรับปรุง'],['REJECTED','ไม่เห็นชอบ']].forEach(([v,l])=>sel.append(el('option',{value:v},l)));
-    const hint=el('small',{className:'muted'},'การเห็นชอบของอาจารย์ที่ปรึกษาเป็นการสิ้นสุด RW-01 ในระดับที่ปรึกษา ไม่ใช่การอนุมัติจาก Course Coordinator หรือ REC');
-    const b=el('button',{type:'button',className:'secondary'},'บันทึกผลพิจารณา');
-    b.onclick=async()=>{
-     if(['REVISION_REQUIRED','REJECTED'].includes(sel.value)&&comment.value.trim().length<5){showOperationStatus('กรุณาระบุข้อเสนอแนะอย่างน้อย 5 ตัวอักษรสำหรับผลการพิจารณานี้',true);comment.focus();return;}
-     b.disabled=true;
-     try{const r=await callApi('apiAdvisorReviewResearchTopic',sessionToken,t.versionId,sel.value,comment.value);showOperationStatus(r.message);await renderAdvisorReview();}
-     catch(e){showOperationStatus(e.message,true);b.disabled=false;}
-    };
-    box.append(sel,comment,hint,b);
-   });
-   if(d.files.length){box.append(el('h4',{},'เอกสารโครงร่าง'));d.files.forEach(file=>{const link=el('a',{href:file.url,target:'_blank',rel:'noopener noreferrer'},file.fileName);box.append(el('p',{},file.chapter+' · '),link);});}
-   const reportList=d.progress.slice(0,5);reportList.forEach(r=>{box.append(el('p',{},'รายงานสัปดาห์ '+r.weekNo+' · '+r.workCompleted));const feedbackComment=el('textarea',{rows:'2',placeholder:'ข้อเสนอแนะต่อรายงานนี้'});const feedbackButton=el('button',{type:'button',className:'secondary'},'ส่งข้อเสนอแนะ');feedbackButton.onclick=async()=>{feedbackButton.disabled=true;try{const x=await callApi('apiAdvisorAddFeedback',sessionToken,{groupId:g.groupId,relatedType:'PROGRESS',relatedId:r.reportId,comment:feedbackComment.value});showOperationStatus(x.message);feedbackButton.textContent='ส่งแล้ว';}catch(e){showOperationStatus(e.message,true);feedbackButton.disabled=false;}};box.append(feedbackComment,feedbackButton);});
-   a.append(box);
-  }
- }catch(e){a.textContent='โหลดรายการตรวจหัวข้อไม่สำเร็จ: '+e.message;}
+
+function openAdvisorMenu_(label){
+ const button=[...document.querySelectorAll('.menu-item')].find(x=>normalizeMenuLabel_(x.textContent)===label);
+ if(button)button.click();
 }
+async function renderAdvisorOverview(){
+ const a=$('sectionText');a.textContent='กำลังโหลดภาพรวมงานที่ปรึกษา...';
+ try{
+  const d=await callApi('apiGetAdvisorWorkspaceSummary',sessionToken);
+  a.textContent='';
+  const root=el('div',{className:'advisor-workspace'});
+  const head=el('div',{className:'advisor-page-heading'});
+  head.append(el('h2',{},'ภาพรวมการให้คำปรึกษา'),el('p',{},'จัดการงานตรวจ กลุ่มวิจัย และการติดตามความก้าวหน้า'));
+  root.append(head);
+  const metrics=d.metrics||{},groups=d.groups||[],pendingReports=d.pendingReports||[],pendingTopics=d.pendingTopics||[];
+  const cards=el('div',{className:'advisor-metric-grid'});
+  const metric=(label,value,detail,tone,action)=>{
+   const card=el('button',{type:'button',className:'advisor-metric advisor-metric-'+tone});
+   card.append(el('span',{className:'advisor-metric-label'},label),el('strong',{className:'advisor-metric-value'},String(value||0)),el('small',{},detail));
+   card.onclick=action;cards.append(card);
+  };
+  metric('งานใหม่ / รอตรวจ',pendingReports.length+pendingTopics.length,'รายงานและหัวข้อวิจัย', 'danger',()=>openAdvisorMenu_('งานของฉัน'));
+  metric('กลุ่มที่ปรึกษา',metrics.assignedGroups||groups.length,'กลุ่มที่ได้รับมอบหมาย','primary',()=>openAdvisorMenu_('กลุ่มที่ปรึกษา'));
+  metric('งานกลุ่มคงค้าง',metrics.openTasks||0,'งานที่ยังไม่ปิด', 'warning',()=>openAdvisorMenu_('กลุ่มที่ปรึกษา'));
+  metric('ให้คำปรึกษาแล้ว',d.dashboardMetrics?.meetingsRecorded||metrics.meetingsRecorded||0,'จำนวนครั้งไม่ซ้ำตามกลุ่มและครั้ง', 'success',()=>openAdvisorMenu_('การให้คำปรึกษ'));
+  metric('Feedback',metrics.feedbackProvided||0,'ข้อเสนอแนะที่บันทึกแล้ว','success',()=>openAdvisorMenu_('งานของฉัน'));
+  root.append(cards);
+  const section=el('section',{className:'advisor-panel'});
+  section.append(el('div',{className:'advisor-panel-heading'},el('h3',{},'งานที่ต้องดำเนินการ'),el('span',{className:'advisor-count advisor-count-danger'},String(pendingReports.length+pendingTopics.length))));
+  if(!pendingReports.length&&!pendingTopics.length)section.append(el('div',{className:'advisor-empty advisor-empty-success'},'ไม่มีงานรอตรวจในขณะนี้'));
+  pendingTopics.forEach(t=>section.append(el('div',{className:'advisor-task-row advisor-task-new'},el('div',{},el('strong',{},'หัวข้อวิจัย · '+(t.groupName||'กลุ่ม')),el('small',{},'เวอร์ชัน '+t.versionNo+' · ส่งเข้ามาใหม่')),el('button',{type:'button',className:'secondary',onclick:()=>openAdvisorMenu_('งานของฉัน')},'ตรวจงาน'))));
+  pendingReports.forEach(r=>section.append(el('div',{className:'advisor-task-row advisor-task-new'},el('div',{},el('strong',{},'รายงานความก้าวหน้า · '+(r.groupName||'กลุ่ม')),el('small',{},'สัปดาห์ '+r.weekNo+' · '+(r.submittedAt?new Date(r.submittedAt).toLocaleDateString('th-TH'):'ส่งแล้ว'))),el('button',{type:'button',className:'secondary',onclick:()=>openAdvisorMenu_('งานของฉัน')},'ตรวจรายงาน'))));
+  root.append(section);
+  const groupSection=el('section',{className:'advisor-panel'});
+  groupSection.append(el('div',{className:'advisor-panel-heading'},el('h3',{},'สถานะกลุ่มที่ปรึกษา'),el('button',{type:'button',className:'secondary',onclick:()=>openAdvisorMenu_('กลุ่มที่ปรึกษา')},'ดูทั้งหมด')));
+  const tableWrap=el('div',{className:'advisor-table-wrap'}),table=el('table',{className:'advisor-table'}),thead=el('thead'),tr=el('tr');
+  ['กลุ่ม','รายงานรอตรวจ','งานคงค้าง','สถานะล่าสุด','ดำเนินการ'].forEach(x=>tr.append(el('th',{},x)));thead.append(tr);table.append(thead);
+  const tbody=el('tbody');
+  groups.forEach(g=>{const row=el('tr');row.append(el('td',{},g.groupName||'—'),el('td',{},String(g.pendingReports||0)),el('td',{},String(g.openTasks||0)),el('td',{},g.latestReport?String(g.latestReport.status||'—'):'ยังไม่มีรายงาน'),el('td',{},el('button',{type:'button',className:'secondary',onclick:()=>renderAdvisorReview(g.groupId)},'เปิดงาน')));tbody.append(row)});
+  table.append(tbody);tableWrap.append(table);groupSection.append(tableWrap);if(!groups.length)groupSection.append(el('div',{className:'advisor-empty'},'ยังไม่มีกลุ่มที่ได้รับมอบหมาย'));root.append(groupSection);a.append(root);
+ }catch(e){a.textContent='โหลดภาพรวมอาจารย์ที่ปรึกษาไม่สำเร็จ: '+e.message;}
+}
+async function renderAdvisorReview(groupFilter){
+ const a=$('sectionText');a.textContent='กำลังโหลดงานที่ต้องตรวจ...';
+ try{
+  const summary=await callApi('apiGetAdvisorWorkspaceSummary',sessionToken);
+  const groups=(summary.groups||[]).filter(g=>!groupFilter||String(g.groupId)===String(groupFilter));
+  const details=await Promise.all(groups.map(async g=>({group:g,data:await callApi('apiGetStudentResearchData',sessionToken,g.groupId)})));
+  a.textContent='';
+  const root=el('div',{className:'advisor-workspace'});
+  const head=el('div',{className:'advisor-page-heading'});
+  head.append(el('h2',{},'งานของฉัน'),el('p',{},'ตรวจงานที่กลุ่มที่ได้รับมอบหมายส่งเข้ามา พร้อมให้ข้อเสนอแนะและบันทึกผลการตรวจ'));
+  root.append(head);
+  const totals={new:0,returned:0,done:0};
+  details.forEach(({data})=>{(data.topics||[]).forEach(t=>{if(String(t.reviewStatus||'').toUpperCase()==='PENDING')totals.new++});(data.progress||[]).forEach(r=>{const st=String(r.status||'').toUpperCase();if(['SUBMITTED','RESUBMITTED'].includes(st))totals.new++;else if(st==='REVISION_REQUIRED')totals.returned++;else if(st==='APPROVED')totals.done++})});
+  const filterBar=el('div',{className:'advisor-review-summary'});
+  [['รอตรวจ',totals.new,'danger'],['รอนักศึกษา',totals.returned,'warning'],['ตรวจแล้ว',totals.done,'success']].forEach(([label,value,tone])=>filterBar.append(el('div',{className:'advisor-review-count advisor-review-count-'+tone},el('span',{},label),el('strong',{},String(value)))));
+  root.append(filterBar);
+  if(!details.length)root.append(el('div',{className:'advisor-empty'},'ไม่พบกลุ่มที่ได้รับมอบหมาย'));
+  details.forEach(({group:g,data:d})=>{
+   if(!d.group||String(d.group.groupId)!==String(g.groupId))return;
+   const box=el('section',{className:'advisor-panel'});
+   const panelHead=el('div',{className:'advisor-panel-heading'});panelHead.append(el('h3',{},g.groupName||'กลุ่มวิจัย'),el('span',{className:'advisor-group-meta'},'สมาชิก '+(g.members||[]).length+' คน'));box.append(panelHead);
+   const topicList=(d.topics||[]).filter(t=>String(t.reviewStatus||'').toUpperCase()==='PENDING');
+   topicList.forEach(t=>{
+    const card=el('article',{className:'advisor-review-card advisor-task-new'});
+    card.append(el('div',{className:'advisor-review-card-head'},el('span',{className:'advisor-status advisor-status-danger'},'ใหม่ · รอตรวจ'),el('span',{className:'advisor-group-meta'},'หัวข้อวิจัย V'+t.versionNo)));
+    card.append(el('h4',{},t.titleTh||'ยังไม่ระบุชื่อเรื่อง'));
+    if(t.titleEn)card.append(el('p',{},'ชื่อเรื่องภาษาอังกฤษ: '+t.titleEn));
+    const content=el('div',{className:'advisor-review-content'});content.append(el('p',{},'ปัญหาวิจัย: '+(t.problem||'—')),el('p',{},'วัตถุประสงค์: '+(t.objectives||'—')),el('p',{},'ความสำคัญ: '+(t.significance||'—')));card.append(content);
+    const comment=el('textarea',{rows:'3',className:'advisor-feedback-input',placeholder:'ข้อเสนอแนะจากอาจารย์ที่ปรึกษา'});
+    const decision=el('select',{className:'advisor-decision'});[['APPROVED','เห็นชอบ'],['REVISION_REQUIRED','ให้ปรับปรุง'],['REJECTED','ไม่เห็นชอบ']].forEach(([v,l])=>decision.append(el('option',{value:v},l)));
+    const btn=el('button',{type:'button',className:'primary'},'บันทึกผลพิจารณา');
+    btn.onclick=async()=>{if(['REVISION_REQUIRED','REJECTED'].includes(decision.value)&&comment.value.trim().length<5){showOperationStatus('กรุณาระบุข้อเสนอแนะอย่างน้อย 5 ตัวอักษร',true);comment.focus();return;}btn.disabled=true;try{const r=await callApi('apiAdvisorReviewResearchTopic',sessionToken,t.versionId,decision.value,comment.value);showOperationStatus(r.message);await renderAdvisorReview(groupFilter)}catch(e){showOperationStatus(e.message,true);btn.disabled=false}};
+    card.append(comment,decision,el('div',{className:'advisor-review-actions'},btn));box.append(card);
+   });
+   const reports=(d.progress||[]).slice().sort((x,y)=>new Date(y.submittedAt||0)-new Date(x.submittedAt||0));
+   reports.forEach(r=>{
+    const st=String(r.status||'').toUpperCase(),isPending=['SUBMITTED','RESUBMITTED'].includes(st),isReturned=st==='REVISION_REQUIRED',isDone=st==='APPROVED';
+    const card=el('article',{className:'advisor-review-card '+(isPending?'advisor-task-new':isReturned?'advisor-task-returned':'advisor-task-done')});
+    card.append(el('div',{className:'advisor-review-card-head'},el('span',{className:'advisor-status '+(isPending?'advisor-status-danger':isReturned?'advisor-status-warning':'advisor-status-success')},isPending?(st==='RESUBMITTED'?'ส่งแก้ไขใหม่ · รอตรวจ':'ใหม่ · รอตรวจ'):isReturned?'ส่งกลับแก้ไข':'ตรวจแล้ว'),el('span',{className:'advisor-group-meta'},'รายงานสัปดาห์ '+r.weekNo)));
+    card.append(el('h4',{},'รายงานความก้าวหน้า'));
+    card.append(el('p',{},'ส่งเมื่อ '+(r.submittedAt?new Date(r.submittedAt).toLocaleString('th-TH'):'ไม่ระบุวันที่')));
+    card.append(el('div',{className:'advisor-review-content'},el('p',{},'ผลการดำเนินงาน: '+(r.workCompleted||'—')),el('p',{},'ปัญหา/อุปสรรค: '+(r.problems||'—')),el('p',{},'แผนดำเนินงานต่อไป: '+(r.nextPlan||'—'))));
+    if(r.reviewComment)card.append(el('div',{className:'advisor-review-comment'},'ข้อเสนอแนะครั้งก่อน: '+r.reviewComment));
+    if(isPending){
+     const comment=el('textarea',{rows:'3',className:'advisor-feedback-input',placeholder:'ข้อเสนอแนะสำหรับรายงานนี้ (จำเป็นเมื่อส่งกลับแก้ไข)'});
+     const decision=el('select',{className:'advisor-decision'});[['APPROVED','ตรวจแล้ว'],['REVISION_REQUIRED','ส่งกลับแก้ไข']].forEach(([v,l])=>decision.append(el('option',{value:v},l)));
+     const btn=el('button',{type:'button',className:'primary'},'บันทึกผลตรวจ');
+     btn.onclick=async()=>{if(decision.value==='REVISION_REQUIRED'&&comment.value.trim().length<5){showOperationStatus('กรุณาระบุข้อเสนอแนะอย่างน้อย 5 ตัวอักษรเมื่อส่งกลับแก้ไข',true);comment.focus();return;}btn.disabled=true;try{const x=await callApi('apiAdvisorReviewProgressReport',sessionToken,r.reportId,decision.value,comment.value);showOperationStatus(x.message);await renderAdvisorReview(groupFilter)}catch(e){showOperationStatus(e.message,true);btn.disabled=false}};
+     card.append(comment,decision,el('div',{className:'advisor-review-actions'},btn));
+    }
+    box.append(card);
+   });
+   if(!topicList.length&&!reports.length)box.append(el('div',{className:'advisor-empty'},'กลุ่มนี้ยังไม่มีงานส่งเข้ามา'));
+   if(d.files&&d.files.length){const docs=el('details',{className:'advisor-document-list'});docs.append(el('summary',{},'เอกสารโครงร่าง ('+d.files.length+')'));d.files.forEach(file=>{const row=el('p');row.append(el('span',{},(file.chapter||'เอกสาร')+' · '+(file.fileName||'ไฟล์')+' '));if(file.url)row.append(el('a',{href:file.url,target:'_blank',rel:'noopener noreferrer'},'เปิดเอกสาร'));docs.append(row)});box.append(docs)}
+   root.append(box);
+  });
+  a.append(root);
+ }catch(e){a.textContent='โหลดงานของฉันไม่สำเร็จ: '+e.message;}
+}
+
 async function renderOverview(){
  const a=$('sectionText');
  a.textContent='กำลังโหลด Course Coordinator Dashboard...';
