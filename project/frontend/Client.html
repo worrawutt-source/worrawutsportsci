@@ -217,8 +217,10 @@ function scheduleMenuTaskIndicatorRefresh_(){
 }
 async function refreshMenuTaskIndicators_(){
  if(!currentDashboard||!sessionToken||!document.querySelector('#sideMenu .menu-item'))return;
+ const dashboardUserId=String(currentDashboard.user.userId||''),token=sessionToken;
  try{
-  const counts=await callApi('apiGetMenuTaskCounts',sessionToken);
+  const counts=await callApi('apiGetMenuTaskCounts',token);
+  if(!currentDashboard||String(currentDashboard.user.userId||'')!==dashboardUserId||sessionToken!==token)return;
   document.querySelectorAll('#sideMenu .menu-item .progress-task-badge').forEach(x=>x.remove());
   const role=currentDashboard.user.roleId;
   if(role==='ADMIN'){
@@ -233,7 +235,7 @@ async function refreshMenuTaskIndicators_(){
    setMenuTaskCount_('บัญชีผู้ใช้',c.users,'คำเชิญบัญชีที่ยังดำเนินการ '+(c.users||0)+' รายการ');
   }else if(role==='ADVISOR'||role==='RESEARCH_ADVISOR'){
    const c=counts.advisor||{};
-   setMenuTaskCount_('งานของฉัน',c.groups,'กลุ่มที่มีหัวข้อหรือรายงานรอตรวจ '+(c.groups||0)+' กลุ่ม');
+   setMenuTaskCount_('งานของฉัน',c.pendingItems||c.groups,'หัวข้อและรายงานที่รอตรวจ '+(c.pendingItems||c.groups||0)+' รายการ');
    setMenuTaskCount_('กลุ่มที่ปรึกษา',c.groups,'กลุ่มที่มีหัวข้อหรือรายงานรอตรวจ '+(c.groups||0)+' กลุ่ม');
    setMenuTaskCount_('การประเมิน',c.a4,'กลุ่มที่ยังประเมิน A4 ไม่ครบ '+(c.a4||0)+' กลุ่ม');
   }else if(role==='STUDENT'){
