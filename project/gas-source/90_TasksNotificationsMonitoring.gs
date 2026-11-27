@@ -309,6 +309,7 @@ function apiGetMenuTaskCounts(token){
     const reports=rows('PROGRESS_REPORTS').filter(x=>ids.has(String(x.GROUP_ID||''))&&['SUBMITTED','RESUBMITTED'].includes(String(x.STATUS||'').toUpperCase()));
     const topics=rows('RESEARCH_TOPIC_VERSIONS').filter(x=>ids.has(String(x.GROUP_ID||''))&&String(x.REVIEW_STATUS||'').toUpperCase()==='PENDING');
     out.advisor.groups=new Set([...reports,...topics].map(x=>String(x.GROUP_ID))).size;
+    out.advisor.pendingItems=reports.length+topics.length;
     const a4Open=String(assessmentSettingsFresh_().WINDOW_A4||'CLOSED').toUpperCase()==='OPEN';
     if(a4Open){
       const scores=rows('GROUP_SCORES'),individual=rows('INDIVIDUAL_SCORES'),members=rows('GROUP_MEMBERS').filter(x=>ids.has(String(x.GROUP_ID))&&String(x.STATUS||'').toUpperCase()==='ACTIVE');
