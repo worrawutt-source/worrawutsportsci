@@ -214,7 +214,7 @@ function renderDashboard(d){
       else if(routeLabel==='การตั้งค่าระบบ' && currentDashboard.user.roleId==='ADMIN') await renderSystemSettings();
       else if(routeLabel==='กลุ่มที่ได้รับมอบหมาย' || advisorFallback==='groups') await renderAdvisorGroups();
       else if(routeLabel==='ข้อมูลของกลุ่ม') await renderStudentWorkspace();
-      else if(routeLabel==='หัวข้อวิจัย') await renderStudentTopics();
+      else if(routeLabel==='หัวข้อวิจัย' || routeLabel==='เสนอชื่อเรื่องงานวิจัย') await renderStudentTopics();
       else if(routeLabel==='เอกสารโครงร่าง') await renderProposalDocuments();
       else if(routeLabel==='ความก้าวหน้า' || routeLabel==='รายงานความก้าวหน้า') await renderProgressReports();
       else if(routeLabel==='ข้อเสนอแนะ') await renderFeedback();
@@ -1066,7 +1066,22 @@ async function renderAdvisorReview(){
  }catch(e){a.textContent='โหลดรายการตรวจหัวข้อไม่สำเร็จ: '+e.message;}
 }
 async function renderOverview(){
- const a=$('sectionText');a.textContent='กำลังโหลดภาพรวมการให้คำปรึกษา...';
+ const a=$('sectionText');
+ const roleId=String(currentDashboard&&currentDashboard.user&&currentDashboard.user.roleId||'').toUpperCase();
+ if(['ADMIN','SYSTEM_ADMIN'].includes(roleId)){
+  a.textContent='';
+  const box=el('div',{className:'notice'});
+  box.append(el('h2',{},'ภาพรวมระบบ'),el('p',{},'ข้อมูลสรุปของระบบสำหรับผู้ดูแลรายวิชา'));
+  const metrics=Object.entries(currentDashboard.metrics||{});
+  if(metrics.length){
+   const metricRows=el('div',{className:'admin-row'});
+   metrics.forEach(([key,value])=>metricRows.append(el('div',{},metricLabel(key)+' · '+String(value))));
+   box.append(metricRows);
+  }
+  a.append(box);
+  return;
+ }
+ a.textContent='กำลังโหลดภาพรวมการให้คำปรึกษา...';
  try{
   const d=currentDashboard&&currentDashboard.advisorWorkspaceSummary ? currentDashboard.advisorWorkspaceSummary : await callApi('apiGetAdvisorWorkspaceSummary',sessionToken);a.textContent='';
   const action=el('div',{className:'notice'});
