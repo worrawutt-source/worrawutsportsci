@@ -800,3 +800,16 @@ Next Action: deploy approved branch to TEST only, verify Advisor sees only assig
 1. Pull this branch into a separate TEST Apps Script project or TEST copy; add all numbered `.gs` files while preserving the same project-wide global scope.
 2. Run GAS syntax validation and verify `doGet`, `doPost`, authentication, group/advisor workflows, meetings, topic draft save/read-back, progress, assessment, tasks/notifications, and Admin endpoints.
 3. Complete TEST regression and UAT before merge or deployment.
+
+
+## BUGFIX — Admin system overview role routing (2026-11-27)
+
+- Branch: `fix/admin-overview-role-routing`
+- Based on: `refactor/phase2-code-modules`
+- Issue: ADMIN dashboard successfully loads `apiGetDashboard` metrics, but clicking/restoring menu `ภาพรวมระบบ` entered advisor `renderOverview()`, which called advisor-only `apiGetAdvisorWorkspaceSummary` and returned `ไม่มีสิทธิ์ดำเนินการ`.
+- Fix: `project/frontend/Client.html` now renders a separate ADMIN system overview using already-authorized `currentDashboard.metrics` and links to existing Admin renderers. Advisor overview/API authorization remains unchanged.
+- Scope: Frontend-only bug fix; no Backend permission change, API change, schema change, or Spreadsheet modification.
+- Static review: route root cause confirmed in source; admin branch bypasses advisor-only API; advisor branch remains unchanged.
+- Runtime / browser regression / TEST deployment / UAT: NOT TESTED / NOT STARTED.
+- Production: NOT changed.
+- Next action: deploy the complete module branch plus this frontend fix to TEST only, then verify ADMIN overview and ADVISOR overview separately before UAT.
