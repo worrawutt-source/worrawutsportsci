@@ -253,7 +253,7 @@ function apiAdminGetCoordinatorDashboard(token){
     advisorActions:{missing:groupsNoAdvisor.map(g=>({groupId:String(g.GROUP_ID),groupName:String(g.GROUP_NAME||'')})),
       pending:pendingAssignments.map(a=>({groupId:String(a.GROUP_ID),groupName:String((groupById.get(String(a.GROUP_ID))||{}).GROUP_NAME||''),assignmentId:String(a.ASSIGNMENT_ID||''),status:'PENDING'}))
         .concat(pendingInvitations.map(i=>({groupId:String(i.GROUP_ID),groupName:String((groupById.get(String(i.GROUP_ID))||{}).GROUP_NAME||''),status:'ACCEPTED_PENDING_APPROVAL'})))},
-    actions:{progressPending:pendingReports,progressRevision:revisionReports,progressOverdue:overdueReports,progressDueSoon,
+    actions:{progressPending:pendingReports,progressRevision:revisionReports,progressOverdue:overdueReports,progressDueSoon:dueSoonReports,
       meetingOnePending,meetingOneRevision,taskOverdue,taskDueSoon,warnings:openWarnings.map(w=>({groupId:String(w.GROUP_ID),groupName:String((groupById.get(String(w.GROUP_ID))||{}).GROUP_NAME||''),severity:String(w.SEVERITY||''),status:String(w.STATUS||'')}))},
     activities:{advisorApproved:groups.filter(g=>assignmentByGroup.has(String(g.GROUP_ID))).length,advisorPending:pendingAssignments.length+pendingInvitations.length,
       meetingOneSubmitted:meetingOne.filter(x=>['SUBMITTED','VERIFIED','REVISION_REQUIRED','ACTIVE'].includes(x.status)).length,
