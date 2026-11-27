@@ -918,8 +918,8 @@ Sync the pinned loader module into the existing TEST Apps Script project, save a
 ### Change scope
 - Branch: `fix/phase2-student-menu-admin-overview`
 - Purpose: replace the Admin overview's user/session metrics with a course operations dashboard using actual group, advisor, progress, meeting, task, warning, due-date, and assessment records.
-- Frontend commit pinned by GAS: `cd5696ce26f3ff102de10e83f5f1d414220102a1`
-- Loader update commit: `c75a6cec561269995782dab96cae04d9ffc08ad2`
+- Frontend commit pinned by GAS: `bac0de7d5d5c5e8b4cb2f86cfbed199557159593`
+- Loader update commit: `ad0338990444e958d78cab14282fe7a893733299`
 - Backend summary API commit chain: `7d75bd6346f5a6e05abe55011903c08f5c48ec0a`, `220a3ad524efd53c2877f8d700cca562a4c02ddd`, `cd69b4670c03db31017b2922b0fa0f029a545cba`, `93c0aefe64da098505cef89c0cd697bc668e68bf`, `bcd56dcab5875e8a43051b35babbfe76de0d48de`
 
 ### Files changed
@@ -933,6 +933,7 @@ Sync the pinned loader module into the existing TEST Apps Script project, save a
 - Backend `90_TasksNotificationsMonitoring.gs` JavaScript syntax: PASS.
 - Frontend `Client.html` JavaScript syntax: PASS.
 - Activity 1 meeting and progress-week-1 status counts added; advisor approval count corrected.
+- Latest progress submission date is shown in the group tracking table.
 - Dashboard summary reads existing sheets without workflow sheet auto-creation/seeding: PASS by static inspection.
 - Coordinator API definition count: 1.
 - Frontend call to `apiAdminGetCoordinatorDashboard`: 1.
