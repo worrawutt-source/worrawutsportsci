@@ -229,7 +229,7 @@ Repository หลัก: [worrawutt-source/worrawutsportsci](https://github.com/
 
 หากเป็น AI หรือผู้พัฒนารายใหม่ ให้เริ่มด้วยคำสั่งนี้:
 
-> อ่าน `project/STATUS.md`, `project/README.md` และ `project/gas-source/README.md` ก่อนดำเนินงาน ตรวจสอบ Source Code ปัจจุบันจาก branch `main` และยึดสถานะ/ข้อกำหนดในเอกสารเป็น Baseline ห้ามแก้ไขโค้ด ฐานข้อมูล Script Properties หรือ Deployment ก่อนวิเคราะห์ปัญหาและเสนอแผนเพื่อรออนุมัติ หากพบความไม่สอดคล้องระหว่างเอกสารกับ Source Code ให้รายงานความแตกต่างก่อน ห้ามเดาหรือปรับแก้เอง
+> อ่าน Current checkpoint ด้านบนก่อน แล้วตรวจ branch/commit ล่าสุดและ Source ที่เกี่ยวข้องกับงาน ตรวจสอบความตรงกันระหว่าง RC กับ GAS/Frontend ที่ใช้งานจริงก่อน release ห้ามแก้ไขโค้ด ฐานข้อมูล Script Properties หรือ Deployment ก่อนวิเคราะห์ปัญหาและขออนุมัติตามระดับความเสี่ยง หากเอกสารกับ Source ไม่ตรงกัน ให้รายงานความแตกต่างและยึดหลักฐานล่าสุด ไม่เดา
 
 ## 11. Phase 2 — RW-01 Research Topic (Implementation Branch)
 
