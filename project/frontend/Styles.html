@@ -36,6 +36,7 @@ input::placeholder,textarea::placeholder{color:#8795a2}button:focus-visible{outl
 .side-menu{background:var(--navy);border-radius:15px;padding:14px;height:max-content;display:grid;gap:6px;min-width:0}
 .menu-item{border:0;background:transparent;color:#e3edf4;text-align:left;padding:13px 12px;border-radius:9px;font-size:15px;line-height:1.45;min-height:46px}
 .menu-item.active,.menu-item:hover{background:#2c526f;color:#fff}
+.progress-task-badge{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-width:25px;height:25px;padding:0 4px;border:2px solid #e1262f;border-radius:50%;background:#fff;color:#e1262f;font-size:12px;font-weight:800;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums}.menu-item .progress-task-badge{margin-left:auto}
 .content-area{display:grid;gap:14px;min-width:0}.metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .metric{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:0}
 .metric-label{font-size:13px;color:var(--muted);line-height:1.45}.metric-value{font-size:26px;font-weight:800;color:var(--navy);margin-top:5px}
@@ -299,16 +300,16 @@ html.ssrl-session-restoring #sessionRestoreView{display:flex!important}
 .advisor-review-count-warning{background:#fff8e9;color:#946817}
 .advisor-review-count-success{background:#effaf3;color:#27764f}
 .advisor-group-meta{color:#73879a;font-size:12px}
-.advisor-review-card{display:grid;gap:12px;padding:16px;border:1px solid #e2e9f0;border-radius:12px;background:#fff}
-.advisor-review-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.advisor-review-card h4{margin:0;color:#1c405c;font-size:16px;line-height:1.5}
-.advisor-review-card p{margin:5px 0;color:#425d70;font-size:13px;line-height:1.7;overflow-wrap:anywhere}
+.advisor-review-card{display:grid;gap:12px;min-width:0;padding:16px;border:1px solid #e2e9f0;border-radius:12px;background:#fff}
+.advisor-review-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap} .advisor-review-card-head>*{min-width:0;max-width:100%;overflow-wrap:anywhere}
+.advisor-review-card h4{margin:0;color:#1c405c;font-size:16px;line-height:1.5;min-width:0;overflow-wrap:anywhere;word-break:normal}
+.advisor-review-card p{display:block;min-width:0;margin:5px 0;color:#425d70;font-size:13px;line-height:1.7;overflow-wrap:anywhere;word-break:break-word}
 .advisor-status{display:inline-flex;align-items:center;padding:5px 9px;border-radius:7px;font-size:11px;font-weight:750}
 .advisor-status-danger{background:#fdebed;color:#b52f38}
 .advisor-status-warning{background:#fff4d9;color:#946817}
 .advisor-status-success{background:#eaf7ef;color:#27764f}
 .advisor-review-content{padding:10px 12px;border-radius:9px;background:#f6f9fc}
-.advisor-feedback-input{box-sizing:border-box;width:100%;min-width:0;padding:12px 13px;border:1px solid #cbd9e5;border-radius:9px;background:#fff;color:#243e54;font:inherit;font-size:13px;line-height:1.65;resize:vertical}
+.advisor-feedback-input{display:block;box-sizing:border-box;width:100%;max-width:100%;min-width:0;padding:12px 13px;border:1px solid #cbd9e5;border-radius:9px;background:#fff;color:#243e54;font:inherit;font-size:13px;line-height:1.65;resize:vertical}
 .advisor-feedback-input:focus,.advisor-decision:focus{outline:3px solid rgba(49,112,153,.12);border-color:#397ea9}
 .advisor-decision{width:100%;max-width:340px;padding:10px 12px;border:1px solid #cbd9e5;border-radius:9px;background:#fff;color:#243e54;font:inherit;font-size:13px}
 .advisor-review-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
@@ -324,5 +325,7 @@ html.ssrl-session-restoring #sessionRestoreView{display:flex!important}
 @media(max-width:1050px){.advisor-metric-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:700px){.advisor-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.advisor-metric{padding:12px}.advisor-metric-value{font-size:25px}.advisor-panel{padding:14px}.advisor-review-summary{gap:7px}.advisor-review-count{padding:10px;font-size:11px}.advisor-review-count strong{font-size:19px}.advisor-task-row{align-items:flex-start;flex-direction:column}.advisor-review-actions{justify-content:stretch}.advisor-review-actions button{width:100%}.advisor-page-heading h2{font-size:21px}}
 
+
+@media(max-width:720px){.advisor-review-summary{grid-template-columns:minmax(0,1fr)}.advisor-review-count{min-width:0}.advisor-review-card{padding:13px}.advisor-review-card-head{align-items:flex-start}}
 </style>
 
