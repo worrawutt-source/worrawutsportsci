@@ -947,3 +947,9 @@ The following existing modular GAS files must be updated in the existing TEST Ap
 2. `project/gas-source/00_AppConfigAndEntry.gs` — update the immutable frontend loader pin.
 
 Do not copy `Client.html` or `Styles.html` into GAS; the loader fetches them from GitHub at the pinned SHA. Keep all other modules and `setup.gs` unchanged. After saving the two modules, authorize the existing external-request scope if required, create a new TEST deployment, and run role/menu, action counts, due-date, assessment-window and privacy checks. Runtime TEST/UAT and deployment remain NOT TESTED / NOT PERFORMED.
+
+## 2026-11-27 — Dashboard hotfix: progressDueSoon ReferenceError
+- Fixed `actions.progressDueSoon` response mapping in `90_TasksNotificationsMonitoring.gs`: now explicitly maps to the existing `dueSoonReports` array.
+- Static JavaScript syntax validation: PASS.
+- API mapping validation: PASS.
+- GAS runtime / browser TEST after saving: NOT TESTED; user reported the runtime error and needs to re-save the corrected module and deploy TEST.
