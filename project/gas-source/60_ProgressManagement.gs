@@ -119,6 +119,33 @@ function apiAdminSaveProgressWeek(token,payload){
   return {ok:true,message:'บันทึกการตั้งค่าสัปดาห์ที่ '+week+' แล้ว'};
 }
 
+/**
+ * Advisor-only review of a progress report for an assigned group.
+ * Uses the existing PROGRESS_REPORTS workflow and schema.
+ */
+function apiAdvisorReviewProgressReport(token,reportId,decision,comment){
+  const ctx=requireSession_(token,[ROLE.ADVISOR]);
+  const allowed=['APPROVED','REVISION_REQUIRED'];
+  const outcome=String(decision||'').trim().toUpperCase();
+  if(!allowed.includes(outcome))throw new Error('ผลการพิจารณาไม่ถูกต้อง');
+  const note=String(comment||'').trim();
+  if(outcome==='REVISION_REQUIRED'&&note.length<5)throw new Error('กรุณาระบุเหตุผลที่ส่งกลับแก้ไขอย่างน้อย 5 ตัวอักษร');
+  const lock=LockService.getScriptLock();lock.waitLock(60000);
+  try{
+    const row=readObjectsFresh_('PROGRESS_REPORTS').find(r=>String(r.REPORT_ID||'')===String(reportId||''));
+    if(!row)throw new Error('ไม่พบรายงานความก้าวหน้า');
+    assertGroupAccess_(ctx,row.GROUP_ID);
+    if(!['SUBMITTED','RESUBMITTED'].includes(String(row.STATUS||'').trim().toUpperCase()))throw new Error('รายงานนี้ได้รับการพิจารณาไปแล้ว หรือไม่อยู่ในสถานะรอตรวจ');
+    const sh=sheet_('PROGRESS_REPORTS');
+    const headers=SCHEMA.PROGRESS_REPORTS;
+    const set=(key,value)=>{const col=headers.indexOf(key);if(col<0)throw new Error('ไม่พบฟิลด์ '+key+' ใน Schema รายงานความก้าวหน้า');sh.getRange(row._row,col+1).setValue(value);};
+    set('STATUS',outcome);set('REVIEWED_BY',ctx.user.USER_ID);set('REVIEWED_AT',new Date());set('REVIEW_COMMENT',note);
+    logSystem_('ADVISOR_PROGRESS_REPORT_REVIEWED','PROGRESS_REPORT',String(reportId),{decision:outcome,comment:note,groupId:String(row.GROUP_ID),weekNo:Number(row.WEEK_NO)},ctx.user.USER_ID);
+    enqueueGroupNotification_(row.GROUP_ID,'ADVISOR_PROGRESS_REVIEW_'+outcome,'ผลการตรวจรายงานความก้าวหน้า',outcome==='APPROVED'?'รายงานสัปดาห์ที่ '+row.WEEK_NO+' ได้รับการตรวจแล้ว':'รายงานสัปดาห์ที่ '+row.WEEK_NO+' ต้องปรับปรุง: '+note,'PROGRESS_REPORT',String(reportId));
+    return {ok:true,message:outcome==='APPROVED'?'ตรวจและรับรองรายงานความก้าวหน้าแล้ว':'ส่งรายงานกลับให้นักศึกษาแก้ไขแล้ว'};
+  }finally{lock.releaseLock();}
+}
+
 function apiAdminReviewProgressReport(token,reportId,decision,comment){
   const ctx=requireSession_(token,[ROLE.ADMIN]);
   const allowed=['APPROVED','REVISION_REQUIRED'];
