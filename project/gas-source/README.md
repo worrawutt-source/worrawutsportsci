@@ -7,7 +7,9 @@ This folder is the canonical GitHub source for the 4084901 SPORT SCIENCE RESEARC
 - Modular source branch: `refactor/phase2-code-modules`
 - Modular source commit: `28203600734dd7fc48a334db0031cb9d2d94d335`
 - Current bug-fix baseline: `fix/phase2-student-menu-admin-overview`
-- Current checkpoint: `1f858a6f9351e256df986f85dfe9e4894d7271e2`
+- Code-fix commit: `1f858a6f9351e256df986f85dfe9e4894d7271e2`
+- Source snapshot after documentation corrections: `f9d390fc4dc7495b0d3e8e3ab07869a98c3b3c8a`
+- Inventory record commit in `project/STATUS.md`: `6e1ed27853d498574b5d18aa669a46c2ac9c8252`
 - The bug-fix branch includes the modular source plus the Admin overview and Student topic-menu fixes. It is a development branch; runtime TEST/UAT and deployment are not yet complete.
 
 ## Backend file inventory
