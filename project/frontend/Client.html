@@ -1066,7 +1066,37 @@ async function renderAdvisorReview(){
  }catch(e){a.textContent='โหลดรายการตรวจหัวข้อไม่สำเร็จ: '+e.message;}
 }
 async function renderOverview(){
- const a=$('sectionText');a.textContent='กำลังโหลดภาพรวมการให้คำปรึกษา...';
+ const a=$('sectionText');
+ // ADMIN has a system overview; advisorWorkspaceSummary is advisor-only.
+ if(currentDashboard&&currentDashboard.user&&currentDashboard.user.roleId==='ADMIN'){
+  a.textContent='';
+  const box=el('div',{className:'notice'});
+  box.append(el('h2',{},'ภาพรวมระบบ'),el('p',{},'สรุปสถานะการใช้งานระบบรายวิชา 4084901'));
+  const m=currentDashboard.metrics||{};
+  const summary=el('div',{className:'admin-row'});
+  summary.append(
+   el('p',{},'นักศึกษาในทะเบียน: '+String(m.roster===undefined?0:m.roster)),
+   el('p',{},'Session ที่ยังใช้งาน: '+String(m.sessions===undefined?0:m.sessions)),
+   el('p',{},'บัญชีผู้ใช้ทั้งหมด: '+String(m.users===undefined?0:m.users))
+  );
+  box.append(summary);
+  const actions=el('div',{className:'admin-row'});
+  const adminActions=[
+   ['จัดการกลุ่มวิจัย',renderGroupAdmin],
+   ['กำหนดอาจารย์ที่ปรึกษา',renderAdvisorAssignment],
+   ['จัดการรายงานความก้าวหน้า',renderAdminProgressManagement],
+   ['ประเมินผล',renderAssessmentAdmin],
+   ['บัญชีผู้ใช้',renderUserAdmin]
+  ];
+  adminActions.forEach(([label,handler])=>{
+   const button=el('button',{type:'button',className:'secondary'},label);
+   button.onclick=()=>handler();
+   actions.append(button);
+  });
+  box.append(actions);a.append(box);
+  return;
+ }
+ a.textContent='กำลังโหลดภาพรวมการให้คำปรึกษา...';
  try{
   const d=currentDashboard&&currentDashboard.advisorWorkspaceSummary ? currentDashboard.advisorWorkspaceSummary : await callApi('apiGetAdvisorWorkspaceSummary',sessionToken);a.textContent='';
   const action=el('div',{className:'notice'});
