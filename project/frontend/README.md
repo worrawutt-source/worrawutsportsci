@@ -20,7 +20,7 @@ Do not reintroduce Apps Script template tags such as `<?!= include(...) ?>`. The
 
 1. Commit frontend changes to GitHub.
 2. Test the exact commit in the TEST deployment.
-3. Update `FRONTEND_CONFIG.COMMIT_SHA` in `project/gas-source/code.gs` to the frontend commit SHA.
+3. Update `FRONTEND_CONFIG.COMMIT_SHA` in `project/gas-source/00_AppConfigAndEntry.gs` to the frontend commit SHA.
 4. Copy the changed `.gs` file into Apps Script and test.
 5. Keep the previous commit SHA for rollback.
 
