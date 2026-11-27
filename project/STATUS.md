@@ -800,3 +800,15 @@ Next Action: deploy approved branch to TEST only, verify Advisor sees only assig
 1. Pull this branch into a separate TEST Apps Script project or TEST copy; add all numbered `.gs` files while preserving the same project-wide global scope.
 2. Run GAS syntax validation and verify `doGet`, `doPost`, authentication, group/advisor workflows, meetings, topic draft save/read-back, progress, assessment, tasks/notifications, and Admin endpoints.
 3. Complete TEST regression and UAT before merge or deployment.
+
+
+## 2026-11-27 — Phase 2 modular source bug fixes
+
+- Working branch: `fix/phase2-student-menu-admin-overview`, based on `refactor/phase2-code-modules` (modular GAS source), not `main`.
+- `project/gas-source/10_AuthAndUserAdministration.gs`: restored Student menu item `เสนอชื่อเรื่องงานวิจัย` before `เอกสารโครงร่าง`.
+- `project/frontend/Client.html`: mapped the new menu label to existing `renderStudentTopics()`; Admin/System Admin overview now renders from dashboard metrics without calling the Advisor-only API.
+- `project/gas-source/00_AppConfigAndEntry.gs`: updated immutable frontend pin to `24e5d56c2f56b214d74c93f0fb52b6b3ff203e4e`.
+- `project/gas-source/code.gs` remains the small modular entry file; no monolithic backend logic was added there. `setup.gs` unchanged.
+- Static validation: PASS for menu definition/order, route mapping, Admin branch before Advisor API, and matching pinned frontend commit.
+- Runtime browser TEST/UAT: NOT TESTED. Apps Script TEST deployment/synchronization is still required before confirming behavior in the GitHub Pages embedded Web App.
+- Database/schema changes: none. Production deployment: not performed.
