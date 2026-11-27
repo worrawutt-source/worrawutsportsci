@@ -953,3 +953,40 @@ Do not copy `Client.html` or `Styles.html` into GAS; the loader fetches them fro
 - Static JavaScript syntax validation: PASS.
 - API mapping validation: PASS.
 - GAS runtime / browser TEST after saving: NOT TESTED; user reported the runtime error and needs to re-save the corrected module and deploy TEST.
+## 2026-11-27 — Advisor Workspace redesign and review workflow (TEST source)
+
+### Baseline and change scope
+- Branch: fix/phase2-student-menu-admin-overview
+- Purpose: reorganize Advisor navigation and improve work visibility, review workflow, overdue tracking, and frontend performance without changing approved assessment weights or database schema.
+- Frontend commit pinned by GAS: 251f1f5b64c397f1eed37fca589b5e8c1e302d82
+- Loader pin commit: e1ab17ffba0fe286a671c83a244ef290bef960b0
+- Frontend files: project/frontend/Client.html, project/frontend/Styles.html
+- Backend files: project/gas-source/00_AppConfigAndEntry.gs, 10_AuthAndUserAdministration.gs, 50_Assessment.gs, 60_ProgressManagement.gs
+- Documentation: project/gas-source/README.md
+
+### Implemented
+- Advisor menu now groups work into five menus: ภาพรวม, งานของฉัน, กลุ่มที่ปรึกษา, การให้คำปรึกษ, การประเมิน.
+- Advisor dashboard shows new/review tasks, assigned groups, real overdue items, supervision count, feedback count, and group status. Overdue items derive from existing GROUP_TASKS.DUE_DATE and PROGRESS_REPORTS.REVISION_DUE_AT only.
+- Review queue includes all progress reports rather than limiting display to five; shows pending, revision-required, and reviewed statuses. Topic review remains within the same work inbox.
+- Direct 'ตรวจงานของกลุ่ม' navigation added from Advisor Groups to the group-filtered review workspace.
+- apiGetAdvisorReviewQueue(token) batch-loads assigned group research topics, active proposal files, progress reports, and feedback with one frontend API request; requires ROLE.ADVISOR and derives groups from approved assignments.
+- apiAdvisorReviewProgressReport(token, reportId, decision, comment) supports existing APPROVED and REVISION_REQUIRED statuses, checks assigned group access, writes review metadata/comment, records audit log, and notifies the group.
+- Shared el() helper now safely supports DOM child nodes and function event handlers; existing text-only calls remain supported.
+- Frontend loader pin updated to immutable commit 251f1f5b64c397f1eed37fca589b5e8c1e302d82.
+
+### Static validation
+- Client.html JavaScript parse: PASS.
+- 00_AppConfigAndEntry.gs, 10_AuthAndUserAdministration.gs, 50_Assessment.gs, 60_ProgressManagement.gs JavaScript parse: PASS (latest validation before final docs; recheck below if any further code change).
+- Advisor progress-review API definition count: 1.
+- Frontend call to apiAdvisorReviewProgressReport and backend role/group authorization: PASS by static inspection.
+- Review queue uses apiGetAdvisorReviewQueue; per-group sequential review API waterfall removed from this page.
+- Frontend loader pin matches the current immutable frontend commit: PASS at pin update.
+- Database/schema changes: none. setup.gs unchanged. Production data/deployment unchanged.
+- GAS runtime compile, Spreadsheet-backed execution, browser TEST, regression and UAT: NOT TESTED.
+
+### TEST GAS synchronization required
+1. project/gas-source/00_AppConfigAndEntry.gs — updated frontend commit pin.
+2. project/gas-source/10_AuthAndUserAdministration.gs — Advisor menu, summary metrics and overdue task/revision summary.
+3. project/gas-source/50_Assessment.gs — apiGetAdvisorReviewQueue batch API.
+4. project/gas-source/60_ProgressManagement.gs — apiAdvisorReviewProgressReport Advisor review API.
+Do not copy Client.html or Styles.html into GAS; they are loaded from GitHub at the immutable frontend pin. Keep all other modules and setup.gs unchanged. Save these four .gs files in the existing TEST project, deploy TEST only, then perform Advisor and Student regression/UAT. No TEST GAS synchronization or deployment was performed in this chat.
