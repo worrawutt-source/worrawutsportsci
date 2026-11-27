@@ -132,8 +132,9 @@ function apiAdvisorReviewProgressReport(token,reportId,decision,comment){
   if(outcome==='REVISION_REQUIRED'&&note.length<5)throw new Error('กรุณาระบุเหตุผลที่ส่งกลับแก้ไขอย่างน้อย 5 ตัวอักษร');
   const lock=LockService.getScriptLock();lock.waitLock(60000);
   try{
-    const row=readObjectsFresh_('PROGRESS_REPORTS').find(r=>String(r.REPORT_ID||'')===String(reportId||''));
-    if(!row)throw new Error('ไม่พบรายงานความก้าวหน้า');
+    const assignedGroupIds=new Set(getAdvisorAssignedGroups_(ctx.user.USER_ID).map(g=>String(g.groupId)));
+    const row=readObjectsFresh_('PROGRESS_REPORTS').find(r=>String(r.REPORT_ID||'')===String(reportId||'')&&assignedGroupIds.has(String(r.GROUP_ID||'')));
+    if(!row)throw new Error('ไม่พบรายงานหรือไม่มีสิทธิ์เข้าถึง');
     assertGroupAccess_(ctx,row.GROUP_ID);
     if(!['SUBMITTED','RESUBMITTED'].includes(String(row.STATUS||'').trim().toUpperCase()))throw new Error('รายงานนี้ได้รับการพิจารณาไปแล้ว หรือไม่อยู่ในสถานะรอตรวจ');
     const sh=sheet_('PROGRESS_REPORTS');
