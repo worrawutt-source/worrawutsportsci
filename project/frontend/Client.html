@@ -1103,9 +1103,8 @@ async function renderAdvisorOverview(){
 async function renderAdvisorReview(groupFilter){
  const a=$('sectionText');a.textContent='กำลังโหลดงานที่ต้องตรวจ...';
  try{
-  const summary=await callApi('apiGetAdvisorWorkspaceSummary',sessionToken);
-  const groups=(summary.groups||[]).filter(g=>!groupFilter||String(g.groupId)===String(groupFilter));
-  const details=await Promise.all(groups.map(async g=>({group:g,data:await callApi('apiGetStudentResearchData',sessionToken,g.groupId)})));
+  const queue=await callApi('apiGetAdvisorReviewQueue',sessionToken);
+  const details=(queue.groups||[]).filter(x=>!groupFilter||String(x.group?.groupId)===String(groupFilter)).map(x=>({group:x.group,data:x}));
   a.textContent='';
   const root=el('div',{className:'advisor-workspace'});
   const head=el('div',{className:'advisor-page-heading'});
@@ -1120,7 +1119,7 @@ async function renderAdvisorReview(groupFilter){
   details.forEach(({group:g,data:d})=>{
    if(!d.group||String(d.group.groupId)!==String(g.groupId))return;
    const box=el('section',{className:'advisor-panel'});
-   const panelHead=el('div',{className:'advisor-panel-heading'});panelHead.append(el('h3',{},g.groupName||'กลุ่มวิจัย'),el('span',{className:'advisor-group-meta'},'สมาชิก '+(g.members||[]).length+' คน'));box.append(panelHead);
+   const panelHead=el('div',{className:'advisor-panel-heading'});panelHead.append(el('h3',{},g.groupName||'กลุ่มวิจัย'),el('span',{className:'advisor-group-meta'},'สมาชิก '+(g.memberCount||0)+' คน'));box.append(panelHead);
    const topicList=(d.topics||[]).filter(t=>String(t.reviewStatus||'').toUpperCase()==='PENDING');
    topicList.forEach(t=>{
     const card=el('article',{className:'advisor-review-card advisor-task-new'});
@@ -1141,7 +1140,7 @@ async function renderAdvisorReview(groupFilter){
     card.append(el('div',{className:'advisor-review-card-head'},el('span',{className:'advisor-status '+(isPending?'advisor-status-danger':isReturned?'advisor-status-warning':'advisor-status-success')},isPending?(st==='RESUBMITTED'?'ส่งแก้ไขใหม่ · รอตรวจ':'ใหม่ · รอตรวจ'):isReturned?'ส่งกลับแก้ไข':'ตรวจแล้ว'),el('span',{className:'advisor-group-meta'},'รายงานสัปดาห์ '+r.weekNo)));
     card.append(el('h4',{},'รายงานความก้าวหน้า'));
     card.append(el('p',{},'ส่งเมื่อ '+(r.submittedAt?new Date(r.submittedAt).toLocaleString('th-TH'):'ไม่ระบุวันที่')));
-    card.append(el('div',{className:'advisor-review-content'},el('p',{},'ผลการดำเนินงาน: '+(r.workCompleted||'—')),el('p',{},'ปัญหา/อุปสรรค: '+(r.problems||'—')),el('p',{},'แผนดำเนินงานต่อไป: '+(r.nextPlan||'—'))));
+    card.append(el('div',{className:'advisor-review-content'},el('p',{},'ผลการดำเนินงาน: '+(r.workCompleted||'—')),el('p',{},'ปัญหา/อุปสรรค: '+(r.problems||'—')),el('p',{},'แผนดำเนินงานต่อไป: '+(r.nextActions||'—'))));
     if(r.reviewComment)card.append(el('div',{className:'advisor-review-comment'},'ข้อเสนอแนะครั้งก่อน: '+r.reviewComment));
     if(isPending){
      const comment=el('textarea',{rows:'3',className:'advisor-feedback-input',placeholder:'ข้อเสนอแนะสำหรับรายงานนี้ (จำเป็นเมื่อส่งกลับแก้ไข)'});
