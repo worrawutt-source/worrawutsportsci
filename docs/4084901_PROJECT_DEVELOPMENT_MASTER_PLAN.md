@@ -156,6 +156,7 @@ Change types:
 - D Baseline/Security/Assessment: approved scope, production, security or scores; explicit approval required
 
 ## 11. Change Log (append new entries; never erase history)
+| 2026-11-27 | RC-001 | Release preparation / Source integration | Assemble Phase 2 modular source into TEST RC0 from `feat/responsive-workspace-layout` (`abd6a7127c589fc6869277e54f4fa692209c84c6`); restore the existing canonical Master Plan path on the RC branch; document exclusions and validation | Avoid duplicate merges from ancestor branches; keep divergent `MEETING_SUBMISSIONS` migration out because current approved meeting workflow uses `MEETING_REPORTS` | RC branch created; static JS/API/pin checks PASS; GAS runtime/TEST/UAT/deployment pending |
 | Date | ID | Type | Change | Reason/Impact | Status/Evidence |
 |---|---|---|---|---|---|
 | 2026-11-26 | CHG-002 | Planning | Master Plan becomes continuously updated source of truth | Continuity across work sessions | v1.0 |
@@ -179,8 +180,17 @@ Change types:
 | K05 | cross-group data exposure | server authorization, access tests, audit | continuous |
 | K06 | email failure/resend duplicates action | delivery tracking, safe resend | planned/verify |
 
-## 14. Next action — Teaching Readiness Review
-Check only what students need for the current milestone: login; correct group/member; task visible; draft/submit and accurate status; Advisor can open/feedback; Coordinator sees submission/advisor status. Use findings to select the next release; do not wait for a full-system audit.
+## 14. Next action — TEST Release Candidate validation
+
+Current action (2026-11-27): validate RC0 before starting new feature work.
+1. Use a separate TEST Apps Script copy/project and preserve its manifest and Script Properties.
+2. Sync the 13 numbered backend modules plus `code.gs`; keep `setup.gs` unchanged.
+3. Verify the database configuration is TEST-only, then create a TEST deployment.
+4. Run login/role, group/advisor assignment, topic draft-submit-review, progress report, online meeting report, Coordinator dashboard, Advisor review queue, menu badge, assessment, and session-refresh smoke/regression tests.
+5. Complete browser visual checks on Notebook, Tablet/iPad, and Mobile; record actual results and known issues in `project/STATUS.md`.
+6. Do not merge to `main` or deploy production until TEST UAT is accepted.
+
+The teaching-readiness checks remain the acceptance focus; this RC assembly is source preparation only and is not a Release Log delivery.
 
 ## 15. Internal sources
 - แผน.txt — System Stabilization, Research Workflow, Advisor Supervision, Assessment, Administration/Security
