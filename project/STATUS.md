@@ -991,3 +991,16 @@ Do not copy `Client.html` or `Styles.html` into GAS; the loader fetches them fro
 3. project/gas-source/50_Assessment.gs — apiGetAdvisorReviewQueue batch API.
 4. project/gas-source/60_ProgressManagement.gs — apiAdvisorReviewProgressReport Advisor review API.
 Do not copy Client.html or Styles.html into GAS; they are loaded from GitHub at the immutable frontend pin. Keep all other modules and setup.gs unchanged. Save these four .gs files in the existing TEST project, deploy TEST only, then perform Advisor and Student regression/UAT. No TEST GAS synchronization or deployment was performed in this chat.
+
+## 2026-11-27 — Advisor layout and menu badge hotfix
+
+- Working branch: `fix/advisor-layout-menu-badges`
+- Base: `fix/phase2-student-menu-admin-overview`; selected after source inspection because the proposed integration branch does not contain the latest Advisor Workspace UI.
+- Frontend: removed the duplicate inner “งานของฉัน” heading; strengthened text wrapping/min-width rules for review cards and responsive status summary.
+- Menu indicators: restored red outlined numeric badges for pending items by role; zero-count badges are hidden. Saved-menu matching uses `data-menu-label`.
+- Backend: added `apiGetMenuTaskCounts(token)` and `readMenuBadgeRows_(name,cache)` in `90_TasksNotificationsMonitoring.gs`. Session required; role-specific aggregate counts only. The badge reader uses `db_().getSheetByName` and does not auto-create sheets.
+- Frontend immutable pin: `1bcdd398fe4fea57f7675955fc526c1c8fa31385`; `00_AppConfigAndEntry.gs` updated to this SHA.
+- Files changed: `project/frontend/Client.html`, `project/frontend/Styles.html`, `project/gas-source/90_TasksNotificationsMonitoring.gs`, `project/gas-source/00_AppConfigAndEntry.gs`, `project/gas-source/README.md`, `project/STATUS.md`.
+- `project/gas-source/setup.gs`: unchanged. No schema/migration, score, role/permission, or production data changes.
+- Static validation: final check pending. GAS runtime, Spreadsheet execution, browser TEST, regression and UAT: NOT TESTED. No GAS synchronization or deployment performed.
+- Next action: run static checks against latest committed source, then user syncs the updated `90_TasksNotificationsMonitoring.gs` and `00_AppConfigAndEntry.gs` into existing TEST GAS project and deploys TEST for UAT. Frontend Client/Styles are loaded by the immutable GitHub pin and are not copied into GAS.
