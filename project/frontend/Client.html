@@ -1180,7 +1180,7 @@ async function renderOverview(){
    groupRows.filter(g=>[g.groupName,g.topic,g.advisor].join(' ').toLocaleLowerCase().includes(q)).forEach(g=>{
     const tr=el('tr');
     [g.groupName||'ไม่ระบุชื่อ',g.topic||'ยังไม่ระบุหัวข้อ',g.advisor||'ยังไม่แต่งตั้ง',
-     progressLabel(g.latestProgressStatus)+(g.latestProgressWeek?' · สัปดาห์ '+g.latestProgressWeek:''),
+     progressLabel(g.latestProgressStatus)+(g.latestProgressWeek?' · สัปดาห์ '+g.latestProgressWeek:'')+(g.latestProgressSubmittedAt?' · ส่ง '+g.latestProgressSubmittedAt:''),
      meetingLabel(g.meetingOneStatus),g.tracking||'ติดตามตามสถานะ'].forEach(v=>tr.append(el('td',{},String(v))));
     tbody.append(tr);
    });
