@@ -141,23 +141,34 @@ function advisorWorkspaceDetails_(advisorUserId){
   const files=readObjectsFresh_('PROPOSAL_FILES').filter(r=>ids.has(String(r.GROUP_ID||''))&&String(r.STATUS||'').toUpperCase()==='ACTIVE');
   const feedback=readObjectsFresh_('ADVISOR_FEEDBACK').filter(r=>ids.has(String(r.GROUP_ID||''))&&String(r.STATUS||'ACTIVE').toUpperCase()==='ACTIVE');
   const meetings=readObjectsFresh_('MEETING_RECORDS').filter(r=>ids.has(String(r.GROUP_ID||'')));
-  const tasks=readObjectsFresh_('GROUP_TASKS').filter(r=>ids.has(String(r.GROUP_ID||''))&&!['DONE','CANCELLED','DELETED'].includes(String(r.STATUS||'').toUpperCase()));
+  const tasks=readObjectsFresh_('GROUP_TASKS').filter(r=>ids.has(String(r.GROUP_ID||''))&&!['DONE','CANCELLED','DELETED'].includes(String(r.STATUS||'').trim().toUpperCase()));
+  const now=new Date();
+  const overdueTasks=tasks.filter(t=>{
+    if(!t.DUE_DATE)return false;
+    const due=new Date(t.DUE_DATE);
+    if(isNaN(due.getTime()))return false;
+    due.setHours(23,59,59,999);
+    return due<now;
+  });
   const groupSummaries=groups.map(g=>{
-    const gr=reports.filter(r=>String(r.GROUP_ID)===String(g.groupId)).sort((a,b)=>new Date(b.SUBMITTED_AT||0)-new Date(a.SUBMITTED_AT||0));
-    const gt=topics.filter(r=>String(r.GROUP_ID)===String(g.groupId)).sort((a,b)=>Number(b.VERSION_NO||0)-Number(a.VERSION_NO||0));
-    const gm=meetings.filter(r=>String(r.GROUP_ID)===String(g.groupId));
+    const groupId=String(g.groupId);
+    const gr=reports.filter(r=>String(r.GROUP_ID)===groupId).sort((a,b)=>new Date(b.SUBMITTED_AT||0)-new Date(a.SUBMITTED_AT||0));
+    const gt=topics.filter(r=>String(r.GROUP_ID)===groupId).sort((a,b)=>Number(b.VERSION_NO||0)-Number(a.VERSION_NO||0));
+    const gm=meetings.filter(r=>String(r.GROUP_ID)===groupId);
+    const groupTasks=tasks.filter(t=>String(t.GROUP_ID)===groupId);
+    const groupOverdue=overdueTasks.filter(t=>String(t.GROUP_ID)===groupId);
     return {
       groupId:g.groupId,groupName:g.groupName,topicTh:g.topicTh,topicEn:g.topicEn,members:g.members,
-      pendingReports:gr.filter(r=>['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').toUpperCase())).length,
+      pendingReports:gr.filter(r=>['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').trim().toUpperCase())).length,
       totalReports:gr.length,latestReport:gr[0]?{weekNo:gr[0].WEEK_NO,status:gr[0].STATUS,submittedAt:gr[0].SUBMITTED_AT}:null,
-      proposalFiles:files.filter(r=>String(r.GROUP_ID)===String(g.groupId)).length,
-      feedbackCount:feedback.filter(r=>String(r.GROUP_ID)===String(g.groupId)).length,
+      proposalFiles:files.filter(r=>String(r.GROUP_ID)===groupId).length,
+      feedbackCount:feedback.filter(r=>String(r.GROUP_ID)===groupId).length,
       meetingCount:[...new Set(gm.map(r=>String(r.MEETING_NO)))].filter(Boolean).length,
-      openTasks:tasks.filter(r=>String(r.GROUP_ID)===String(g.groupId)).length,
+      openTasks:groupTasks.length,overdueTasks:groupOverdue.length,
       latestTopic:gt[0]?{versionNo:gt[0].VERSION_NO,reviewStatus:gt[0].REVIEW_STATUS,status:gt[0].STATUS}:null
     };
   });
-  const pendingReports=reports.filter(r=>['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').toUpperCase())).map(r=>{
+  const pendingReports=reports.filter(r=>['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').trim().toUpperCase())).map(r=>{
     const g=groups.find(x=>String(x.groupId)===String(r.GROUP_ID));
     return {groupId:r.GROUP_ID,groupName:g?g.groupName:'',weekNo:r.WEEK_NO,status:r.STATUS,submittedAt:r.SUBMITTED_AT,reportId:r.REPORT_ID};
   }).sort((a,b)=>new Date(b.submittedAt||0)-new Date(a.submittedAt||0));
@@ -171,9 +182,10 @@ function advisorWorkspaceDetails_(advisorUserId){
       assignedGroups:groups.length,
       pendingReports:pendingReports.length,
       pendingTopics:pendingTopics.length,
-      meetingsRecorded:meetings.length,
+      meetingsRecorded:dashboardMetrics.meetingsRecorded,
       feedbackProvided:feedback.length,
-      openTasks:tasks.length
+      openTasks:tasks.length,
+      overdueTasks:overdueTasks.length
     },
     dashboardMetrics,
     groups:groupSummaries,pendingReports,pendingTopics,
