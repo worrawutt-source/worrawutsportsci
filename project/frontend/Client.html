@@ -1084,41 +1084,171 @@ async function renderAdvisorReview(){
 }
 async function renderOverview(){
  const a=$('sectionText');
- const roleId=String(currentDashboard&&currentDashboard.user&&currentDashboard.user.roleId||'').toUpperCase();
- if(['ADMIN','SYSTEM_ADMIN'].includes(roleId)){
-  a.textContent='';
-  const box=el('div',{className:'notice'});
-  box.append(el('h2',{},'ภาพรวมระบบ'),el('p',{},'ข้อมูลสรุปของระบบสำหรับผู้ดูแลรายวิชา'));
-  const metrics=Object.entries(currentDashboard.metrics||{});
-  if(metrics.length){
-   const metricRows=el('div',{className:'admin-row'});
-   metrics.forEach(([key,value])=>metricRows.append(el('div',{},metricLabel(key)+' · '+String(value))));
-   box.append(metricRows);
-  }
-  a.append(box);
-  return;
- }
- a.textContent='กำลังโหลดภาพรวมการให้คำปรึกษา...';
+ a.textContent='กำลังรวบรวมสถานะการดำเนินงานรายวิชา...';
  try{
-  const d=currentDashboard&&currentDashboard.advisorWorkspaceSummary ? currentDashboard.advisorWorkspaceSummary : await callApi('apiGetAdvisorWorkspaceSummary',sessionToken);a.textContent='';
-  const action=el('div',{className:'notice'});
-  action.append(el('h2',{},'ภาพรวมการให้คำปรึกษา'),el('p',{},'ติดตามกลุ่มวิจัย งานที่รอตรวจ และกิจกรรมการให้คำปรึกษาที่อยู่ในความรับผิดชอบของอาจารย์'));
+  // Use existing Admin APIs only. Parallel requests avoid a sequential API waterfall.
+  const [course,progress,meeting,warningRows]=await Promise.all([
+   callApi('apiAdminListCourseData',sessionToken),
+   callApi('apiAdminGetProgressManagement',sessionToken),
+   callApi('apiAdminGetMeetingMonitoring',sessionToken),
+   callApi('apiAdminGetEarlyWarnings',sessionToken)
+  ]);
+  a.textContent='';
+  const groups=Array.isArray(course.groups)?course.groups:[];
+  const students=Array.isArray(course.students)?course.students:[];
+  const users=Array.isArray(course.users)?course.users:[];
+  const assignments=Array.isArray(course.assignments)?course.assignments:[];
+  const reports=Array.isArray(progress.reports)?progress.reports:[];
+  const meetingGroups=Array.isArray(meeting.groups)?meeting.groups:[];
+  const warnings=Array.isArray(warningRows)?warningRows:[];
+  const activeGroups=groups.filter(g=>String(g.STATUS||'').toUpperCase()==='ACTIVE');
+  const activeStudents=students.filter(x=>x.active!==false);
+  const unassignedStudents=activeStudents.filter(x=>!String(x.groupId||'').trim());
+  const approvedAssignments=assignments.filter(x=>String(x.STATUS||'').toUpperCase()==='APPROVED');
+  const approvedByGroup=new Map();
+  approvedAssignments.forEach(x=>approvedByGroup.set(String(x.GROUP_ID),x));
+  const userById=new Map(users.map(x=>[String(x.userId),x]));
+  const progressByGroup=new Map();
+  reports.forEach(r=>{
+   const key=String(r.groupId);
+   if(!progressByGroup.has(key))progressByGroup.set(key,[]);
+   progressByGroup.get(key).push(r);
+  });
+  const openWeeks=(Array.isArray(progress.settings)?progress.settings:[]).filter(w=>w.isOpen).sort((x,y)=>Number(y.week)-Number(x.week));
+  const currentOpenWeek=openWeeks[0]||null;
+  const today=new Date();today.setHours(0,0,0,0);
+  const parseDateOnly=value=>{
+   const text=String(value||'').slice(0,10);
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(text))return null;
+   const d=new Date(text+'T00:00:00');
+   return isNaN(d.getTime())?null:d;
+  };
+  const latestForGroup=rows=>{
+   if(!rows||!rows.length)return null;
+   if(currentOpenWeek){
+    const current=rows.find(r=>Number(r.weekNo)===Number(currentOpenWeek.week));
+    if(current)return current;
+   }
+   const submitted=rows.filter(r=>r.submittedAt);
+   if(submitted.length)return submitted.sort((x,y)=>new Date(y.submittedAt)-new Date(x.submittedAt))[0];
+   return rows.slice().sort((x,y)=>Number(y.weekNo)-Number(x.weekNo))[0]||null;
+  };
+  const groupStatus=r=>{
+   if(!r)return 'ยังไม่มีข้อมูลรายงาน';
+   if(['SUBMITTED','RESUBMITTED'].includes(String(r.status)))return 'รายงานสัปดาห์ '+r.weekNo+' · รอตรวจ';
+   if(r.status==='APPROVED')return 'รายงานสัปดาห์ '+r.weekNo+' · อนุมัติแล้ว';
+   if(r.status==='REVISION_REQUIRED')return 'รายงานสัปดาห์ '+r.weekNo+' · รอแก้ไข';
+   if(r.status==='NOT_SUBMITTED'&&r.weekIsOpen)return 'สัปดาห์ '+r.weekNo+' · เปิดรับรายงาน';
+   return 'รายงานล่าสุด · '+progressStatusLabel(r.status);
+  };
+  const overdueReports=reports.filter(r=>{
+   if(r.status!=='NOT_SUBMITTED')return false;
+   const due=parseDateOnly(r.effectiveDueDate||r.dueDate);
+   return !!due&&due<today;
+  });
+  const dueSoonReports=reports.filter(r=>{
+   if(r.status!=='NOT_SUBMITTED')return false;
+   const due=parseDateOnly(r.effectiveDueDate||r.dueDate);
+   if(!due||due<today)return false;
+   const days=Math.ceil((due-today)/86400000);
+   return days<=7;
+  });
+  const pendingProgress=reports.filter(r=>['SUBMITTED','RESUBMITTED'].includes(String(r.status)));
+  const revisionProgress=reports.filter(r=>String(r.status)==='REVISION_REQUIRED');
+  const meetingRows=meetingGroups.flatMap(g=>(Array.isArray(g.meetings)?g.meetings:[]).map(m=>Object.assign({groupId:g.groupId,groupName:g.groupName,advisor:g.advisor},m)));
+  const pendingMeeting=meetingRows.filter(m=>String(m.status)==='SUBMITTED');
+  const revisionMeeting=meetingRows.filter(m=>String(m.status)==='REVISION_REQUIRED');
+  const openWarnings=warnings.filter(w=>['OPEN','ACKNOWLEDGED'].includes(String(w.STATUS||'').toUpperCase()));
+  const groupsWithoutAdvisor=activeGroups.filter(g=>!approvedByGroup.has(String(g.GROUP_ID)));
+  const topicUnset=activeGroups.filter(g=>!String(g.TOPIC_TITLE_TH||'').trim());
+  const jump=label=>{
+   const target=Array.from($('sideMenu').querySelectorAll('.menu-item')).find(b=>normalizeMenuLabel_(b.textContent)===normalizeMenuLabel_(label));
+   if(target)target.click();
+  };
+  const section=el('div',{className:'notice'});
+  section.append(el('h2',{},'ภาพรวมการดำเนินงานรายวิชา'));
+  section.append(el('p',{},'ติดตามความก้าวหน้าของกลุ่ม งานที่ต้องดำเนินการ และกำหนดการจากข้อมูลในระบบ โดยไม่เปิดเผยรายละเอียดการให้คำปรึกษาที่จำกัดสิทธิ์'));
+  const metrics=el('div',{className:'metric-grid'});
+  const metric=(label,value,detail)=>{
+   const box=el('div',{className:'metric'});
+   box.append(el('div',{className:'metric-label'},label),el('div',{className:'metric-value'},String(value)));
+   if(detail)box.append(el('p',{className:'message'},detail));
+   metrics.append(box);
+  };
+  metric('กลุ่มวิจัยที่ใช้งาน',activeGroups.length,'กลุ่มที่มีสถานะ Active');
+  metric('กลุ่มที่มี Advisor อนุมัติแล้ว',activeGroups.length-groupsWithoutAdvisor.length,'จาก '+activeGroups.length+' กลุ่ม');
+  metric('รายงานความก้าวหน้ารอตรวจ',pendingProgress.length,'รายการกลุ่ม–สัปดาห์');
+  metric('รายการที่เลยกำหนดส่ง',overdueReports.length,'เฉพาะรายการที่มีวันกำหนดส่งจริง');
+  section.append(metrics);
+  const actionBox=el('div',{className:'notice'});
+  actionBox.append(el('h3',{},'งานที่ควรติดตาม'));
   const actions=el('div',{className:'admin-row'});
-  const goGroups=el('button',{type:'button',className:'secondary'},'เปิดกลุ่มที่ได้รับมอบหมาย');goGroups.onclick=()=>renderAdvisorGroups();
-  const goMeetings=el('button',{type:'button',className:'secondary'},'บันทึกการพบอาจารย์');goMeetings.onclick=()=>renderMeetingAttendance();
-  const goA4=el('button',{type:'button',className:'secondary'},'ประเมิน A4');goA4.onclick=()=>renderAdvisorA4();
-  actions.append(goGroups,goMeetings,goA4);action.append(actions);a.append(action);
-  const pending=el('div',{className:'notice'});pending.append(el('h3',{},'รายการที่ต้องดำเนินการ'));
-  if(!d.pendingTopics.length&&!d.pendingReports.length)pending.append(el('p',{},'ไม่มีหัวข้อวิจัยหรือรายงานความก้าวหน้าที่รอการพิจารณา'));
-  d.pendingTopics.forEach(x=>{const row=el('div',{className:'admin-row'});row.append(el('div',{},'หัวข้อวิจัย · '+x.groupName+' · V'+x.versionNo+' · '+(x.titleTh||'')));const b=el('button',{type:'button',className:'secondary'},'ตรวจหัวข้อ');b.onclick=()=>renderAdvisorReview();row.append(b);pending.append(row)});
-  d.pendingReports.forEach(x=>{const row=el('div',{className:'admin-row'});row.append(el('div',{},'รายงานความก้าวหน้า · '+x.groupName+' · สัปดาห์ '+x.weekNo));const b=el('button',{type:'button',className:'secondary'},'เปิดกลุ่ม');b.onclick=()=>renderAdvisorReview();row.append(b);pending.append(row)});
-  a.append(pending);
-  const groupBox=el('div',{className:'notice'});groupBox.append(el('h3',{},'สถานะกลุ่มที่รับผิดชอบ'));
-  if(!d.groups.length)groupBox.append(el('p',{},'ยังไม่มีการแต่งตั้งอาจารย์ที่ปรึกษาที่ได้รับอนุมัติ'));
-  d.groups.forEach(g=>{const row=el('div',{className:'admin-row'});row.append(el('div',{},g.groupName+' · สมาชิก '+g.members.length+' คน · รายงาน '+g.totalReports+' · เอกสาร '+g.proposalFiles+' · นัดพบ '+g.meetingCount+' · งานคงค้าง '+g.openTasks));const b=el('button',{type:'button',className:'secondary'},'ดูรายละเอียด');b.onclick=()=>renderAdvisorGroups();row.append(b);groupBox.append(row)});
-  a.append(groupBox);
+  const action=(title,count,description,menu)=>{
+   const box=el('div',{className:'notice'});
+   box.append(el('h4',{},title),el('p',{},String(count)+' รายการ'),el('p',{},description));
+   const b=el('button',{type:'button',className:'secondary'},'เปิดรายการ');
+   b.onclick=()=>jump(menu);
+   box.append(b);actions.append(box);
+  };
+  action('รอกำหนดอาจารย์ที่ปรึกษา',groupsWithoutAdvisor.length,'กลุ่มที่ยังไม่มี Assignment สถานะ APPROVED','กำหนดอาจารย์ที่ปรึกษา');
+  action('รายงานความก้าวหน้ารอตรวจ',pendingProgress.length,'นักศึกษาส่งแล้วและรอการพิจารณา','จัดการรายงานความก้าวหน้า');
+  action('รายงานที่รอแก้ไข',revisionProgress.length,'รายงานที่ Advisor/Admin ส่งกลับให้แก้ไข','จัดการรายงานความก้าวหน้า');
+  action('รายงานการเข้าพบรอตรวจ',pendingMeeting.length,'เอกสาร/รายงานการเข้าพบที่ส่งแล้วและรอการตรวจ','บันทึกการเข้าพบที่ปรึกษา');
+  action('รายการเตือนความเสี่ยง',openWarnings.length,'สัญญาณสถานะ OPEN หรือ ACKNOWLEDGED','สัญญาณเตือนความเสี่ยง');
+  action('กำหนดส่งภายใน 7 วัน',dueSoonReports.length,'รายการที่ยังไม่ส่งและมีวันกำหนดส่งจริงใน 7 วัน','จัดการรายงานความก้าวหน้า');
+  actionBox.append(actions);
+  section.append(actionBox);
+  const progressBox=el('div',{className:'notice'});
+  progressBox.append(el('h3',{},'สถานะกิจกรรมรายวิชา'));
+  const activityGrid=el('div',{className:'admin-row'});
+  const activity=(title,value,detail)=>{
+   const box=el('div',{className:'notice'});
+   box.append(el('h4',{},title),el('p',{},String(value)),el('p',{},detail));
+   activityGrid.append(box);
+  };
+  activity('การแต่งตั้งอาจารย์ที่ปรึกษา',approvedAssignments.length+' / '+activeGroups.length+' กลุ่ม','นับเฉพาะ Assignment ที่อนุมัติแล้ว');
+  activity('นักศึกษาที่ยังไม่มีกลุ่ม',unassignedStudents.length+' คน','จากนักศึกษาที่ Active ในทะเบียน');
+  activity('การเข้าพบที่ส่งรายงานแล้ว',meeting.summary&&meeting.summary.submitted!==undefined?meeting.summary.submitted:meetingRows.filter(m=>['SUBMITTED','VERIFIED','REVISION_REQUIRED','ACTIVE'].includes(String(m.status))).length,'รวมสถานะส่งแล้ว ตรวจแล้ว หรือส่งกลับแก้ไข');
+  activity('รายงานความก้าวหน้าที่เปิดรับ',currentOpenWeek?'สัปดาห์ '+currentOpenWeek.week+' · '+currentOpenWeek.title:'ยังไม่มีสัปดาห์เปิดรับ','แสดงจากการตั้งค่าสัปดาห์ในระบบ');
+  progressBox.append(activityGrid);
+  if(topicUnset.length)progressBox.append(el('p',{className:'message'},'หมายเหตุ: '+topicUnset.length+' กลุ่มยังไม่มีหัวข้อในข้อมูลกลุ่ม ทั้งนี้ไม่ใช่การสรุปสถานะการเสนอ/อนุมัติหัวข้อวิจัย'));
+  section.append(progressBox);
+  const groupBox=el('div',{className:'notice'});
+  groupBox.append(el('h3',{},'ติดตามสถานะกลุ่มวิจัย'));
+  const search=el('input',{type:'search',placeholder:'ค้นหาชื่อกลุ่ม หัวข้อ หรืออาจารย์ที่ปรึกษา'});
+  groupBox.append(el('label',{},'ค้นหากลุ่ม'),search);
+  const tableWrap=el('div',{className:'table-wrap'});
+  const table=el('table'),thead=el('thead'),head=el('tr');
+  ['กลุ่มวิจัย','หัวข้อในข้อมูลกลุ่ม','อาจารย์ที่ปรึกษา','สถานะรายงานล่าสุด'].forEach(x=>head.append(el('th',{},x)));
+  thead.append(head);table.append(thead);
+  const tbody=el('tbody');table.append(tbody);tableWrap.append(table);groupBox.append(tableWrap);
+  const renderGroupRows=()=>{
+   tbody.textContent='';
+   const q=String(search.value||'').trim().toLocaleLowerCase();
+   activeGroups.filter(g=>{
+    const assignment=approvedByGroup.get(String(g.GROUP_ID));
+    const advisorUser=assignment&&userById.get(String(assignment.ADVISOR_USER_ID));
+    const advisorName=advisorUser?String(advisorUser.displayName||advisorUser.email||'ยังไม่ระบุ'):'ยังไม่ได้กำหนด';
+    const text=[g.GROUP_NAME,g.TOPIC_TITLE_TH,advisorName].join(' ').toLocaleLowerCase();
+    return !q||text.includes(q);
+   }).forEach(g=>{
+    const assignment=approvedByGroup.get(String(g.GROUP_ID));
+    const advisorUser=assignment&&userById.get(String(assignment.ADVISOR_USER_ID));
+    const advisorName=advisorUser?String(advisorUser.displayName||advisorUser.email||'ยังไม่ระบุ'):'ยังไม่ได้กำหนด';
+    const latest=latestForGroup(progressByGroup.get(String(g.GROUP_ID))||[]);
+    const row=el('tr');
+    [String(g.GROUP_NAME||'ไม่ระบุชื่อ'),String(g.TOPIC_TITLE_TH||'ยังไม่ระบุในข้อมูลกลุ่ม'),advisorName,groupStatus(latest)].forEach(value=>row.append(el('td',{},value)));
+    tbody.append(row);
+   });
+   if(!tbody.children.length){const row=el('tr');row.append(el('td',{colSpan:'4'},'ไม่พบกลุ่มตามคำค้น'));tbody.append(row);}
+  };
+  search.addEventListener('input',renderGroupRows);renderGroupRows();
+  section.append(groupBox);
+  a.append(section);
   try{await renderNotificationPanel(a);}catch(e){console.warn('โหลดการแจ้งเตือนไม่สำเร็จ',e);}
- }catch(e){a.textContent='โหลดภาพรวมการให้คำปรึกษาไม่สำเร็จ: '+e.message;}
+ }catch(e){
+  a.textContent='โหลดภาพรวมระบบไม่สำเร็จ: '+(e&&e.message?e.message:String(e));
+ }
 }
 
 async function renderNotificationPanel(container){const notifications=await callApi('apiGetMyNotifications',sessionToken);if(!notifications.length)return;const box=el('div',{className:'notice'});box.append(el('h3',{},'การแจ้งเตือน'));notifications.slice(0,10).forEach(n=>{const row=el('div',{className:'admin-row'});row.append(el('div',{},n.TITLE+' · '+n.MESSAGE+' · '+new Date(n.CREATED_AT).toLocaleString('th-TH')));if(String(n.IS_READ)!=='TRUE'){const b=el('button',{type:'button',className:'secondary'},'อ่านแล้ว');b.onclick=async()=>{await callApi('apiMarkNotificationRead',sessionToken,n.NOTIFICATION_ID);row.remove()};row.append(b)}box.append(row)});container.append(box)}
