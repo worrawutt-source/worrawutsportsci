@@ -34,7 +34,11 @@ function clearSavedActiveMenu(){try{localStorage.removeItem(ACTIVE_MENU_STORAGE_
 function callApi(name, ...args) {
   return new Promise((resolve,reject)=>{
     google.script.run
-      .withSuccessHandler(resolve)
+      .withSuccessHandler(result=>{
+        resolve(result);
+        const isReadOnly=/^api(?:Admin|Advisor|Student)?(?:Get|List|Search|Check|Load|Fetch|Preview|Calculate|Download|Export|Lookup|Validate)/.test(name);
+        if(!isReadOnly&&currentDashboard&&sessionToken&&name!=='apiGetMenuTaskCounts')scheduleMenuTaskIndicatorRefresh_();
+      })
       .withFailureHandler(e=>{
         const message=(e && e.message) ? e.message : String(e);
         if(sessionToken && name!=='apiLogin' && name!=='apiStartStudentRegistration' && name!=='apiVerifyStudentRegistration' && isInvalidSessionError(message)){
@@ -193,10 +197,62 @@ function roleLabel(role){return ({ADMIN:'อาจารย์ประจำว
 function normalizeMenuLabel_(value){
   return String(value||'').normalize('NFC').replace(/[\u200B-\u200D\uFEFF\u00A0]/g,' ').replace(/\s+/g,' ').trim();
 }
+
+function createProgressBadge_(count,description){
+ const exact=Number(count)||0,display=exact>99?'99+':String(exact);
+ const badge=document.createElement('span');badge.className='progress-task-badge';badge.textContent=display;badge.title=description||('มีงานค้าง '+exact+' รายการ');badge.setAttribute('aria-label',badge.title);return badge;
+}
+function setMenuTaskCount_(label,count,description){
+ const wanted=normalizeMenuLabel_(label);
+ const item=[...$('sideMenu').querySelectorAll('.menu-item')].find(x=>normalizeMenuLabel_(x.dataset.menuLabel)===wanted);
+ if(!item)return;
+ const old=item.querySelector('.progress-task-badge');if(old)old.remove();
+ const n=Math.max(0,Number(count)||0);if(n>0)item.append(createProgressBadge_(n,description||('มีงานค้าง '+n+' รายการในเมนู '+label)));
+}
+let menuTaskIndicatorRefreshTimer_=null;
+function scheduleMenuTaskIndicatorRefresh_(){
+ if(!currentDashboard||!sessionToken)return;
+ if(menuTaskIndicatorRefreshTimer_)clearTimeout(menuTaskIndicatorRefreshTimer_);
+ menuTaskIndicatorRefreshTimer_=setTimeout(()=>{menuTaskIndicatorRefreshTimer_=null;refreshMenuTaskIndicators_();},250);
+}
+async function refreshMenuTaskIndicators_(){
+ if(!currentDashboard||!sessionToken||!document.querySelector('#sideMenu .menu-item'))return;
+ try{
+  const counts=await callApi('apiGetMenuTaskCounts',sessionToken);
+  document.querySelectorAll('#sideMenu .menu-item .progress-task-badge').forEach(x=>x.remove());
+  const role=currentDashboard.user.roleId;
+  if(role==='ADMIN'){
+   const c=counts.admin||{};
+   setMenuTaskCount_('จัดการกลุ่มวิจัย',c.groupsNeedsLeader,'กลุ่มที่ยังไม่ได้กำหนดหัวหน้ากลุ่ม '+(c.groupsNeedsLeader||0)+' กลุ่ม');
+   setMenuTaskCount_('กำหนดอาจารย์ที่ปรึกษา',c.advisorAssignment,'กลุ่มที่รอแต่งตั้ง/ยืนยันอาจารย์ที่ปรึกษา '+(c.advisorAssignment||0)+' กลุ่ม');
+   setMenuTaskCount_('จัดการรายงานความก้าวหน้า',c.progressManagement,'รายงานความก้าวหน้าที่รอตรวจ '+(c.progressManagement||0)+' รายงาน');
+   setMenuTaskCount_('จัดการงานกลุ่ม',c.taskBoard,'งานกลุ่มที่ยังไม่เสร็จ '+(c.taskBoard||0)+' รายการ');
+   setMenuTaskCount_('ติดตามจริยธรรม',c.ethics,'กลุ่มที่ยังไม่ได้กำหนดแผนจริยธรรม '+(c.ethics||0)+' กลุ่ม');
+   setMenuTaskCount_('สัญญาณเตือนความเสี่ยง',c.risk,'สัญญาณเตือนที่ยังไม่ปิด '+(c.risk||0)+' รายการ');
+   setMenuTaskCount_('ประเมินผล A1–A6',c.assessment,'กลุ่มที่คะแนน A1–A4 ยังไม่ครบ '+(c.assessment||0)+' กลุ่ม');
+   setMenuTaskCount_('บัญชีผู้ใช้',c.users,'คำเชิญบัญชีที่ยังดำเนินการ '+(c.users||0)+' รายการ');
+  }else if(role==='ADVISOR'||role==='RESEARCH_ADVISOR'){
+   const c=counts.advisor||{};
+   setMenuTaskCount_('งานของฉัน',c.groups,'กลุ่มที่มีหัวข้อหรือรายงานรอตรวจ '+(c.groups||0)+' กลุ่ม');
+   setMenuTaskCount_('กลุ่มที่ปรึกษา',c.groups,'กลุ่มที่มีหัวข้อหรือรายงานรอตรวจ '+(c.groups||0)+' กลุ่ม');
+   setMenuTaskCount_('การประเมิน',c.a4,'กลุ่มที่ยังประเมิน A4 ไม่ครบ '+(c.a4||0)+' กลุ่ม');
+  }else if(role==='STUDENT'){
+   const c=counts.student||{};
+   setMenuTaskCount_('รายงานความก้าวหน้า',c.progress,'รายงานความก้าวหน้าที่ต้องส่งหรือแก้ไข '+(c.progress||0)+' สัปดาห์');
+   setMenuTaskCount_('ความก้าวหน้า',c.progress,'รายงานความก้าวหน้าที่ต้องส่งหรือแก้ไข '+(c.progress||0)+' สัปดาห์');
+   setMenuTaskCount_('งานกลุ่ม',c.taskBoard,'งานกลุ่มที่ยังไม่เสร็จและเกี่ยวข้องกับบัญชีนี้ '+(c.taskBoard||0)+' รายการ');
+   setMenuTaskTaskCountAlias_('หัวข้อวิจัย',c.topics,'หัวข้อวิจัยที่อาจารย์ส่งกลับให้แก้ไข '+(c.topics||0)+' รายการ');
+   setMenuTaskTaskCountAlias_('เสนอชื่อเรื่องงานวิจัย',c.topics,'หัวข้อวิจัยที่อาจารย์ส่งกลับให้แก้ไข '+(c.topics||0)+' รายการ');
+   setMenuTaskTaskCountAlias_('ประเมินเพื่อน',c.peerAssessment,'สมาชิกที่ยังต้องประเมิน A5 '+(c.peerAssessment||0)+' คน');
+   setMenuTaskTaskCountAlias_('ประเมินเพื่อน A5',c.peerAssessment,'สมาชิกที่ยังต้องประเมิน A5 '+(c.peerAssessment||0)+' คน');
+  }
+ }catch(e){console.warn('โหลดจำนวนงานค้างของเมนูไม่สำเร็จ',e);}
+}
+function setMenuTaskTaskCountAlias_(label,count,description){setMenuTaskCount_(label,count,description);}
 function renderDashboard(d){
   $('sideMenu').innerHTML='';
   d.menu.forEach((label,i)=>{
-    const b=document.createElement('button');b.className='menu-item'+(i===0?' active':'');b.textContent=label;
+    const b=document.createElement('button');b.className='menu-item'+(i===0?' active':'');b.dataset.menuLabel=label;b.textContent=label;
     b.addEventListener('click',()=>{
       const requestId=++activeMenuRequestId;
       document.querySelectorAll('.menu-item').forEach(x=>x.classList.remove('active'));b.classList.add('active');
@@ -260,8 +316,9 @@ function renderDashboard(d){
   // If the saved menu is no longer available for this role, fall back to the first menu.
   const savedMenu=getSavedActiveMenu();
   const menuItems=[...$('sideMenu').querySelectorAll('.menu-item')];
-  const targetMenu=menuItems.find(item=>item.textContent===savedMenu)||menuItems[0];
+  const targetMenu=menuItems.find(item=>normalizeMenuLabel_(item.dataset.menuLabel||item.textContent)===normalizeMenuLabel_(savedMenu))||menuItems[0];
   if(targetMenu) targetMenu.click();
+  refreshMenuTaskIndicators_();
 }
 async function renderUserAdmin(){
   const area=$('sectionText');area.textContent='กำลังโหลดบัญชีผู้ใช้...';
@@ -1058,7 +1115,7 @@ async function renderFeedback(){
 }
 
 function openAdvisorMenu_(label){
- const button=[...document.querySelectorAll('.menu-item')].find(x=>normalizeMenuLabel_(x.textContent)===label);
+ const button=[...document.querySelectorAll('.menu-item')].find(x=>normalizeMenuLabel_(x.dataset.menuLabel||x.textContent)===normalizeMenuLabel_(label));
  if(button)button.click();
 }
 async function renderAdvisorOverview(){
@@ -1108,7 +1165,7 @@ async function renderAdvisorReview(groupFilter){
   a.textContent='';
   const root=el('div',{className:'advisor-workspace'});
   const head=el('div',{className:'advisor-page-heading'});
-  head.append(el('h2',{},'งานของฉัน'),el('p',{},'ตรวจงานที่กลุ่มที่ได้รับมอบหมายส่งเข้ามา พร้อมให้ข้อเสนอแนะและบันทึกผลการตรวจ'));
+  head.append(el('p',{},'ตรวจงานที่กลุ่มที่ได้รับมอบหมายส่งเข้ามา พร้อมให้ข้อเสนอแนะและบันทึกผลการตรวจ'));
   root.append(head);
   const totals={new:0,returned:0,done:0};
   details.forEach(({data})=>{(data.topics||[]).forEach(t=>{if(String(t.reviewStatus||'').toUpperCase()==='PENDING')totals.new++});(data.progress||[]).forEach(r=>{const st=String(r.status||'').toUpperCase();if(['SUBMITTED','RESUBMITTED'].includes(st))totals.new++;else if(st==='REVISION_REQUIRED')totals.returned++;else if(st==='APPROVED')totals.done++})});
