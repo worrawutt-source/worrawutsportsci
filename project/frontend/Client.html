@@ -1141,14 +1141,15 @@ async function renderOverview(){
    if(r.status==='NOT_SUBMITTED'&&r.weekIsOpen)return 'สัปดาห์ '+r.weekNo+' · เปิดรับรายงาน';
    return 'รายงานล่าสุด · '+progressStatusLabel(r.status);
   };
+  const reportDueDate=r=>parseDateOnly(r.status==='REVISION_REQUIRED'?(r.revisionDueAt||r.effectiveDueDate||r.dueDate):(r.effectiveDueDate||r.dueDate));
   const overdueReports=reports.filter(r=>{
-   if(r.status!=='NOT_SUBMITTED')return false;
-   const due=parseDateOnly(r.effectiveDueDate||r.dueDate);
+   if(!['NOT_SUBMITTED','REVISION_REQUIRED'].includes(String(r.status)))return false;
+   const due=reportDueDate(r);
    return !!due&&due<today;
   });
   const dueSoonReports=reports.filter(r=>{
-   if(r.status!=='NOT_SUBMITTED')return false;
-   const due=parseDateOnly(r.effectiveDueDate||r.dueDate);
+   if(!['NOT_SUBMITTED','REVISION_REQUIRED'].includes(String(r.status)))return false;
+   const due=reportDueDate(r);
    if(!due||due<today)return false;
    const days=Math.ceil((due-today)/86400000);
    return days<=7;
@@ -1206,7 +1207,7 @@ async function renderOverview(){
    box.append(el('h4',{},title),el('p',{},String(value)),el('p',{},detail));
    activityGrid.append(box);
   };
-  activity('การแต่งตั้งอาจารย์ที่ปรึกษา',approvedAssignments.length+' / '+activeGroups.length+' กลุ่ม','นับเฉพาะ Assignment ที่อนุมัติแล้ว');
+  activity('การแต่งตั้งอาจารย์ที่ปรึกษา',(activeGroups.length-groupsWithoutAdvisor.length)+' / '+activeGroups.length+' กลุ่ม','นับเฉพาะ Assignment ที่อนุมัติแล้ว');
   activity('นักศึกษาที่ยังไม่มีกลุ่ม',unassignedStudents.length+' คน','จากนักศึกษาที่ Active ในทะเบียน');
   activity('การเข้าพบที่ส่งรายงานแล้ว',meeting.summary&&meeting.summary.submitted!==undefined?meeting.summary.submitted:meetingRows.filter(m=>['SUBMITTED','VERIFIED','REVISION_REQUIRED','ACTIVE'].includes(String(m.status))).length,'รวมสถานะส่งแล้ว ตรวจแล้ว หรือส่งกลับแก้ไข');
   activity('รายงานความก้าวหน้าที่เปิดรับ',currentOpenWeek?'สัปดาห์ '+currentOpenWeek.week+' · '+currentOpenWeek.title:'ยังไม่มีสัปดาห์เปิดรับ','แสดงจากการตั้งค่าสัปดาห์ในระบบ');
