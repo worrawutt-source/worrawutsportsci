@@ -47,15 +47,15 @@
 
 - Queue API ส่งข้อมูล topic/progress หลายสถานะให้ Client; ต้องยืนยันด้วย Browser/UAT ว่า UI กรองรายการ pending/returned/completed ถูกต้องและไม่แสดง Draft/ข้อมูลที่ไม่ควรเห็น
 
-### Environment / deployment mismatch — BLOCKED
+### Environment / deployment marker — review required
 
-Source มี Build `0.4.0.2-MEETING-MONITORING-TEST`, comment `Deploy TEST only` และหน้า Login แสดง label `TEST`. ผู้รับผิดชอบยืนยันว่าระบบกำลังพัฒนาและใช้งานควบคู่กัน แต่ยังไม่มีหลักฐานจาก GAS Deployment/Script Properties ว่า RC นี้ตรงกับ deployment และ database ที่ใช้งานอยู่ จึงห้ามนำ RC ไปแทน Source ที่ใช้งานจริงจนกว่าจะตรวจสอบความตรงกัน
+Source มี Build `0.4.0.2-MEETING-MONITORING-TEST`, comment `Deploy TEST only` และหน้า Login แสดง label `TEST`. ผู้รับผิดชอบยืนยันว่าไฟล์ `.gs` ใน GitHub ตรงกับ GAS ที่ใช้งานอยู่ จึงไม่ต้องทำ source comparison ซ้ำ อย่างไรก็ตาม marker `TEST` ยังต้องตรวจว่ามีผลต่อ UI/การตั้งค่าหรือเป็นข้อความคงค้าง และต้องตรวจพฤติกรรมจริงก่อนเปลี่ยน marker หรือ deployment
 
 ### Validation status
 
 - PASS: static API caller consistency; source-level role/access guards inspected for the endpoints listed above
 - NOT TESTED: GAS runtime, Spreadsheet reads/writes, browser workflow, real deployment identity, end-to-end Advisor/Student/Coordinator UAT, performance under live data
-- BLOCKED: compare RC against currently deployed GAS source and confirm actual frontend pin/database target (no GAS/Sheets connector or deployment source available in this session)
+- CONFIRMED BY OWNER: `.gs` files in GitHub match the `.gs` files in the currently used GAS; no duplicate source export/comparison is required. Still NOT TESTED: live workflow behavior, actual frontend rendering/pin behavior, database target/runtime execution and performance (these require observed system behavior, not source comparison).
 
 ### Student / Coordinator static workflow review
 
@@ -73,7 +73,7 @@ Source มี Build `0.4.0.2-MEETING-MONITORING-TEST`, comment `Deploy TEST only
 4. Fix defects and incremental release: no code fix/release performed because identified gaps are requirement-level and live deployment/source is unverified; code change requires approved scope and deployment confirmation.
 5. Student/Coordinator review: static role/workflow review DONE; browser/runtime/UAT and performance checks NOT TESTED.
 
-- Next Action: inspect/export current deployed Apps Script source and confirm deployment version + frontend pin + database target; then run the Advisor workflow walkthrough in the existing environment with user-approved low-risk actions. Do not create a second GAS/Sheet.
+- Next Action: perform an owner-guided workflow walkthrough in the existing GAS/Sheet for Advisor → Student → Coordinator, verify visible status/feedback and collect timing/API evidence. No need to export or compare `.gs` again unless the source changes. Do not create a second GAS/Sheet.
 
 ---
 
