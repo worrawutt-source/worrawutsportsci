@@ -147,3 +147,30 @@ function apiGetStudentResearchData(token,requestedGroupId){
     openProgressWeeks:progressWeeks.filter(w=>w.isOpen)
   });
 }
+
+
+/**
+ * Advisor review queue: batch-load only the assigned groups' submitted research
+ * content. Keeps the browser from issuing one research-data request per group.
+ */
+function apiGetAdvisorReviewQueue(token){
+  const ctx=requireSession_(token,[ROLE.ADVISOR]);
+  const groups=getAdvisorAssignedGroups_(ctx.user.USER_ID);
+  if(!groups.length)return {groups:[]};
+  const ids=new Set(groups.map(g=>String(g.groupId)));
+  const topics=readObjectsFresh_('RESEARCH_TOPIC_VERSIONS').filter(x=>ids.has(String(x.GROUP_ID||'')));
+  const files=readObjectsFresh_('PROPOSAL_FILES').filter(x=>ids.has(String(x.GROUP_ID||''))&&String(x.STATUS||'').toUpperCase()==='ACTIVE');
+  const progress=readObjectsFresh_('PROGRESS_REPORTS').filter(x=>ids.has(String(x.GROUP_ID||'')));
+  const feedback=readObjectsFresh_('ADVISOR_FEEDBACK').filter(x=>ids.has(String(x.GROUP_ID||''))&&String(x.STATUS||'').toUpperCase()!=='DELETED');
+  const result=groups.map(g=>{
+    const groupId=String(g.groupId);
+    return {
+      group:{groupId,groupName:g.groupName,topicTh:g.topicTh||'',topicEn:g.topicEn||''},
+      topics:topics.filter(x=>String(x.GROUP_ID)===groupId).sort((a,b)=>Number(b.VERSION_NO||0)-Number(a.VERSION_NO||0)).map(x=>({versionId:x.VERSION_ID,versionNo:x.VERSION_NO,titleTh:x.TITLE_TH,titleEn:x.TITLE_EN,problem:x.PROBLEM_STATEMENT,objectives:x.OBJECTIVES,significance:x.RESEARCH_SIGNIFICANCE,status:x.STATUS,reviewStatus:x.REVIEW_STATUS,submittedAt:x.SUBMITTED_AT,reviewComment:x.REVIEW_COMMENT||''})),
+      files:files.filter(x=>String(x.GROUP_ID)===groupId).sort((a,b)=>new Date(b.UPLOADED_AT||0)-new Date(a.UPLOADED_AT||0)).map(x=>({fileId:x.FILE_RECORD_ID,chapter:x.CHAPTER,fileName:x.FILE_NAME,url:x.DRIVE_URL,size:Number(x.FILE_SIZE)||0,uploadedAt:x.UPLOADED_AT,notes:x.NOTES})),
+      progress:progress.filter(x=>String(x.GROUP_ID)===groupId).sort((a,b)=>Number(b.WEEK_NO||0)-Number(a.WEEK_NO||0)||new Date(b.SUBMITTED_AT||0)-new Date(a.SUBMITTED_AT||0)).map(x=>({reportId:x.REPORT_ID,weekNo:x.WEEK_NO,milestone:x.MILESTONE,workCompleted:x.WORK_COMPLETED,problems:x.PROBLEMS,nextActions:x.NEXT_ACTIONS,submittedAt:x.SUBMITTED_AT instanceof Date?x.SUBMITTED_AT.toISOString():String(x.SUBMITTED_AT||''),status:x.STATUS,reviewComment:x.REVIEW_COMMENT||'',timelinessStatus:x.TIMELINESS_STATUS||'',revisionDueAt:x.REVISION_DUE_AT||'',extensionId:x.EXTENSION_ID||''})),
+      feedback:feedback.filter(x=>String(x.GROUP_ID)===groupId).sort((a,b)=>new Date(b.CREATED_AT||0)-new Date(a.CREATED_AT||0)).map(x=>({feedbackId:x.FEEDBACK_ID,relatedType:x.RELATED_TYPE,relatedId:x.RELATED_ID,comment:x.COMMENT,createdBy:x.CREATED_BY,createdAt:x.CREATED_AT}))
+    };
+  });
+  return sanitizeForClient_({groups:result});
+}
