@@ -877,3 +877,38 @@ There are 13 numbered backend modules plus `code.gs` and `setup.gs` (15 script f
 
 ### Next-work rule
 Start from `fix/phase2-student-menu-admin-overview` and this snapshot. Before any change, inspect current branch/commit and the relevant module/caller. Preserve all modules, keep changes minimal, update this STATUS section only when the baseline changes, and do not treat static PASS as Runtime/UAT PASS.
+
+
+## 2026-11-27 — Frontend render-race guard and TEST loader pin
+
+### Change scope
+- Branch: `fix/phase2-student-menu-admin-overview`
+- Frontend source commit: `5e6e9f1760bf98490807e64da0fa87433def826b`
+- Frontend file: `project/frontend/Client.html`
+- Frontend blob SHA: `a538124565d691fc018ccc475806856aa1ff85fe`
+- Loader source commit: `29ed43dd1bd35766e3ddeda39e6364717fcbd3cd`
+- Loader module: `project/gas-source/00_AppConfigAndEntry.gs`
+- Loader blob SHA: `57320856155b129da6762906cd3157b3fe2f8a3f`
+- `FRONTEND_CONFIG.COMMIT_SHA` now pins exactly `5e6e9f1760bf98490807e64da0fa87433def826b`.
+
+### Frontend race prevention
+- Added a serialized menu-render queue and monotonically increasing request ID. If multiple menu clicks happen while a prior renderer awaits API responses, stale queued requests are skipped; the newest selected menu is rendered after the active render finishes.
+- Added a dashboard-load request ID. A late dashboard response from an older login/session-restore request is ignored instead of replacing the current dashboard.
+- Preserved existing menu dispatch and renderer functions; no new API, role, workflow or database behavior.
+- Existing topic-menu route and Admin/System Admin overview guard remain in the pinned Frontend commit.
+
+### Static checks
+- Client source fetched from GitHub at the recorded commit and checked for balanced delimiters: PASS.
+- Exactly one `renderDashboard()` and one `loadDashboard()` definition: PASS.
+- Menu render queue and stale dashboard response guard present: PASS.
+- Loader pin matches the immutable Frontend commit: PASS.
+- Database/schema changes: none. `setup.gs`: unchanged.
+
+### Apps Script TEST synchronization
+- TEST Apps Script project source sync: BLOCKED / NOT PERFORMED in this chat. Available connected actions permit GitHub source edits but do not provide an Apps Script editor or TEST project write/deploy action. Do not report this source commit as synced or deployed.
+- Exact file to sync into the existing TEST Apps Script project: `project/gas-source/00_AppConfigAndEntry.gs` from this branch. Keep all other modular `.gs` files and `setup.gs` unchanged.
+- After saving that module in TEST, create a new TEST deployment and verify: Student topic menu does not show meeting attendance content; Admin/System Admin overview does not call Advisor-only API; rapidly switching menus does not allow stale content to overwrite the selected page.
+- Runtime browser TEST/UAT and Apps Script deployment: NOT TESTED. Production unchanged.
+
+### Next action
+Sync the pinned loader module into the existing TEST Apps Script project, save and deploy TEST only, then run the above role/menu regression checks. Record the deployment version and test evidence here; do not promote to production without explicit approval.
