@@ -7,8 +7,8 @@ This folder is the canonical GitHub source for the 4084901 SPORT SCIENCE RESEARC
 - Modular source branch: `refactor/phase2-code-modules`
 - Modular source commit: `28203600734dd7fc48a334db0031cb9d2d94d335`
 - Current bug-fix baseline: `fix/phase2-student-menu-admin-overview`
-- Latest Course Coordinator Dashboard frontend commit: `bac0de7d5d5c5e8b4cb2f86cfbed199557159593`
-- Latest loader pin commit: `ad0338990444e958d78cab14282fe7a893733299`
+- Latest Advisor Workspace TEST frontend commit: `251f1f5b64c397f1eed37fca589b5e8c1e302d82`
+- Latest loader pin commit: `e1ab17ffba0fe286a671c83a244ef290bef960b0`
 - Current source inventory and race-fix record: `project/STATUS.md` (see latest Phase 2 UI race fix entry)
 - The bug-fix branch includes the modular source, Admin overview and Student topic-menu fixes, and the Course Coordinator Dashboard summary API. `apiAdminGetCoordinatorDashboard` returns operational status only and does not return report narratives, advisor feedback, meeting review comments, Drive URLs, or student personal details. The coordinator summary reads existing sheets without invoking workflow sheet auto-creation/seeding and returns only operational status. It is a development branch; runtime TEST/UAT and deployment are not yet complete.
 
@@ -60,3 +60,15 @@ The Apps Script loader fetches these three files from `raw.githubusercontent.com
 - `setup.gs` is protected/read-only unless explicitly approved.
 - Do not change production data, `DB_ID`, `APP_SECRET`, passwords, tokens or other secrets.
 - Do not deploy production without explicit approval.
+## 2026-11-27 — Advisor Workspace redesign (TEST source)
+
+- Advisor navigation is organized into five task-based menus: Overview, My Tasks, Advisor Groups, Supervision, and Assessment.
+- Client.html includes the Advisor overview, task inbox, full progress-report list, direct group-to-review action, and red/amber/green workflow states.
+- Styles.html adds responsive professional Advisor dashboard and review workspace styling.
+- 50_Assessment.gs adds apiGetAdvisorReviewQueue(token), a batch endpoint that returns only assigned groups' topics, proposal files, progress reports, and advisor feedback. It replaces frontend per-group sequential API calls with one queue API call.
+- 60_ProgressManagement.gs adds apiAdvisorReviewProgressReport(token, reportId, decision, comment). It requires Advisor role, checks approved group assignment, accepts only existing APPROVED / REVISION_REQUIRED statuses, records review metadata and comment, logs the action, and notifies the group.
+- 10_AuthAndUserAdministration.gs updates Advisor menu and workspace summary; exposes actual overdue group tasks and revision reports using existing due dates. No new due dates are generated.
+- 00_AppConfigAndEntry.gs pins the frontend to the immutable TEST frontend commit above.
+- No spreadsheet schema or setup changes. setup.gs remains protected and unchanged. Production data/deployment unchanged.
+- Static syntax/API/permission checks: PASS. GAS runtime compile, Spreadsheet execution, browser TEST, regression and UAT: NOT TESTED.
+- TEST GAS files to sync: 00_AppConfigAndEntry.gs, 10_AuthAndUserAdministration.gs, 50_Assessment.gs, 60_ProgressManagement.gs. Frontend Client.html and Styles.html are loaded from the pinned GitHub commit and are not copied into GAS as source files.
