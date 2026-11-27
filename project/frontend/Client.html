@@ -1068,7 +1068,7 @@ async function renderAdvisorReview(){
 async function renderOverview(){
  const a=$('sectionText');
  // ADMIN has a system overview; advisorWorkspaceSummary is advisor-only.
- if(currentDashboard&&currentDashboard.user&&currentDashboard.user.roleId==='ADMIN'){
+ if(currentDashboard&&currentDashboard.user&&['ADMIN','SYSTEM_ADMIN'].includes(currentDashboard.user.roleId)){
   a.textContent='';
   const box=el('div',{className:'notice'});
   box.append(el('h2',{},'ภาพรวมระบบ'),el('p',{},'สรุปสถานะการใช้งานระบบรายวิชา 4084901'));
