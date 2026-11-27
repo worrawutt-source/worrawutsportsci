@@ -95,3 +95,14 @@ The Apps Script loader fetches these three files from `raw.githubusercontent.com
 - Frontend immutable commit: `d3666d978fc8f3447d67ca8edf2f59ea258d540f`; loader pin updated in `00_AppConfigAndEntry.gs`.
 - No API, schema, role, workflow, scoring, or production data changes. `setup.gs` unchanged.
 - Static CSS/source checks: PASS; visual browser QA across notebook/iPad/mobile and GAS runtime/UAT: NOT TESTED.
+
+## TEST Release Candidate — 2026-11-27
+
+- Candidate branch: `release/phase2-test-rc-2026-11-27`
+- Source base: `feat/responsive-workspace-layout` @ `abd6a7127c589fc6869277e54f4fa692209c84c6`
+- Backend: 13 numbered modules + `code.gs`; `setup.gs` remains protected and unchanged.
+- Frontend immutable pin: `d3666d978fc8f3447d67ca8edf2f59ea258d540f` (Client, Index, Styles verified identical to pin).
+- Static JS/API checks: PASS. GAS runtime, spreadsheet tests, browser UAT and deployment: NOT TESTED / NOT PERFORMED.
+- To validate RC, use a separate TEST Apps Script project/copy. Add the numbered modules and `code.gs`; retain `appsscript.json`, TEST Script Properties and the protected `setup.gs`. Verify the DB ID/environment points only to TEST before deployment.
+- Do not include or run the separate `MEETING_SUBMISSIONS` migration from the divergent meeting migration branch. Current modular source uses `MEETING_REPORTS`; any existing TEST sheet must remain untouched.
+- This is a source candidate, not a deployed release.
