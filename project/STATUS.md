@@ -56,6 +56,23 @@ Source มี Build `0.4.0.2-MEETING-MONITORING-TEST`, comment `Deploy TEST only
 - PASS: static API caller consistency; source-level role/access guards inspected for the endpoints listed above
 - NOT TESTED: GAS runtime, Spreadsheet reads/writes, browser workflow, real deployment identity, end-to-end Advisor/Student/Coordinator UAT, performance under live data
 - BLOCKED: compare RC against currently deployed GAS source and confirm actual frontend pin/database target (no GAS/Sheets connector or deployment source available in this session)
+
+### Student / Coordinator static workflow review
+
+- `apiSaveGroupProgressDraft`: STUDENT session required; week must be open; draft uses version/lockVersion conflict guard and Script Lock.
+- `apiStudentSubmitProgress`: STUDENT session required; derives group from session; requires active assigned group leader; checks open week and prior submission status; uses Script Lock and records submission/log/notification.
+- `apiGetStudentResearchData`: role allowlist STUDENT/ADVISOR/ADMIN; Student group is derived from membership; Advisor group is checked through assigned groups and `assertGroupAccess_()`.
+- Coordinator summary API is ADMIN-only by Source. Static review confirms role guards on inspected APIs, not all APIs or runtime permission behavior.
+- Full-sheet reads and per-group/week filtering exist in dashboard/workspace code; no real response-time or Spreadsheet-operation baseline is available, so performance remains NOT TESTED.
+
+### Completion against the requested five work items
+
+1. Master Plan / STATUS release model updated: DONE (documentation only).
+2. Compare RC with deployed GAS/Sheet: BLOCKED (no live GAS source/deployment/Script Properties access); RC is not confirmed deployed.
+3. Advisor workflow audit: static review DONE; live end-to-end workflow NOT TESTED; functional gaps recorded above.
+4. Fix defects and incremental release: no code fix/release performed because identified gaps are requirement-level and live deployment/source is unverified; code change requires approved scope and deployment confirmation.
+5. Student/Coordinator review: static role/workflow review DONE; browser/runtime/UAT and performance checks NOT TESTED.
+
 - Next Action: inspect/export current deployed Apps Script source and confirm deployment version + frontend pin + database target; then run the Advisor workflow walkthrough in the existing environment with user-approved low-risk actions. Do not create a second GAS/Sheet.
 
 ---
