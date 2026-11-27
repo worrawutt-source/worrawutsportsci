@@ -241,14 +241,14 @@ async function refreshMenuTaskIndicators_(){
    setMenuTaskCount_('รายงานความก้าวหน้า',c.progress,'รายงานความก้าวหน้าที่ต้องส่งหรือแก้ไข '+(c.progress||0)+' สัปดาห์');
    setMenuTaskCount_('ความก้าวหน้า',c.progress,'รายงานความก้าวหน้าที่ต้องส่งหรือแก้ไข '+(c.progress||0)+' สัปดาห์');
    setMenuTaskCount_('งานกลุ่ม',c.taskBoard,'งานกลุ่มที่ยังไม่เสร็จและเกี่ยวข้องกับบัญชีนี้ '+(c.taskBoard||0)+' รายการ');
-   setMenuTaskTaskCountAlias_('หัวข้อวิจัย',c.topics,'หัวข้อวิจัยที่อาจารย์ส่งกลับให้แก้ไข '+(c.topics||0)+' รายการ');
-   setMenuTaskTaskCountAlias_('เสนอชื่อเรื่องงานวิจัย',c.topics,'หัวข้อวิจัยที่อาจารย์ส่งกลับให้แก้ไข '+(c.topics||0)+' รายการ');
-   setMenuTaskTaskCountAlias_('ประเมินเพื่อน',c.peerAssessment,'สมาชิกที่ยังต้องประเมิน A5 '+(c.peerAssessment||0)+' คน');
-   setMenuTaskTaskCountAlias_('ประเมินเพื่อน A5',c.peerAssessment,'สมาชิกที่ยังต้องประเมิน A5 '+(c.peerAssessment||0)+' คน');
+   setMenuTaskCount_('หัวข้อวิจัย',c.topics,'หัวข้อวิจัยที่อาจารย์ส่งกลับให้แก้ไข '+(c.topics||0)+' รายการ');
+   setMenuTaskCount_('เสนอชื่อเรื่องงานวิจัย',c.topics,'หัวข้อวิจัยที่อาจารย์ส่งกลับให้แก้ไข '+(c.topics||0)+' รายการ');
+   setMenuTaskCount_('ประเมินเพื่อน',c.peerAssessment,'สมาชิกที่ยังต้องประเมิน A5 '+(c.peerAssessment||0)+' คน');
+   setMenuTaskCount_('ประเมินเพื่อน A5',c.peerAssessment,'สมาชิกที่ยังต้องประเมิน A5 '+(c.peerAssessment||0)+' คน');
   }
  }catch(e){console.warn('โหลดจำนวนงานค้างของเมนูไม่สำเร็จ',e);}
 }
-function setMenuTaskTaskCountAlias_(label,count,description){setMenuTaskCount_(label,count,description);}
+function setMenuTaskCount_(label,count,description){setMenuTaskCount_(label,count,description);}
 function renderDashboard(d){
   $('sideMenu').innerHTML='';
   d.menu.forEach((label,i)=>{
