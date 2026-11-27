@@ -204,7 +204,7 @@ function apiGetDashboard(token) {
     const advisorSummary=advisorWorkspaceDetails_(ctx.user.USER_ID);
     base.advisorWorkspaceSummary=advisorSummary;
     base.metrics={assignedGroups:advisorSummary.metrics.assignedGroups,pendingReports:advisorSummary.metrics.pendingReports,pendingTopics:advisorSummary.metrics.pendingTopics,meetingsRecorded:advisorSummary.dashboardMetrics.meetingsRecorded};
-    base.menu = ['ภาพรวมการให้คำปรึกษา','กลุ่มที่ได้รับมอบหมาย','บันทึกการเข้าพบที่ปรึกษา','ประเมิน A4'];
+    base.menu = ['ภาพรวม','งานของฉัน','กลุ่มที่ปรึกษา','การให้คำปรึกษ','การประเมิน'];
   } else if (role === ROLE.STUDENT) {
     // Derive dashboard group status from the active membership relationship.
     // This mirrors the membership lookup used by apiGetStudentWorkspace.
