@@ -229,5 +229,38 @@ html.ssrl-session-restoring #sessionRestoreView{display:flex!important}
 .meeting-report-history-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;color:var(--navy)}
 .meeting-report-history-head small{font-size:12px;color:var(--muted);font-weight:400}
 .meeting-report-review-comment{padding:10px 12px;border-left:3px solid var(--blue);background:#eef5fb;color:var(--navy)}
+
+/* Course Coordinator Dashboard */
+.coordinator-dashboard{display:grid;gap:16px;min-width:0}
+.coord-heading h2{margin:0 0 6px;color:var(--navy,#183651);font-size:25px}
+.coord-heading p,.coord-subtitle{margin:0;color:var(--muted,#657b8d);font-size:13px;line-height:1.6}
+.coord-metrics{margin:0}
+.coord-section{background:#fff;border:1px solid var(--border,#dfe7ef);border-radius:16px;padding:20px;box-shadow:0 5px 18px rgba(26,53,79,.035);min-width:0}
+.coord-section h3{margin:0 0 8px;color:var(--navy,#183651);font-size:19px}
+.coord-section>.coord-subtitle{margin-bottom:14px}
+.coord-action-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.coord-action{border:1px solid var(--border,#e2e9f0);border-radius:12px;padding:14px;min-width:0;display:flex;flex-direction:column;gap:9px;background:#fbfdff}
+.coord-action-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.coord-action h4,.coord-activity h4{margin:0;color:var(--navy,#183651);font-size:15px;line-height:1.4}
+.coord-count{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:30px;padding:0 8px;border-radius:9px;background:#eaf3f6;color:#1c6f7c;font-weight:700}
+.coord-action-items{margin:0;padding-left:18px;color:#425d70;font-size:13px;line-height:1.65;overflow-wrap:anywhere}
+.coord-action-items li+li{margin-top:3px}
+.coord-action button{align-self:flex-start;margin-top:auto}
+.coord-activity-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.coord-activity{border-radius:11px;background:#f3f8fa;border-left:3px solid var(--teal,#269b91);padding:14px;min-width:0}
+.coord-activity-value{margin:8px 0;color:var(--navy,#183651);font-size:20px;font-weight:700;overflow-wrap:anywhere}
+.coord-table-wrap{margin-top:12px;overflow-x:auto}
+.coord-table-wrap table{width:100%;border-collapse:collapse;min-width:760px}
+.coord-table-wrap th{background:#f1f6f9;color:#34566f;text-align:left;font-weight:600;font-size:13px;padding:11px 12px;white-space:nowrap}
+.coord-table-wrap td{padding:11px 12px;border-bottom:1px solid #e8edf2;color:#3e596d;font-size:13px;vertical-align:top;line-height:1.55}
+.coord-table-wrap tbody tr:hover{background:#f9fcfd}
+.coord-calendar{display:grid;gap:0}
+.coord-calendar-row{display:grid;grid-template-columns:125px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 4px;border-bottom:1px solid #e8edf2}
+.coord-calendar-date{color:#287b83;font-weight:700;font-size:13px;white-space:nowrap}
+.coord-calendar-detail{color:#34566f;font-size:14px;overflow-wrap:anywhere}
+.coord-calendar-status{color:#667e90;font-size:12px;white-space:nowrap}
+@media(max-width:900px){.coord-activity-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.coord-section{padding:16px}}
+@media(max-width:620px){.coord-action-grid,.coord-activity-grid{grid-template-columns:minmax(0,1fr)}.coord-heading h2{font-size:21px}.coord-section{padding:13px}.coord-calendar-row{grid-template-columns:94px minmax(0,1fr);gap:8px}.coord-calendar-status{grid-column:2}.coord-action-items{font-size:12px}}
+
 </style>
 
