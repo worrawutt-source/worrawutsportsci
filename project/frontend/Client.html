@@ -1153,10 +1153,12 @@ async function renderOverview(){
    box.append(el('h4',{},title),el('div',{className:'coord-activity-value'},String(value)),el('p',{className:'coord-subtitle'},detail));activityGrid.append(box);
   };
   activity('แต่งตั้ง Advisor',String(activities.advisorApproved||0)+' / '+String(summary.groups||0)+' กลุ่ม','อนุมัติแล้ว · รออนุมัติ '+String(activities.advisorPending||0)+' กลุ่ม/รายการ');
-  activity('เข้าพบ Advisor ครั้งที่ 1',String(activities.meetingOneSubmitted||0)+' กลุ่มมีการส่ง','ตรวจแล้ว '+String(activities.meetingOneVerified||0)+' กลุ่ม · รอตรวจ '+String(summary.meetingOnePending||0)+' · รอแก้ไข '+String(summary.meetingOneRevision||0));
+  const meetingOneCounts=activities.meetingOneStatusCounts||{};
+  activity('เข้าพบ Advisor ครั้งที่ 1',String(activities.meetingOneSubmitted||0)+' / '+String(summary.groups||0)+' กลุ่มส่งแล้ว','ยังไม่มีข้อมูล '+String(meetingOneCounts.notRecorded||0)+' · บันทึกแล้วแต่ยังไม่ส่ง '+String(meetingOneCounts.recordedNotSubmitted||0)+' · รอตรวจ '+String(meetingOneCounts.submitted||0)+' · ตรวจแล้ว '+String(meetingOneCounts.verified||0)+' · รอแก้ไข '+String(meetingOneCounts.revision||0));
   const openWeeks=Array.isArray(activities.progressWeekOpen)?activities.progressWeekOpen:[];
   activity('รายงานความก้าวหน้าที่เปิดรับ',openWeeks.length?openWeeks.map(w=>'สัปดาห์ '+w.weekNo+(w.title?' · '+w.title:'')).join(' / '):'ไม่มีสัปดาห์เปิดรับ','แสดงเฉพาะ Progress Week Settings ที่เปิดจริง');
-  activity('รายงานความก้าวหน้าครั้งที่ 1',String((actions.progressPending||[]).filter(r=>Number(r.weekNo)===1).length)+' รายการรอตรวจ','นับจากรายงานสัปดาห์ที่ 1 ในระบบ');
+  const weekOne=activities.progressWeekOneStatus||{};
+  activity('รายงานความก้าวหน้าครั้งที่ 1',String((weekOne.submitted||0)+(weekOne.reviewed||0))+' / '+String(summary.groups||0)+' กลุ่มส่งแล้ว','ยังไม่ส่ง '+String(weekOne.notSubmitted||0)+' · รอตรวจ '+String(weekOne.submitted||0)+' · ตรวจแล้ว '+String(weekOne.reviewed||0)+' · รอแก้ไข '+String(weekOne.revision||0)+' · เลยกำหนด '+String(weekOne.overdue||0));
   activitySection.append(activityGrid);
   const groupSection=section('ความก้าวหน้าของกลุ่มวิจัย','สถานะสรุปจากระบบ ไม่แสดงเนื้อหารายงานหรือรายละเอียดการให้คำปรึกษาของ Advisor');
   const search=el('input',{type:'search',placeholder:'ค้นหาชื่อกลุ่ม หัวข้อ หรือ Advisor'});
