@@ -1004,3 +1004,15 @@ Do not copy Client.html or Styles.html into GAS; they are loaded from GitHub at 
 - `project/gas-source/setup.gs`: unchanged. No schema/migration, score, role/permission, or production data changes.
 - Static validation: PASS — badge API single definition/session guard/sanitized response; role-specific mappings; stable menu label restoration; badge CSS; Advisor duplicate heading removed; review text wrapping; immutable frontend pin matches Client/Styles; setup.gs SHA unchanged. GAS runtime, Spreadsheet execution, browser TEST, regression and UAT: NOT TESTED. No GAS synchronization or deployment performed.
 - Next action: run static checks against latest committed source, then user syncs the updated `90_TasksNotificationsMonitoring.gs` and `00_AppConfigAndEntry.gs` into existing TEST GAS project and deploys TEST for UAT. Frontend Client/Styles are loaded by the immutable GitHub pin and are not copied into GAS.
+
+## 2026-11-27 — Responsive workspace layout and typography
+
+- Branch: `feat/responsive-workspace-layout`; base commit `f444c3716b25be37f80d5e595188a442b4c2a031`.
+- Changed `project/frontend/Styles.html`: expanded shared shell max width to 1680px, reduced wasted desktop margins, increased notebook typography and menu/card spacing, improved metric and Advisor review text readability, and refined tablet/mobile breakpoints.
+- Changed `project/gas-source/00_AppConfigAndEntry.gs`: frontend immutable pin updated to `d3666d978fc8f3447d67ca8edf2f59ea258d540f`.
+- Documentation updated: `project/gas-source/README.md`, `project/STATUS.md`.
+- `Client.html` unchanged in this responsive change; existing Advisor badge and menu behavior retained. `setup.gs` unchanged.
+- No API, schema, workflow, role/permission, score, or production data changes.
+- Static source/CSS checks: PASS. Actual browser visual QA on notebook, iPad/tablet, and mobile: NOT TESTED. GAS runtime, TEST deployment, and UAT: NOT PERFORMED.
+- TEST GAS sync remains required for previously changed modules `00_AppConfigAndEntry.gs`, `10_AuthAndUserAdministration.gs`, `50_Assessment.gs`, `60_ProgressManagement.gs`, and `90_TasksNotificationsMonitoring.gs`. Frontend `Client.html` and `Styles.html` load from the updated immutable GitHub pin; do not copy them as GAS files.
+- Next action: sync the five listed `.gs` files into the existing TEST GAS project, deploy TEST only, and perform visual UAT at desktop/notebook (1366px+), tablet (768–1199px), and mobile (320–767px) widths.
