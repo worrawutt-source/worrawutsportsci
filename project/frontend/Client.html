@@ -1385,7 +1385,7 @@ async function renderAdvisorGroups(){
   summary.groups.forEach(g=>{
    const box=el('div',{className:'notice'}),head=el('div',{className:'admin-row'});
    head.append(el('div',{},g.groupName||'ไม่ระบุชื่อกลุ่ม'));
-   box.append(head,el('p',{},'หัวข้อวิจัย: '+(g.topicTh||'ยังไม่กำหนด')));
+   box.append(head,el('p',{},'หัวข้อวิจัย: '+(g.topicTh||'ยังไม่กำหนด')));const reviewGroupButton=el('button',{type:'button',className:'secondary'},'ตรวจงานของกลุ่ม');reviewGroupButton.onclick=()=>renderAdvisorReview(g.groupId);box.append(reviewGroupButton);
    if(g.topicEn)box.append(el('p',{},'Research title: '+g.topicEn));
    box.append(el('p',{},'สมาชิก '+g.members.length+' คน · รายงานที่รอตรวจ '+g.pendingReports+' · เอกสารโครงร่าง '+g.proposalFiles+' ไฟล์ · บันทึกการเข้าพบ '+g.meetingCount+' ครั้ง · งานคงค้าง '+g.openTasks));
    if(g.latestTopic)box.append(el('p',{},'หัวข้อวิจัยล่าสุด: เวอร์ชัน '+g.latestTopic.versionNo+' · '+({PENDING:'รอพิจารณา',APPROVED:'เห็นชอบโดยอาจารย์ที่ปรึกษา',REVISION_REQUIRED:'รอแก้ไข',REJECTED:'ไม่เห็นชอบ'}[String(g.latestTopic.reviewStatus||'').toUpperCase()]||g.latestTopic.reviewStatus||'สถานะไม่ระบุ')));
