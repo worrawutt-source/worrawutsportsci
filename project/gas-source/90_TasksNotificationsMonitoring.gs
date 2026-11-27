@@ -209,7 +209,7 @@ function apiAdminGetCoordinatorDashboard(token){
       }else{
         const gmIds=gm.map(m=>String(m.STUDENT_ID)),expectedPeers=gmIds.length*Math.max(0,gmIds.length-1);
         const peers=peerAssessments.filter(p=>String(p.GROUP_ID)===gid&&gmIds.includes(String(p.EVALUATOR_STUDENT_ID))&&gmIds.includes(String(p.EVALUATEE_STUDENT_ID)));
-        has=peers.length>0;isComplete=expectedPeers===0?false:peers.length>=expectedPeers;
+        has=peers.length>0;isComplete=expectedPeers===0?true:peers.length>=expectedPeers;
       }
       if(has)recorded++;if(isComplete)complete++;
     });
@@ -222,8 +222,10 @@ function apiAdminGetCoordinatorDashboard(token){
     const latest=latestReportByGroup.get(gid)||null;
     const progressStatus=latest?String(latest.STATUS||''):'NO_REPORT';
     const meeting=meetingOneByGroup.get(gid)||{status:'NOT_RECORDED'};
+    const hasPendingNomination=pendingAssignments.some(a=>String(a.GROUP_ID)===gid)||pendingInvitations.some(i=>String(i.GROUP_ID)===gid);
     const tracking=(openWarnings.some(w=>String(w.GROUP_ID)===gid)?'ติดตามความเสี่ยง':
       overdueReports.some(r=>r.groupId===gid)||taskOverdue.some(t=>t.groupId===gid)?'เลยกำหนด':
+      hasPendingNomination?'รออนุมัติ Advisor':
       !assignment?'รอแต่งตั้ง Advisor':
       ['SUBMITTED','RESUBMITTED','REVISION_REQUIRED'].includes(progressStatus)?'รอตรวจ/แก้ไข':'ติดตามตามสถานะ');
     return {groupId:gid,groupName:String(g.GROUP_NAME||''),topic:String(g.TOPIC_TITLE_TH||''),advisor,
@@ -242,7 +244,7 @@ function apiAdminGetCoordinatorDashboard(token){
         .concat(pendingInvitations.map(i=>({groupId:String(i.GROUP_ID),groupName:String((groupById.get(String(i.GROUP_ID))||{}).GROUP_NAME||''),status:'ACCEPTED_PENDING_APPROVAL'})))},
     actions:{progressPending:pendingReports,progressRevision:revisionReports,progressOverdue:overdueReports,progressDueSoon,
       meetingOnePending,meetingOneRevision,taskOverdue,taskDueSoon,warnings:openWarnings.map(w=>({groupId:String(w.GROUP_ID),groupName:String((groupById.get(String(w.GROUP_ID))||{}).GROUP_NAME||''),severity:String(w.SEVERITY||''),status:String(w.STATUS||'')}))},
-    activities:{advisorApproved:groups.length-groupsNoAdvisor.length,advisorPending:pendingAssignments.length+pendingInvitations.length,
+    activities:{advisorApproved:groups.filter(g=>assignmentByGroup.has(String(g.GROUP_ID))).length,advisorPending:pendingAssignments.length+pendingInvitations.length,
       meetingOneSubmitted:meetingOne.filter(x=>['SUBMITTED','VERIFIED','REVISION_REQUIRED','ACTIVE'].includes(x.status)).length,
       meetingOneVerified:meetingOne.filter(x=>x.status==='VERIFIED').length,
       progressWeekOpen:settings.filter(w=>w.isOpen).map(w=>({weekNo:Number(w.week),title:String(w.title||''),dueDate:isoDate(w.dueDate)}))},
