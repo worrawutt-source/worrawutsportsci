@@ -100,7 +100,7 @@ function apiAdminGetCoordinatorDashboard(token){
   const groups=readObjects_('RESEARCH_GROUPS').filter(g=>String(g.STATUS||'').toUpperCase()==='ACTIVE');
   const assignments=readObjects_('ADVISOR_ASSIGNMENTS');
   const users=readObjects_('SYS_USERS').filter(u=>String(u.STATUS||'').toUpperCase()==='ACTIVE');
-  const settings=progressWeekSettings_();
+  const settings=readObjects_('PROGRESS_WEEK_SETTINGS').map(w=>({week:Number(w.WEEK_NO),title:String(w.TITLE||''),isOpen:String(w.IS_OPEN||'').toUpperCase()==='TRUE',dueDate:w.DUE_DATE?formatDateOnly_(w.DUE_DATE):''})).sort((a,b)=>a.week-b.week);
   const reports=readObjects_('PROGRESS_REPORTS');
   const extensions=readObjects_('GROUP_DEADLINE_EXTENSIONS').filter(x=>String(x.STATUS||'').toUpperCase()==='APPROVED');
   const meetingReports=readObjects_('MEETING_REPORTS');
