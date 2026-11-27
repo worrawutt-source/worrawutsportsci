@@ -1079,7 +1079,7 @@ async function renderAdvisorOverview(){
   };
   metric('งานใหม่ / รอตรวจ',pendingReports.length+pendingTopics.length,'รายงานและหัวข้อวิจัย', 'danger',()=>openAdvisorMenu_('งานของฉัน'));
   metric('กลุ่มที่ปรึกษา',metrics.assignedGroups||groups.length,'กลุ่มที่ได้รับมอบหมาย','primary',()=>openAdvisorMenu_('กลุ่มที่ปรึกษา'));
-  metric('งานกลุ่มคงค้าง',metrics.openTasks||0,'งานที่ยังไม่ปิด', 'warning',()=>openAdvisorMenu_('กลุ่มที่ปรึกษา'));
+  metric('งานเกินกำหนด',metrics.overdueTasks||0,'กำหนดส่งจริงที่เลยกำหนด', 'danger',()=>openAdvisorMenu_('กลุ่มที่ปรึกษา'));
   metric('ให้คำปรึกษาแล้ว',d.dashboardMetrics?.meetingsRecorded||metrics.meetingsRecorded||0,'จำนวนครั้งไม่ซ้ำตามกลุ่มและครั้ง', 'success',()=>openAdvisorMenu_('การให้คำปรึกษ'));
   metric('Feedback',metrics.feedbackProvided||0,'ข้อเสนอแนะที่บันทึกแล้ว','success',()=>openAdvisorMenu_('งานของฉัน'));
   root.append(cards);
@@ -1088,6 +1088,8 @@ async function renderAdvisorOverview(){
   if(!pendingReports.length&&!pendingTopics.length)section.append(el('div',{className:'advisor-empty advisor-empty-success'},'ไม่มีงานรอตรวจในขณะนี้'));
   pendingTopics.forEach(t=>section.append(el('div',{className:'advisor-task-row advisor-task-new'},el('div',{},el('strong',{},'หัวข้อวิจัย · '+(t.groupName||'กลุ่ม')),el('small',{},'เวอร์ชัน '+t.versionNo+' · ส่งเข้ามาใหม่')),el('button',{type:'button',className:'secondary',onclick:()=>openAdvisorMenu_('งานของฉัน')},'ตรวจงาน'))));
   pendingReports.forEach(r=>section.append(el('div',{className:'advisor-task-row advisor-task-new'},el('div',{},el('strong',{},'รายงานความก้าวหน้า · '+(r.groupName||'กลุ่ม')),el('small',{},'สัปดาห์ '+r.weekNo+' · '+(r.submittedAt?new Date(r.submittedAt).toLocaleDateString('th-TH'):'ส่งแล้ว'))),el('button',{type:'button',className:'secondary',onclick:()=>openAdvisorMenu_('งานของฉัน')},'ตรวจรายงาน'))));
+  const overdueItems=d.overdueTaskItems||[];
+  overdueItems.forEach(task=>section.append(el('div',{className:'advisor-task-row advisor-task-new'},el('div',{},el('strong',{},'เกินกำหนด · '+(task.groupName||'กลุ่ม')),el('small',{},(task.title||'งานกลุ่ม')+' · กำหนด '+(task.dueDate||'ไม่ระบุ'))),el('button',{type:'button',className:'secondary',onclick:()=>openAdvisorMenu_('กลุ่มที่ปรึกษ')},'ติดตามกลุ่ม'))));
   root.append(section);
   const groupSection=el('section',{className:'advisor-panel'});
   groupSection.append(el('div',{className:'advisor-panel-heading'},el('h3',{},'สถานะกลุ่มที่ปรึกษา'),el('button',{type:'button',className:'secondary',onclick:()=>openAdvisorMenu_('กลุ่มที่ปรึกษา')},'ดูทั้งหมด')));
