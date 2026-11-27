@@ -1084,174 +1084,138 @@ async function renderAdvisorReview(){
 }
 async function renderOverview(){
  const a=$('sectionText');
- a.textContent='กำลังรวบรวมสถานะการดำเนินงานรายวิชา...';
+ a.textContent='กำลังโหลด Course Coordinator Dashboard...';
  try{
-  // Use existing Admin APIs only. Parallel requests avoid a sequential API waterfall.
-  const [course,progress,meeting,warningRows]=await Promise.all([
-   callApi('apiAdminListCourseData',sessionToken),
-   callApi('apiAdminGetProgressManagement',sessionToken),
-   callApi('apiAdminGetMeetingMonitoring',sessionToken),
-   callApi('apiAdminGetEarlyWarnings',sessionToken)
-  ]);
+  const d=await callApi('apiAdminGetCoordinatorDashboard',sessionToken);
   a.textContent='';
-  const groups=Array.isArray(course.groups)?course.groups:[];
-  const students=Array.isArray(course.students)?course.students:[];
-  const users=Array.isArray(course.users)?course.users:[];
-  const assignments=Array.isArray(course.assignments)?course.assignments:[];
-  const reports=Array.isArray(progress.reports)?progress.reports:[];
-  const meetingGroups=Array.isArray(meeting.groups)?meeting.groups:[];
-  const warnings=Array.isArray(warningRows)?warningRows:[];
-  const activeGroups=groups.filter(g=>String(g.STATUS||'').toUpperCase()==='ACTIVE');
-  const activeStudents=students.filter(x=>x.active!==false);
-  const unassignedStudents=activeStudents.filter(x=>!String(x.groupId||'').trim());
-  const approvedAssignments=assignments.filter(x=>String(x.STATUS||'').toUpperCase()==='APPROVED');
-  const approvedByGroup=new Map();
-  approvedAssignments.forEach(x=>approvedByGroup.set(String(x.GROUP_ID),x));
-  const userById=new Map(users.map(x=>[String(x.userId),x]));
-  const progressByGroup=new Map();
-  reports.forEach(r=>{
-   const key=String(r.groupId);
-   if(!progressByGroup.has(key))progressByGroup.set(key,[]);
-   progressByGroup.get(key).push(r);
-  });
-  const openWeeks=(Array.isArray(progress.settings)?progress.settings:[]).filter(w=>w.isOpen).sort((x,y)=>Number(y.week)-Number(x.week));
-  const currentOpenWeek=openWeeks[0]||null;
-  const today=new Date();today.setHours(0,0,0,0);
-  const parseDateOnly=value=>{
-   const text=String(value||'').slice(0,10);
-   if(!/^\d{4}-\d{2}-\d{2}$/.test(text))return null;
-   const d=new Date(text+'T00:00:00');
-   return isNaN(d.getTime())?null:d;
-  };
-  const latestForGroup=rows=>{
-   if(!rows||!rows.length)return null;
-   if(currentOpenWeek){
-    const current=rows.find(r=>Number(r.weekNo)===Number(currentOpenWeek.week));
-    if(current)return current;
-   }
-   const submitted=rows.filter(r=>r.submittedAt);
-   if(submitted.length)return submitted.sort((x,y)=>new Date(y.submittedAt)-new Date(x.submittedAt))[0];
-   return rows.slice().sort((x,y)=>Number(y.weekNo)-Number(x.weekNo))[0]||null;
-  };
-  const groupStatus=r=>{
-   if(!r)return 'ยังไม่มีข้อมูลรายงาน';
-   if(['SUBMITTED','RESUBMITTED'].includes(String(r.status)))return 'รายงานสัปดาห์ '+r.weekNo+' · รอตรวจ';
-   if(r.status==='APPROVED')return 'รายงานสัปดาห์ '+r.weekNo+' · อนุมัติแล้ว';
-   if(r.status==='REVISION_REQUIRED')return 'รายงานสัปดาห์ '+r.weekNo+' · รอแก้ไข';
-   if(r.status==='NOT_SUBMITTED'&&r.weekIsOpen)return 'สัปดาห์ '+r.weekNo+' · เปิดรับรายงาน';
-   return 'รายงานล่าสุด · '+progressStatusLabel(r.status);
-  };
-  const reportDueDate=r=>parseDateOnly(r.status==='REVISION_REQUIRED'?(r.revisionDueAt||r.effectiveDueDate||r.dueDate):(r.effectiveDueDate||r.dueDate));
-  const overdueReports=reports.filter(r=>{
-   if(!['NOT_SUBMITTED','REVISION_REQUIRED'].includes(String(r.status)))return false;
-   const due=reportDueDate(r);
-   return !!due&&due<today;
-  });
-  const dueSoonReports=reports.filter(r=>{
-   if(!['NOT_SUBMITTED','REVISION_REQUIRED'].includes(String(r.status)))return false;
-   const due=reportDueDate(r);
-   if(!due||due<today)return false;
-   const days=Math.ceil((due-today)/86400000);
-   return days<=7;
-  });
-  const pendingProgress=reports.filter(r=>['SUBMITTED','RESUBMITTED'].includes(String(r.status)));
-  const revisionProgress=reports.filter(r=>String(r.status)==='REVISION_REQUIRED');
-  const meetingRows=meetingGroups.flatMap(g=>(Array.isArray(g.meetings)?g.meetings:[]).map(m=>Object.assign({groupId:g.groupId,groupName:g.groupName,advisor:g.advisor},m)));
-  const pendingMeeting=meetingRows.filter(m=>String(m.status)==='SUBMITTED');
-  const revisionMeeting=meetingRows.filter(m=>String(m.status)==='REVISION_REQUIRED');
-  const openWarnings=warnings.filter(w=>['OPEN','ACKNOWLEDGED'].includes(String(w.STATUS||'').toUpperCase()));
-  const groupsWithoutAdvisor=activeGroups.filter(g=>!approvedByGroup.has(String(g.GROUP_ID)));
-  const topicUnset=activeGroups.filter(g=>!String(g.TOPIC_TITLE_TH||'').trim());
-  const jump=label=>{
-   const target=Array.from($('sideMenu').querySelectorAll('.menu-item')).find(b=>normalizeMenuLabel_(b.textContent)===normalizeMenuLabel_(label));
-   if(target)target.click();
-  };
-  const section=el('div',{className:'notice'});
-  section.append(el('h2',{},'ภาพรวมการดำเนินงานรายวิชา'));
-  section.append(el('p',{},'ติดตามความก้าวหน้าของกลุ่ม งานที่ต้องดำเนินการ และกำหนดการจากข้อมูลในระบบ โดยไม่เปิดเผยรายละเอียดการให้คำปรึกษาที่จำกัดสิทธิ์'));
-  const metrics=el('div',{className:'metric-grid'});
+  const root=el('div',{className:'coordinator-dashboard'});
+  const heading=el('div',{className:'coord-heading'});
+  heading.append(el('h2',{},'Course Coordinator Dashboard'),el('p',{},'ภาพรวมการติดตามความก้าวหน้า งานที่ต้องดำเนินการ และกำหนดการของรายวิชา 4084901'));
+  root.append(heading);
+  const summary=d.summary||{},actions=d.actions||{},advisorActions=d.advisorActions||{},activities=d.activities||{};
+  const metrics=el('div',{className:'metric-grid coord-metrics'});
   const metric=(label,value,detail)=>{
    const box=el('div',{className:'metric'});
    box.append(el('div',{className:'metric-label'},label),el('div',{className:'metric-value'},String(value)));
    if(detail)box.append(el('p',{className:'message'},detail));
    metrics.append(box);
   };
-  metric('กลุ่มวิจัยที่ใช้งาน',activeGroups.length,'กลุ่มที่มีสถานะ Active');
-  metric('กลุ่มที่มี Advisor อนุมัติแล้ว',activeGroups.length-groupsWithoutAdvisor.length,'จาก '+activeGroups.length+' กลุ่ม');
-  metric('รายงานความก้าวหน้ารอตรวจ',pendingProgress.length,'รายการกลุ่ม–สัปดาห์');
-  metric('รายการที่เลยกำหนดส่ง',overdueReports.length,'เฉพาะรายการที่มีวันกำหนดส่งจริง');
-  section.append(metrics);
-  const actionBox=el('div',{className:'notice'});
-  actionBox.append(el('h3',{},'งานที่ควรติดตาม'));
-  const actions=el('div',{className:'admin-row'});
-  const action=(title,count,description,menu)=>{
-   const box=el('div',{className:'notice'});
-   box.append(el('h4',{},title),el('p',{},String(count)+' รายการ'),el('p',{},description));
-   const b=el('button',{type:'button',className:'secondary'},'เปิดรายการ');
-   b.onclick=()=>jump(menu);
-   box.append(b);actions.append(box);
+  metric('กลุ่มวิจัยที่ใช้งาน',summary.groups||0,'กลุ่ม Active');
+  metric('รอแต่งตั้ง / อนุมัติ Advisor',(summary.advisorMissing||0)+(summary.advisorPending||0),'แยกกลุ่มยังไม่มีผู้เสนอและรออนุมัติ');
+  metric('รายงานความก้าวหน้ารอตรวจ',summary.progressPending||0,'รายการกลุ่ม–สัปดาห์');
+  metric('งานที่เลยกำหนดจริง',(summary.progressOverdue||0)+(summary.taskOverdue||0),'อิงวันกำหนดส่งที่บันทึกไว้');
+  root.append(metrics);
+  const section=(title,subtitle)=>{
+   const box=el('section',{className:'coord-section'});
+   box.append(el('h3',{},title));
+   if(subtitle)box.append(el('p',{className:'coord-subtitle'},subtitle));
+   root.append(box);return box;
   };
-  action('รอกำหนดอาจารย์ที่ปรึกษา',groupsWithoutAdvisor.length,'กลุ่มที่ยังไม่มี Assignment สถานะ APPROVED','กำหนดอาจารย์ที่ปรึกษา');
-  action('รายงานความก้าวหน้ารอตรวจ',pendingProgress.length,'นักศึกษาส่งแล้วและรอการพิจารณา','จัดการรายงานความก้าวหน้า');
-  action('รายงานที่รอแก้ไข',revisionProgress.length,'รายงานที่ Advisor/Admin ส่งกลับให้แก้ไข','จัดการรายงานความก้าวหน้า');
-  action('รายงานการเข้าพบรอตรวจ',pendingMeeting.length,'เอกสาร/รายงานการเข้าพบที่ส่งแล้วและรอการตรวจ','บันทึกการเข้าพบที่ปรึกษา');
-  action('รายการเตือนความเสี่ยง',openWarnings.length,'สัญญาณสถานะ OPEN หรือ ACKNOWLEDGED','สัญญาณเตือนความเสี่ยง');
-  action('กำหนดส่งภายใน 7 วัน',dueSoonReports.length,'รายการที่ยังไม่ส่งและมีวันกำหนดส่งจริงใน 7 วัน','จัดการรายงานความก้าวหน้า');
-  actionBox.append(actions);
-  section.append(actionBox);
-  const progressBox=el('div',{className:'notice'});
-  progressBox.append(el('h3',{},'สถานะกิจกรรมรายวิชา'));
-  const activityGrid=el('div',{className:'admin-row'});
-  const activity=(title,value,detail)=>{
-   const box=el('div',{className:'notice'});
-   box.append(el('h4',{},title),el('p',{},String(value)),el('p',{},detail));
-   activityGrid.append(box);
+  const jump=label=>{
+   const target=Array.from($('sideMenu').querySelectorAll('.menu-item')).find(b=>normalizeMenuLabel_(b.textContent)===normalizeMenuLabel_(label));
+   if(target)target.click();
   };
-  activity('การแต่งตั้งอาจารย์ที่ปรึกษา',(activeGroups.length-groupsWithoutAdvisor.length)+' / '+activeGroups.length+' กลุ่ม','นับเฉพาะ Assignment ที่อนุมัติแล้ว');
-  activity('นักศึกษาที่ยังไม่มีกลุ่ม',unassignedStudents.length+' คน','จากนักศึกษาที่ Active ในทะเบียน');
-  activity('การเข้าพบที่ส่งรายงานแล้ว',meeting.summary&&meeting.summary.submitted!==undefined?meeting.summary.submitted:meetingRows.filter(m=>['SUBMITTED','VERIFIED','REVISION_REQUIRED','ACTIVE'].includes(String(m.status))).length,'รวมสถานะส่งแล้ว ตรวจแล้ว หรือส่งกลับแก้ไข');
-  activity('รายงานความก้าวหน้าที่เปิดรับ',currentOpenWeek?'สัปดาห์ '+currentOpenWeek.week+' · '+currentOpenWeek.title:'ยังไม่มีสัปดาห์เปิดรับ','แสดงจากการตั้งค่าสัปดาห์ในระบบ');
-  progressBox.append(activityGrid);
-  if(topicUnset.length)progressBox.append(el('p',{className:'message'},'หมายเหตุ: '+topicUnset.length+' กลุ่มยังไม่มีหัวข้อในข้อมูลกลุ่ม ทั้งนี้ไม่ใช่การสรุปสถานะการเสนอ/อนุมัติหัวข้อวิจัย'));
-  section.append(progressBox);
-  const groupBox=el('div',{className:'notice'});
-  groupBox.append(el('h3',{},'ติดตามสถานะกลุ่มวิจัย'));
-  const search=el('input',{type:'search',placeholder:'ค้นหาชื่อกลุ่ม หัวข้อ หรืออาจารย์ที่ปรึกษา'});
-  groupBox.append(el('label',{},'ค้นหากลุ่ม'),search);
-  const tableWrap=el('div',{className:'table-wrap'});
-  const table=el('table'),thead=el('thead'),head=el('tr');
-  ['กลุ่มวิจัย','หัวข้อในข้อมูลกลุ่ม','อาจารย์ที่ปรึกษา','สถานะรายงานล่าสุด'].forEach(x=>head.append(el('th',{},x)));
-  thead.append(head);table.append(thead);
-  const tbody=el('tbody');table.append(tbody);tableWrap.append(table);groupBox.append(tableWrap);
-  const renderGroupRows=()=>{
-   tbody.textContent='';
-   const q=String(search.value||'').trim().toLocaleLowerCase();
-   activeGroups.filter(g=>{
-    const assignment=approvedByGroup.get(String(g.GROUP_ID));
-    const advisorUser=assignment&&userById.get(String(assignment.ADVISOR_USER_ID));
-    const advisorName=advisorUser?String(advisorUser.displayName||advisorUser.email||'ยังไม่ระบุ'):'ยังไม่ได้กำหนด';
-    const text=[g.GROUP_NAME,g.TOPIC_TITLE_TH,advisorName].join(' ').toLocaleLowerCase();
-    return !q||text.includes(q);
-   }).forEach(g=>{
-    const assignment=approvedByGroup.get(String(g.GROUP_ID));
-    const advisorUser=assignment&&userById.get(String(assignment.ADVISOR_USER_ID));
-    const advisorName=advisorUser?String(advisorUser.displayName||advisorUser.email||'ยังไม่ระบุ'):'ยังไม่ได้กำหนด';
-    const latest=latestForGroup(progressByGroup.get(String(g.GROUP_ID))||[]);
-    const row=el('tr');
-    [String(g.GROUP_NAME||'ไม่ระบุชื่อ'),String(g.TOPIC_TITLE_TH||'ยังไม่ระบุในข้อมูลกลุ่ม'),advisorName,groupStatus(latest)].forEach(value=>row.append(el('td',{},value)));
-    tbody.append(row);
+  const actionSection=section('งานที่ผู้รับผิดชอบรายวิชาต้องดำเนินการ','แสดงเฉพาะรายการที่มีสถานะหรือกำหนดส่งจริงในระบบ');
+  const actionGrid=el('div',{className:'coord-action-grid'});
+  const action=(title,rows,description,menu)=>{
+   rows=Array.isArray(rows)?rows:[];
+   const box=el('div',{className:'coord-action'});
+   const top=el('div',{className:'coord-action-top'});
+   top.append(el('h4',{},title),el('span',{className:'coord-count'},String(rows.length)));
+   box.append(top,el('p',{className:'coord-subtitle'},description));
+   const list=el('ul',{className:'coord-action-items'});
+   rows.slice(0,4).forEach(r=>{
+    const name=String(r.groupName||r.title||'รายการ');
+    const detail=[r.weekNo?'สัปดาห์ '+r.weekNo:'',r.dueDate?'กำหนด '+r.dueDate:'',r.status&&r.status!=='NOT_SUBMITTED'?r.status:''].filter(Boolean).join(' · ');
+    list.append(el('li',{},name+(detail?' — '+detail:'')));
    });
-   if(!tbody.children.length){const row=el('tr');row.append(el('td',{colSpan:'4'},'ไม่พบกลุ่มตามคำค้น'));tbody.append(row);}
+   if(rows.length>4)list.append(el('li',{},'และอีก '+(rows.length-4)+' รายการ'));
+   if(!rows.length)list.append(el('li',{},'ไม่มีรายการที่ต้องดำเนินการ'));
+   box.append(list);
+   const b=el('button',{type:'button',className:'secondary'},'เปิดเมนูจัดการ');
+   b.onclick=()=>jump(menu);box.append(b);actionGrid.append(box);
   };
-  search.addEventListener('input',renderGroupRows);renderGroupRows();
-  section.append(groupBox);
-  a.append(section);
+  action('กลุ่มที่ยังไม่มี Advisor',advisorActions.missing||[],'ยังไม่มี Assignment ที่อนุมัติและไม่มีรายการเสนอชื่อค้าง','กำหนดอาจารย์ที่ปรึกษา');
+  action('รออนุมัติการแต่งตั้ง Advisor',advisorActions.pending||[],'มีการเสนอชื่อหรือ Advisor ตอบรับแล้ว รอผู้รับผิดชอบรายวิชาพิจารณา','กำหนดอาจารย์ที่ปรึกษา');
+  action('รายงานความก้าวหน้ารอตรวจ',actions.progressPending||[],'ส่งแล้วและยังไม่ผ่านการตรวจ','จัดการรายงานความก้าวหน้า');
+  action('รายงานที่รอแก้ไข',actions.progressRevision||[],'มีสถานะ REVISION_REQUIRED','จัดการรายงานความก้าวหน้า');
+  action('งานที่เลยกำหนดส่ง',actions.progressOverdue||[],'รายงาน/งานที่เลยวันกำหนดจริง','จัดการรายงานความก้าวหน้า');
+  action('กำหนดส่งภายใน 7 วัน',actions.progressDueSoon||[],'ยังไม่ส่งหรือรอแก้ไข และมีวันกำหนดภายใน 7 วัน','จัดการรายงานความก้าวหน้า');
+  action('การเข้าพบ Advisor ครั้งที่ 1 รอตรวจ',actions.meetingOnePending||[],'แสดงเฉพาะรายการที่ส่งแล้วและรอตรวจ','บันทึกการเข้าพบที่ปรึกษา');
+  action('การเข้าพบครั้งที่ 1 รอแก้ไข',actions.meetingOneRevision||[],'สถานะการส่งรายงานครั้งที่ 1 เป็น REVISION_REQUIRED','บันทึกการเข้าพบที่ปรึกษา');
+  action('งานกลุ่มที่เลยกำหนด',actions.taskOverdue||[],'งานที่มี Due Date จริงและยังไม่เสร็จ','จัดการงานกลุ่ม');
+  action('สัญญาณเตือนความเสี่ยง',actions.warnings||[],'สถานะ OPEN หรือ ACKNOWLEDGED','สัญญาณเตือนความเสี่ยง');
+  actionSection.append(actionGrid);
+  const activitySection=section('สถานะกิจกรรมหลักของรายวิชา','แยกกิจกรรมที่มีการยืนยันไว้ ไม่ใช้จำนวนกิจกรรมที่วางแผนทั้งภาคเรียนเป็นงานค้าง');
+  const activityGrid=el('div',{className:'coord-activity-grid'});
+  const activity=(title,value,detail)=>{
+   const box=el('div',{className:'coord-activity'});
+   box.append(el('h4',{},title),el('div',{className:'coord-activity-value'},String(value)),el('p',{className:'coord-subtitle'},detail));activityGrid.append(box);
+  };
+  activity('แต่งตั้ง Advisor',String(activities.advisorApproved||0)+' / '+String(summary.groups||0)+' กลุ่ม','อนุมัติแล้ว · รออนุมัติ '+String(activities.advisorPending||0)+' กลุ่ม/รายการ');
+  activity('เข้าพบ Advisor ครั้งที่ 1',String(activities.meetingOneSubmitted||0)+' กลุ่มมีการส่ง','ตรวจแล้ว '+String(activities.meetingOneVerified||0)+' กลุ่ม · รอตรวจ '+String(summary.meetingOnePending||0)+' · รอแก้ไข '+String(summary.meetingOneRevision||0));
+  const openWeeks=Array.isArray(activities.progressWeekOpen)?activities.progressWeekOpen:[];
+  activity('รายงานความก้าวหน้าที่เปิดรับ',openWeeks.length?openWeeks.map(w=>'สัปดาห์ '+w.weekNo+(w.title?' · '+w.title:'')).join(' / '):'ไม่มีสัปดาห์เปิดรับ','แสดงเฉพาะ Progress Week Settings ที่เปิดจริง');
+  activity('รายงานความก้าวหน้าครั้งที่ 1',String((actions.progressPending||[]).filter(r=>Number(r.weekNo)===1).length)+' รายการรอตรวจ','นับจากรายงานสัปดาห์ที่ 1 ในระบบ');
+  activitySection.append(activityGrid);
+  const groupSection=section('ความก้าวหน้าของกลุ่มวิจัย','สถานะสรุปจากระบบ ไม่แสดงเนื้อหารายงานหรือรายละเอียดการให้คำปรึกษาของ Advisor');
+  const search=el('input',{type:'search',placeholder:'ค้นหาชื่อกลุ่ม หัวข้อ หรือ Advisor'});
+  groupSection.append(el('label',{},'ค้นหากลุ่ม'),search);
+  const tableWrap=el('div',{className:'table-wrap coord-table-wrap'});
+  const table=el('table'),thead=el('thead'),head=el('tr');
+  ['กลุ่มวิจัย','หัวข้อ','Advisor','รายงานล่าสุด','เข้าพบครั้งที่ 1','สถานะติดตาม'].forEach(x=>head.append(el('th',{},x)));
+  thead.append(head);table.append(thead);const tbody=el('tbody');table.append(tbody);tableWrap.append(table);groupSection.append(tableWrap);
+  const progressLabel=status=>({
+   NO_REPORT:'ยังไม่มีรายงาน',SUBMITTED:'ส่งแล้ว · รอตรวจ',RESUBMITTED:'ส่งแก้ไขแล้ว · รอตรวจ',REVISION_REQUIRED:'รอแก้ไข',APPROVED:'ตรวจแล้ว'
+  }[String(status||'')]||String(status||'ไม่ระบุสถานะ'));
+  const meetingLabel=status=>({
+   NOT_RECORDED:'ยังไม่มีข้อมูลการส่ง',NOT_SUBMITTED:'มีบันทึกเข้าพบ · ยังไม่ส่งรายงาน',
+   SUBMITTED:'ส่งแล้ว · รอตรวจ',VERIFIED:'ตรวจแล้ว',REVISION_REQUIRED:'รอแก้ไข',ACTIVE:'ส่งแล้ว'
+  }[String(status||'')]||String(status||'ไม่ระบุสถานะ'));
+  const groupRows=Array.isArray(d.groups)?d.groups:[];
+  const renderRows=()=>{
+   tbody.textContent='';const q=String(search.value||'').trim().toLocaleLowerCase();
+   groupRows.filter(g=>[g.groupName,g.topic,g.advisor].join(' ').toLocaleLowerCase().includes(q)).forEach(g=>{
+    const tr=el('tr');
+    [g.groupName||'ไม่ระบุชื่อ',g.topic||'ยังไม่ระบุหัวข้อ',g.advisor||'ยังไม่แต่งตั้ง',
+     progressLabel(g.latestProgressStatus)+(g.latestProgressWeek?' · สัปดาห์ '+g.latestProgressWeek:''),
+     meetingLabel(g.meetingOneStatus),g.tracking||'ติดตามตามสถานะ'].forEach(v=>tr.append(el('td',{},String(v))));
+    tbody.append(tr);
+   });
+   if(!tbody.children.length){const tr=el('tr');tr.append(el('td',{colSpan:'6'},'ไม่พบกลุ่มตามคำค้น'));tbody.append(tr);}
+  };
+  search.addEventListener('input',renderRows);renderRows();
+  const calendarSection=section('ปฏิทินและกำหนดส่ง','แสดงเฉพาะ Due Date ที่บันทึกไว้ในระบบ ไม่สร้างวันนำเสนอหรือ Workshop อัตโนมัติ');
+  const calendar=Array.isArray(d.calendar)?d.calendar:[];
+  const today=new Date();today.setHours(0,0,0,0);
+  const future=calendar.filter(x=>{const dt=x.date?new Date(x.date+'T00:00:00'):null;return dt&&!isNaN(dt.getTime())&&dt>=today;}).slice(0,12);
+  const calList=el('div',{className:'coord-calendar'});
+  future.forEach(item=>{
+   const row=el('div',{className:'coord-calendar-row'});
+   const date=new Date(item.date+'T00:00:00').toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
+   row.append(el('span',{className:'coord-calendar-date'},date),el('div',{className:'coord-calendar-detail'},item.title+(item.groupName?' · '+item.groupName:'')),el('span',{className:'coord-calendar-status'},item.status|| (item.isOpen?'เปิดรับ':'กำหนดส่ง')));
+   calList.append(row);
+  });
+  if(!future.length)calList.append(el('p',{className:'coord-subtitle'},'ยังไม่มีกำหนดส่งในอนาคตที่บันทึกไว้'));
+  calendarSection.append(calList);
+  const assessmentSection=section('สถานะการประเมินรายวิชา','คะแนนตามเกณฑ์ที่อนุมัติแล้ว รวม 100 คะแนน · แสดงงานค้างเฉพาะ A4/A5 เมื่อเปิดช่วงประเมิน');
+  const assess=Array.isArray(d.assessments)?d.assessments:[];
+  const atable=el('table'),ath=el('thead'),ahr=el('tr');
+  ['รายการประเมิน','คะแนน','กลุ่มที่ประเมินครบ','มีข้อมูลคะแนน','ช่วงประเมิน / สถานะ'].forEach(x=>ahr.append(el('th',{},x)));
+  ath.append(ahr);atable.append(ath);const abody=el('tbody');
+  const assessmentNames={A1:'A1 Progress Presentation',A2:'A2 Proposal Presentation',A3:'A3 Final Proposal',A4:'A4 Advisor Assessment',A5:'A5 Peer Assessment'};
+  assess.forEach(x=>{
+   const tr=el('tr'),state=x.code==='A4'||x.code==='A5'?(x.isOpen?'เปิดช่วงประเมิน':'ปิด / ยังไม่เปิด'):'ติดตามจากข้อมูลคะแนน';
+   [assessmentNames[x.code]||x.code,String(x.points),String(x.complete)+' / '+String(x.expected)+' กลุ่ม',String(x.recorded)+' / '+String(x.expected)+' กลุ่ม',state].forEach(v=>tr.append(el('td',{},v)));
+   abody.append(tr);
+  });
+  atable.append(abody);const aw=el('div',{className:'table-wrap coord-table-wrap'});aw.append(atable);assessmentSection.append(aw);
+  a.append(root);
   try{await renderNotificationPanel(a);}catch(e){console.warn('โหลดการแจ้งเตือนไม่สำเร็จ',e);}
  }catch(e){
-  a.textContent='โหลดภาพรวมระบบไม่สำเร็จ: '+(e&&e.message?e.message:String(e));
+  a.textContent='โหลด Course Coordinator Dashboard ไม่สำเร็จ: '+(e&&e.message?e.message:String(e));
  }
 }
-
 async function renderNotificationPanel(container){const notifications=await callApi('apiGetMyNotifications',sessionToken);if(!notifications.length)return;const box=el('div',{className:'notice'});box.append(el('h3',{},'การแจ้งเตือน'));notifications.slice(0,10).forEach(n=>{const row=el('div',{className:'admin-row'});row.append(el('div',{},n.TITLE+' · '+n.MESSAGE+' · '+new Date(n.CREATED_AT).toLocaleString('th-TH')));if(String(n.IS_READ)!=='TRUE'){const b=el('button',{type:'button',className:'secondary'},'อ่านแล้ว');b.onclick=async()=>{await callApi('apiMarkNotificationRead',sessionToken,n.NOTIFICATION_ID);row.remove()};row.append(b)}box.append(row)});container.append(box)}
 async function renderTaskBoard(container,groupId,role){
  const d=await callApi('apiGetGroupTasks',sessionToken,groupId);
