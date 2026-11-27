@@ -177,6 +177,7 @@ function advisorWorkspaceDetails_(advisorUserId){
     return {groupId:r.GROUP_ID,groupName:g?g.groupName:'',versionNo:r.VERSION_NO,titleTh:r.TITLE_TH,submittedAt:r.SUBMITTED_AT,versionId:r.VERSION_ID};
   });
   const dashboardMetrics={meetingsRecorded:new Set(meetings.map(r=>String(r.GROUP_ID)+'|'+String(r.MEETING_NO))).size};
+  const overdueTaskItems=overdueTasks.map(t=>{const g=groups.find(x=>String(x.groupId)===String(t.GROUP_ID));return {taskId:String(t.TASK_ID||''),groupId:String(t.GROUP_ID||''),groupName:g?g.groupName:'',title:String(t.TASK_TITLE||'งานกลุ่ม'),dueDate:t.DUE_DATE?formatDateOnly_(t.DUE_DATE):'',status:String(t.STATUS||'')};});
   return sanitizeForClient_({
     metrics:{
       assignedGroups:groups.length,
@@ -187,7 +188,7 @@ function advisorWorkspaceDetails_(advisorUserId){
       openTasks:tasks.length,
       overdueTasks:overdueTasks.length
     },
-    dashboardMetrics,
+    dashboardMetrics,overdueTaskItems,
     groups:groupSummaries,pendingReports,pendingTopics,
     assessmentWindowA4:assessmentSettingsFresh_().WINDOW_A4||'CLOSED'
   });
