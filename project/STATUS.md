@@ -999,8 +999,8 @@ Do not copy Client.html or Styles.html into GAS; they are loaded from GitHub at 
 - Frontend: removed the duplicate inner “งานของฉัน” heading; strengthened text wrapping/min-width rules for review cards and responsive status summary.
 - Menu indicators: restored red outlined numeric badges for pending items by role; zero-count badges are hidden. Saved-menu matching uses `data-menu-label`.
 - Backend: added `apiGetMenuTaskCounts(token)` and `readMenuBadgeRows_(name,cache)` in `90_TasksNotificationsMonitoring.gs`. Session required; role-specific aggregate counts only. The badge reader uses `db_().getSheetByName` and does not auto-create sheets.
-- Frontend immutable pin: `1bcdd398fe4fea57f7675955fc526c1c8fa31385`; `00_AppConfigAndEntry.gs` updated to this SHA.
+- Frontend immutable pin: `6f0b213c3d79709b8ff47dff7afe1660d9e36267`; `00_AppConfigAndEntry.gs` updated to this SHA.
 - Files changed: `project/frontend/Client.html`, `project/frontend/Styles.html`, `project/gas-source/90_TasksNotificationsMonitoring.gs`, `project/gas-source/00_AppConfigAndEntry.gs`, `project/gas-source/README.md`, `project/STATUS.md`.
 - `project/gas-source/setup.gs`: unchanged. No schema/migration, score, role/permission, or production data changes.
-- Static validation: final check pending. GAS runtime, Spreadsheet execution, browser TEST, regression and UAT: NOT TESTED. No GAS synchronization or deployment performed.
+- Static validation: PASS — badge API single definition/session guard/sanitized response; role-specific mappings; stable menu label restoration; badge CSS; Advisor duplicate heading removed; review text wrapping; immutable frontend pin matches Client/Styles; setup.gs SHA unchanged. GAS runtime, Spreadsheet execution, browser TEST, regression and UAT: NOT TESTED. No GAS synchronization or deployment performed.
 - Next action: run static checks against latest committed source, then user syncs the updated `90_TasksNotificationsMonitoring.gs` and `00_AppConfigAndEntry.gs` into existing TEST GAS project and deploys TEST for UAT. Frontend Client/Styles are loaded by the immutable GitHub pin and are not copied into GAS.
