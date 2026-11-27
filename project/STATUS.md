@@ -469,3 +469,14 @@ Static verification:
 - ยังไม่ได้ Deploy เวอร์ชันนี้ไปยัง TEST Web App
 - Advisor index fallback อาศัยลำดับเมนูที่ Backend ส่งมา จึงต้องรักษาลำดับ 4 เมนูของ Advisor ให้ตรงกับที่กำหนด
 - Runtime Test/UAT: **PENDING**
+
+
+## 2026-11-27 — Student topic menu and Admin overview bug fix
+
+- Branch: `fix/student-topic-menu-admin-overview` (based on `main`; not merged or deployed).
+- Fixed Admin/System Admin overview rendering in `project/frontend/Client.html`: Admin overview now uses dashboard metrics and does not call the Advisor-only `apiGetAdvisorWorkspaceSummary` endpoint.
+- Restored the Student menu item `เสนอชื่อเรื่องงานวิจัย` before `เอกสารโครงร่าง` in `apiGetDashboard()`; routed the new label to the existing `renderStudentTopics()` function.
+- Updated the frontend loader pin in `project/gas-source/code.gs` to the immutable frontend commit `b9b0cbeadef6f8a4f83b331f1effc35de5d322c8`.
+- Static source checks: PASS (menu order, route mapping, Admin role branch before Advisor API, pinned frontend SHA).
+- Runtime browser TEST / UAT: BLOCKED — the GitHub Pages project URL embeds the deployed Google Apps Script Web App. Source changes alone do not update that deployment; the corrected backend loader and frontend must be synchronized to Apps Script and deployed as a TEST version before verifying the URL.
+- Database/schema changes: none. `setup.gs`: unchanged. Production deployment: not performed.
