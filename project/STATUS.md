@@ -812,3 +812,68 @@ Next Action: deploy approved branch to TEST only, verify Advisor sees only assig
 - Static validation: PASS for menu definition/order, route mapping, Admin branch before Advisor API, and matching pinned frontend commit.
 - Runtime browser TEST/UAT: NOT TESTED. Apps Script TEST deployment/synchronization is still required before confirming behavior in the GitHub Pages embedded Web App.
 - Database/schema changes: none. Production deployment: not performed.
+
+
+## SOURCE BASELINE — Modular Backend Inventory (2026-11-27)
+
+This section is the current file-organization baseline for continuing Phase 2 work. Use the exact branch and source snapshot below; do not reconstruct the module structure from older chat messages.
+
+### Baseline refs
+- Repository: `worrawutt-source/worrawutsportsci`
+- Modular split branch: `refactor/phase2-code-modules`
+- Modular split commit: `28203600734dd7fc48a334db0031cb9d2d94d335`
+- Base integration commit recorded by the refactor: `802e5974a4ac9fe2efed61d4c6381cdcfab39957`
+- Current working branch with the two UI fixes and updated source documentation: `fix/phase2-student-menu-admin-overview`
+- Source snapshot after README corrections: `f9d390fc4dc7495b0d3e8e3ab07869a98c3b3c8a`
+- This is a development branch; it is not merged to `main` or the integration branch and is not deployed.
+
+### Backend inventory — `project/gas-source/`
+
+There are 13 numbered backend modules plus `code.gs` and `setup.gs` (15 script files). All files share the Apps Script global namespace. Prefixes indicate logical responsibility only; do not rely on file load order. The following blob SHAs identify the source snapshot.
+
+| File | Responsibility | Blob SHA |
+|---|---|---|
+| `00_AppConfigAndEntry.gs` | APP/SCHEMA/ROLE configuration, doGet/doPost, frontend rendering and GitHub loader; contains `FRONTEND_CONFIG` | `13704ef3af9d656b640a426fe3e1a8af31435a62` |
+| `05_TestBootstrapAndRosterImport.gs` | TEST bootstrap and roster import helper | `e1268337190155973233adee1945e867d5dd143a` |
+| `10_AuthAndUserAdministration.gs` | Registration/OTP, login/session API, dashboard, user and invitation administration, account status/password and audit/user administration | `6db12688c2734a465379386c879b1988345045b7` |
+| `20_GroupManagement.gs` | Group and membership administration, leader, archive, student workspace and student-led group creation | `dc63b83e8cdb1fabcb751a1a977fdbe98960d17a` |
+| `30_AdvisorManagement.gs` | Advisor nomination/approval, invitation and magic-link lifecycle, advisor assignment | `c653d7b9cff7967bbe0cb37ef579c63d603a8e4b` |
+| `40_MeetingManagement.gs` | Meeting attendance/reports, advisor review, PDF upload/list, monitoring and meeting migration | `77589e1fb0bdc5c252c5729c00c194d4524c687b` |
+| `50_Assessment.gs` | Assessment window, A4, peer assessment, core score entry and reports | `8e1a02e15d9b545af155bc35b68009f4a0488be9` |
+| `60_ProgressManagement.gs` | Milestone/week plan, progress-week settings, admin monitoring/review and migration | `d767b899382c5d4e63895f038bb9e5e8f571536a` |
+| `70_ResearchTopicProposal.gs` | Research-topic draft/read/save/submit, advisor topic review, notifications and proposal PDF | `3ca6fefa041cc3b85edb80c50700669028c5cc59` |
+| `80_WorkspaceFeedbackAndMigrations.gs` | Collaborative progress draft/submission, advisor feedback, Phase 2 additive migrations, revision deadlines/extensions and date formatting | `62eb5abeeabe9d7fb1557e00a04ee3fb90ef999c` |
+| `90_TasksNotificationsMonitoring.gs` | Group tasks/comments, notification queue/digest, triggers, early warnings, grade release and ethics tracking | `dfacf92142a6cba1c33e9e725d5fccbc2f455447` |
+| `95_SystemSettingsAndAccess.gs` | System settings, registration toggle, workflow migration, access checks, assessment settings and score persistence helpers | `48b1f6a9ace6cd11a1168e60794a3b2459cf086e` |
+| `99_DatabaseAndSecurityCore.gs` | Spreadsheet access/read/write/cache helpers, user creation, password/token hashing, OTP/email validation, sessions and audit logging | `a928d8ced9c8538af3bad57e65a7f0d18becce66` |
+| `code.gs` | Module structure note only; no backend function definitions | `bedaec5330aba961c87f694b655d545f569a1012` |
+| `setup.gs` | Protected safety guard and read-only configuration diagnostics; do not modify or run disabled setup/recovery routines | `299203df5478e0a220c7dda6c2b57f7df7c4ca23` |
+
+### Frontend inventory — `project/frontend/`
+
+| File | Responsibility | Blob SHA |
+|---|---|---|
+| `Index.html` | HTML application shell and insertion markers | `0f5399fd256f845a1125522bd96e181e89c4a03b` |
+| `Styles.html` | CSS/style definitions | `4d06d0092f6540a17630d5674449e1209dfec46a` |
+| `Client.html` | Browser-side API caller, dashboard navigation and UI rendering; contains the Admin overview and Student topic-menu fixes | `8255aac2dab6273ac4915b69d7876d7886b119d9` |
+| `README.md` | Frontend loader contract and publish notes; corrected to identify the modular loader file | `99542c02d6b55db60bda09461dda9e1c06bbea19` |
+
+### Loader and deployment relationship
+- `FRONTEND_CONFIG.COMMIT_SHA` is in `project/gas-source/00_AppConfigAndEntry.gs`, not `code.gs`.
+- The pinned frontend commit for this snapshot is `24e5d56c2f56b214d74c93f0fb52b6b3ff203e4e`.
+- The loader fetches the frontend by immutable commit SHA; GitHub edits alone do not update an existing Apps Script deployment.
+- `project/gas-source/README.md` and `project/frontend/README.md` were corrected to match the modular structure and loader location.
+
+### Current source fixes included in this baseline
+- Student menu label `เสนอชื่อเรื่องงานวิจัย` is placed before `เอกสารโครงร่าง` in `10_AuthAndUserAdministration.gs` and routed to the existing `renderStudentTopics()`.
+- Admin/System Admin overview renders from dashboard metrics and avoids the Advisor-only `apiGetAdvisorWorkspaceSummary` call in `Client.html`.
+- No database/schema changes. `setup.gs` unchanged. No production deployment.
+
+### Validation and limits
+- Earlier modular refactor static validation recorded: 176 function definitions retained, 84 API definitions retained, no duplicate function names, 74 frontend `callApi()` references with no missing API definitions; source slices matched the original ranges.
+- Current baseline rechecked: file inventory and blob SHAs fetched from GitHub; menu order, frontend route, Admin role guard and frontend pin verified by static source inspection.
+- GAS runtime compile, TEST deployment, browser regression and UAT: NOT TESTED.
+- Production data/deployment: unchanged.
+
+### Next-work rule
+Start from `fix/phase2-student-menu-admin-overview` and this snapshot. Before any change, inspect current branch/commit and the relevant module/caller. Preserve all modules, keep changes minimal, update this STATUS section only when the baseline changes, and do not treat static PASS as Runtime/UAT PASS.
