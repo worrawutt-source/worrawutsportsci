@@ -65,7 +65,7 @@ The Apps Script loader fetches these three files from `raw.githubusercontent.com
 - Advisor navigation is organized into five task-based menus: Overview, My Tasks, Advisor Groups, Supervision, and Assessment.
 - Client.html includes the Advisor overview, task inbox, full progress-report list, direct group-to-review action, and red/amber/green workflow states.
 - Styles.html adds responsive professional Advisor dashboard and review workspace styling.
-- 50_Assessment.gs adds apiGetAdvisorReviewQueue(token), a batch endpoint that returns only assigned groups' topics, proposal files, progress reports, and advisor feedback. It replaces frontend per-group sequential API calls with one queue API call.
+- 50_Assessment.gs adds apiGetAdvisorReviewQueue(token), a batch endpoint that returns only assigned groups' topics, proposal files, and progress reports (Feedback history is loaded separately in the group workspace). It replaces frontend per-group sequential API calls with one queue API call.
 - 60_ProgressManagement.gs adds apiAdvisorReviewProgressReport(token, reportId, decision, comment). It requires Advisor role, checks approved group assignment, accepts only existing APPROVED / REVISION_REQUIRED statuses, records review metadata and comment, logs the action, and notifies the group.
 - 10_AuthAndUserAdministration.gs updates Advisor menu and workspace summary; exposes actual overdue group tasks and revision reports using existing due dates. No new due dates are generated.
 - 00_AppConfigAndEntry.gs pins the frontend to the immutable TEST frontend commit above.
