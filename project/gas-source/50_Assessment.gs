@@ -165,7 +165,7 @@ function apiGetAdvisorReviewQueue(token){
   const result=groups.map(g=>{
     const groupId=String(g.groupId);
     return {
-      group:{groupId,groupName:g.groupName,topicTh:g.topicTh||'',topicEn:g.topicEn||''},
+      group:{groupId,groupName:g.groupName,topicTh:g.topicTh||'',topicEn:g.topicEn||'',memberCount:(g.members||[]).length},
       topics:topics.filter(x=>String(x.GROUP_ID)===groupId).sort((a,b)=>Number(b.VERSION_NO||0)-Number(a.VERSION_NO||0)).map(x=>({versionId:x.VERSION_ID,versionNo:x.VERSION_NO,titleTh:x.TITLE_TH,titleEn:x.TITLE_EN,problem:x.PROBLEM_STATEMENT,objectives:x.OBJECTIVES,significance:x.RESEARCH_SIGNIFICANCE,status:x.STATUS,reviewStatus:x.REVIEW_STATUS,submittedAt:x.SUBMITTED_AT,reviewComment:x.REVIEW_COMMENT||''})),
       files:files.filter(x=>String(x.GROUP_ID)===groupId).sort((a,b)=>new Date(b.UPLOADED_AT||0)-new Date(a.UPLOADED_AT||0)).map(x=>({fileId:x.FILE_RECORD_ID,chapter:x.CHAPTER,fileName:x.FILE_NAME,url:x.DRIVE_URL,size:Number(x.FILE_SIZE)||0,uploadedAt:x.UPLOADED_AT,notes:x.NOTES})),
       progress:progress.filter(x=>String(x.GROUP_ID)===groupId).sort((a,b)=>Number(b.WEEK_NO||0)-Number(a.WEEK_NO||0)||new Date(b.SUBMITTED_AT||0)-new Date(a.SUBMITTED_AT||0)).map(x=>({reportId:x.REPORT_ID,weekNo:x.WEEK_NO,milestone:x.MILESTONE,workCompleted:x.WORK_COMPLETED,problems:x.PROBLEMS,nextActions:x.NEXT_ACTIONS,submittedAt:x.SUBMITTED_AT instanceof Date?x.SUBMITTED_AT.toISOString():String(x.SUBMITTED_AT||''),status:x.STATUS,reviewComment:x.REVIEW_COMMENT||'',timelinessStatus:x.TIMELINESS_STATUS||'',revisionDueAt:x.REVISION_DUE_AT||'',extensionId:x.EXTENSION_ID||''})),
