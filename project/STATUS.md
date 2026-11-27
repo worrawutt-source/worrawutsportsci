@@ -912,3 +912,35 @@ Start from `fix/phase2-student-menu-admin-overview` and this snapshot. Before an
 
 ### Next action
 Sync the pinned loader module into the existing TEST Apps Script project, save and deploy TEST only, then run the above role/menu regression checks. Record the deployment version and test evidence here; do not promote to production without explicit approval.
+
+## 2026-11-27 — Course Coordinator Dashboard summary implementation (TEST source only)
+
+### Change scope
+- Branch: `fix/phase2-student-menu-admin-overview`
+- Purpose: replace the Admin overview's user/session metrics with a course operations dashboard using actual group, advisor, progress, meeting, task, warning, due-date, and assessment records.
+- Frontend commit pinned by GAS: `25617c28ae48560f961f432acd1f9223c866cc22`
+- Loader update commit: `c0c3783542dbf0d0a6ef8ee11df8bbfdead30a37`
+- Backend summary API commit chain: `7d75bd6346f5a6e05abe55011903c08f5c48ec0a`, `220a3ad524efd53c2877f8d700cca562a4c02ddd`, `cd69b4670c03db31017b2922b0fa0f029a545cba`
+
+### Files changed
+- `project/frontend/Client.html` — replaced the Admin overview renderer with Course Coordinator Dashboard: actionable items, separate advisor nomination/approval states, activity 1 meeting and progress reporting, searchable group status, configured due-date calendar, and A1–A5 assessment completion summary.
+- `project/frontend/Styles.html` — added responsive dashboard styles.
+- `project/gas-source/90_TasksNotificationsMonitoring.gs` — added `apiAdminGetCoordinatorDashboard(token)`. It returns status-only operational fields and does not return progress narratives, advisor feedback, meeting review comments, Drive URLs, file metadata, or student personal details. The summary reads existing sheets and does not invoke the progress helper that can seed week settings.
+- `project/gas-source/00_AppConfigAndEntry.gs` — updated `FRONTEND_CONFIG.COMMIT_SHA` to the immutable frontend commit above.
+- `project/gas-source/README.md` — updated source/pin documentation.
+
+### Static validation
+- Backend `90_TasksNotificationsMonitoring.gs` JavaScript syntax: PASS.
+- Frontend `Client.html` JavaScript syntax: PASS.
+- Coordinator API definition count: 1.
+- Frontend call to `apiAdminGetCoordinatorDashboard`: 1.
+- Frontend pin in `00_AppConfigAndEntry.gs` matches the frontend commit: PASS.
+- GAS runtime compile, Spreadsheet-backed execution, browser TEST, regression and UAT: NOT TESTED.
+- Database/schema changes: none. `setup.gs`: unchanged. Production data and deployment: unchanged.
+
+### GAS TEST synchronization
+The following existing modular GAS files must be updated in the existing TEST Apps Script project:
+1. `project/gas-source/90_TasksNotificationsMonitoring.gs` — add the coordinator summary API.
+2. `project/gas-source/00_AppConfigAndEntry.gs` — update the immutable frontend loader pin.
+
+Do not copy `Client.html` or `Styles.html` into GAS; the loader fetches them from GitHub at the pinned SHA. Keep all other modules and `setup.gs` unchanged. After saving the two modules, authorize the existing external-request scope if required, create a new TEST deployment, and run role/menu, action counts, due-date, assessment-window and privacy checks. Runtime TEST/UAT and deployment remain NOT TESTED / NOT PERFORMED.
