@@ -84,3 +84,14 @@ The Apps Script loader fetches these three files from `raw.githubusercontent.com
 - Frontend immutable commit: `6f0b213c3d79709b8ff47dff7afe1660d9e36267`; loader pin updated in `00_AppConfigAndEntry.gs`.
 - No schema/migration, scoring, role permission, setup, or production-data changes. `setup.gs` unchanged.
 - Static source checks: PASS (API single definition/session guard, role mapping, stable menu labels, zero-hide badge, immutable frontend pin, no auto-create sheet path). GAS runtime, browser TEST, regression, UAT, and deployment: NOT TESTED / NOT PERFORMED.
+
+## 2026-11-27 — Responsive workspace width and typography (TEST source)
+
+- Expanded the shared frontend shell from a 1240px maximum to a 1680px maximum, so desktop/notebook workspaces use more available viewport width while retaining responsive page padding.
+- Increased dashboard sidebar sizing and menu readability; metric labels/value sizes and content headings now scale better on notebook displays.
+- Improved Advisor review summary, card, feedback, status, and table typography for readability.
+- Refined tablet and mobile breakpoints: 2-column metrics where appropriate, stacked dashboard layout, adjusted menu spacing, and a single-column fallback on narrow phones.
+- Implemented as additive CSS overrides in `project/frontend/Styles.html`; existing rules and `Client.html` behavior remain intact.
+- Frontend immutable commit: `d3666d978fc8f3447d67ca8edf2f59ea258d540f`; loader pin updated in `00_AppConfigAndEntry.gs`.
+- No API, schema, role, workflow, scoring, or production data changes. `setup.gs` unchanged.
+- Static CSS/source checks: PASS; visual browser QA across notebook/iPad/mobile and GAS runtime/UAT: NOT TESTED.
