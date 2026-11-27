@@ -969,7 +969,7 @@ Do not copy `Client.html` or `Styles.html` into GAS; the loader fetches them fro
 - Advisor dashboard shows new/review tasks, assigned groups, real overdue items, supervision count, feedback count, and group status. Overdue items derive from existing GROUP_TASKS.DUE_DATE and PROGRESS_REPORTS.REVISION_DUE_AT only.
 - Review queue includes all progress reports rather than limiting display to five; shows pending, revision-required, and reviewed statuses. Topic review remains within the same work inbox.
 - Direct 'ตรวจงานของกลุ่ม' navigation added from Advisor Groups to the group-filtered review workspace.
-- apiGetAdvisorReviewQueue(token) batch-loads assigned group research topics, active proposal files, progress reports, and feedback with one frontend API request; requires ROLE.ADVISOR and derives groups from approved assignments.
+- apiGetAdvisorReviewQueue(token) batch-loads assigned group research topics, active proposal files, and progress reports (Feedback history is loaded separately in the group workspace) with one frontend API request; requires ROLE.ADVISOR and derives groups from approved assignments.
 - apiAdvisorReviewProgressReport(token, reportId, decision, comment) supports existing APPROVED and REVISION_REQUIRED statuses, checks assigned group access, writes review metadata/comment, records audit log, and notifies the group.
 - Shared el() helper now safely supports DOM child nodes and function event handlers; existing text-only calls remain supported.
 - Frontend loader pin updated to immutable commit 251f1f5b64c397f1eed37fca589b5e8c1e302d82.
