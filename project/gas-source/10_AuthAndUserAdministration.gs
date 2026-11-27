@@ -150,6 +150,7 @@ function advisorWorkspaceDetails_(advisorUserId){
     due.setHours(23,59,59,999);
     return due<now;
   });
+  const overdueRevisions=reports.filter(r=>String(r.STATUS||'').trim().toUpperCase()==='REVISION_REQUIRED'&&r.REVISION_DUE_AT).filter(r=>{const due=new Date(r.REVISION_DUE_AT);if(isNaN(due.getTime()))return false;due.setHours(23,59,59,999);return due<now;});
   const groupSummaries=groups.map(g=>{
     const groupId=String(g.groupId);
     const gr=reports.filter(r=>String(r.GROUP_ID)===groupId).sort((a,b)=>new Date(b.SUBMITTED_AT||0)-new Date(a.SUBMITTED_AT||0));
@@ -177,7 +178,7 @@ function advisorWorkspaceDetails_(advisorUserId){
     return {groupId:r.GROUP_ID,groupName:g?g.groupName:'',versionNo:r.VERSION_NO,titleTh:r.TITLE_TH,submittedAt:r.SUBMITTED_AT,versionId:r.VERSION_ID};
   });
   const dashboardMetrics={meetingsRecorded:new Set(meetings.map(r=>String(r.GROUP_ID)+'|'+String(r.MEETING_NO))).size};
-  const overdueTaskItems=overdueTasks.map(t=>{const g=groups.find(x=>String(x.groupId)===String(t.GROUP_ID));return {taskId:String(t.TASK_ID||''),groupId:String(t.GROUP_ID||''),groupName:g?g.groupName:'',title:String(t.TASK_TITLE||'งานกลุ่ม'),dueDate:t.DUE_DATE?formatDateOnly_(t.DUE_DATE):'',status:String(t.STATUS||'')};});
+  const overdueTaskItems=overdueTasks.map(t=>{const g=groups.find(x=>String(x.groupId)===String(t.GROUP_ID));return {taskId:String(t.TASK_ID||''),groupId:String(t.GROUP_ID||''),groupName:g?g.groupName:'',title:String(t.TASK_TITLE||'งานกลุ่ม'),dueDate:t.DUE_DATE?formatDateOnly_(t.DUE_DATE):'',status:String(t.STATUS||''),type:'GROUP_TASK'};}).concat(overdueRevisions.map(r=>{const g=groups.find(x=>String(x.groupId)===String(r.GROUP_ID));return {taskId:String(r.REPORT_ID||''),groupId:String(r.GROUP_ID||''),groupName:g?g.groupName:'',title:'รายงานสัปดาห์ '+r.WEEK_NO+' รอแก้ไข',dueDate:r.REVISION_DUE_AT?formatDateOnly_(r.REVISION_DUE_AT):'',status:String(r.STATUS||''),type:'PROGRESS_REVISION'};}));
   return sanitizeForClient_({
     metrics:{
       assignedGroups:groups.length,
@@ -186,7 +187,7 @@ function advisorWorkspaceDetails_(advisorUserId){
       meetingsRecorded:dashboardMetrics.meetingsRecorded,
       feedbackProvided:feedback.length,
       openTasks:tasks.length,
-      overdueTasks:overdueTasks.length
+      overdueTasks:overdueTasks.length+overdueRevisions.length
     },
     dashboardMetrics,overdueTaskItems,
     groups:groupSummaries,pendingReports,pendingTopics,
