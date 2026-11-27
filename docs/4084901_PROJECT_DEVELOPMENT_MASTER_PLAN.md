@@ -4,7 +4,7 @@
 - Version: 1.0 | วันที่: 26 พฤศจิกายน 2569
 - สถานะ: Working Baseline — แผนกำกับงาน ยังไม่ใช่การอนุมัติให้เปลี่ยนระบบทุกส่วน
 - Repository: worrawutt-source/worrawutsportsci
-- Branch: feature/meeting-submissions-migration
+- Branch for current Source Integration Candidate: release/phase2-test-rc-2026-11-27
 
 > **หลักการ:** รายวิชากำลังสอน ระบบต้องมีส่วนที่ใช้งานได้จริงให้นักศึกษาและอาจารย์ใช้ระหว่างพัฒนา ไม่หยุดการใช้งานเพื่อรอให้ระบบสมบูรณ์ ส่งมอบเป็นชุดเล็กที่ใช้งานได้ (Incremental Development with Continuous Usable Release)
 
@@ -26,7 +26,17 @@
 - ห้ามเปลี่ยน Password Hash, GPS/Exam Entry หรือ Clean Setup ของระบบอื่นนอกขอบเขต
 
 ### Release safety
-พัฒนาใน branch → ตรวจ diff → TEST → regression test ส่วนเดิมที่เกี่ยวข้อง → user review → release ตามขั้นตอนจริง ต้องไม่อ้างว่า test/deploy ผ่านหากไม่มีหลักฐาน
+พัฒนาใน GitHub branch → ตรวจ Source/diff/static validation → ตรวจความเสี่ยงและแผน rollback → ขออนุมัติการเปลี่ยนแปลง → นำไปใช้กับ GAS/Sheet ชุดเดิมเป็น Incremental Release → ตรวจ workflow ที่เปลี่ยนและติดตามผลจริง
+
+**แนวทางที่ผู้รับผิดชอบยืนยันล่าสุด (27 พ.ย. 2569):** ระบบกำลังพัฒนาและใช้งานควบคู่กัน ไม่ได้มี TEST GAS หรือ TEST Sheet แยก และไม่ต้องสร้างชุดใหม่เพื่อรองรับการพัฒนา การใช้ branch ใน GitHub เป็นการตรวจ Source ไม่ใช่การสร้าง deployment หรือฐานข้อมูลแยก
+
+เมื่อไม่มี isolated TEST environment:
+- ห้ามเรียกการทดสอบที่เขียน/ลบ/เปลี่ยนข้อมูลจริงว่า TEST ที่ปลอดภัย
+- แยก Static/Read-only validation ออกจากการทดสอบ workflow ที่มี side effect
+- ตรวจ deployment, frontend pin, Script Properties และ database target จากผู้ดูแลระบบก่อน release ทุกครั้ง
+- ทดสอบการเปลี่ยนแปลงที่มีผลต่อข้อมูลด้วยขอบเขตเล็กที่สุด มีแผน recovery และได้รับอนุมัติจากผู้รับผิดชอบ
+- ห้ามสร้าง GAS/Sheet ใหม่หรือแก้ production data โดยอัตโนมัติ
+- ห้ามอ้างว่า Runtime/UAT/Deployment ผ่านหากไม่มีหลักฐานจริง
 
 ## 3. เป้าหมายและผู้ใช้งาน
 - STUDENT: เห็นงาน ทำ draft/submit อ่าน feedback แก้ไขและส่งใหม่
@@ -309,3 +319,12 @@ Commits:
 - Frontend immutable pin: `4c5ab251c2c1a2ac66f413b454f468111f2bd371`
 
 Static syntax and authorization/cross-file checks: PASS. Runtime/Browser, TEST deployment and UAT: NOT TESTED / PENDING. Production unchanged.
+
+
+## 10. แนวทางปฏิบัติการปัจจุบัน — พัฒนาและใช้งานระบบชุดเดิม
+
+การตัดสินใจล่าสุดของผู้รับผิดชอบโครงการ ณ 27 พฤศจิกายน 2569 คือ ใช้ GAS และ Google Sheet ชุดเดิมระหว่างพัฒนา ไม่สร้าง TEST GAS หรือ TEST Sheet เพิ่ม การพัฒนา Source ให้ใช้ GitHub branch เพื่อแยกการเปลี่ยนแปลง ตรวจ diff และทำ Static Validation ก่อน
+
+Release ต้องเป็น Incremental และมีการตรวจสอบความเสี่ยงตามผลกระทบต่อข้อมูลจริง การตรวจ Source หรือการ commit ไม่ถือว่า Runtime Test, UAT หรือ Deployment ผ่านแล้ว หากยังไม่มีหลักฐานจากระบบที่ใช้งานจริงให้ระบุ BLOCKED/NOT TESTED อย่างตรงไปตรงมา
+
+Source Integration Candidate ปัจจุบัน: `release/phase2-test-rc-2026-11-27`. Branch นี้เป็นผู้สมัคร Source เท่านั้น ไม่ได้หมายความว่าโค้ดถูก deploy แล้ว และไม่เปลี่ยน GAS/Sheet ที่กำลังใช้งาน
