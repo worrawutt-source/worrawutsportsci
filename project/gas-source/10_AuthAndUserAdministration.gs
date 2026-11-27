@@ -158,6 +158,7 @@ function advisorWorkspaceDetails_(advisorUserId){
     const gm=meetings.filter(r=>String(r.GROUP_ID)===groupId);
     const groupTasks=tasks.filter(t=>String(t.GROUP_ID)===groupId);
     const groupOverdue=overdueTasks.filter(t=>String(t.GROUP_ID)===groupId);
+    const groupOverdueRevisions=overdueRevisions.filter(t=>String(t.GROUP_ID)===groupId);
     return {
       groupId:g.groupId,groupName:g.groupName,topicTh:g.topicTh,topicEn:g.topicEn,members:g.members,
       pendingReports:gr.filter(r=>['SUBMITTED','RESUBMITTED'].includes(String(r.STATUS||'').trim().toUpperCase())).length,
@@ -165,7 +166,7 @@ function advisorWorkspaceDetails_(advisorUserId){
       proposalFiles:files.filter(r=>String(r.GROUP_ID)===groupId).length,
       feedbackCount:feedback.filter(r=>String(r.GROUP_ID)===groupId).length,
       meetingCount:[...new Set(gm.map(r=>String(r.MEETING_NO)))].filter(Boolean).length,
-      openTasks:groupTasks.length,overdueTasks:groupOverdue.length,
+      openTasks:groupTasks.length,overdueTasks:groupOverdue.length,overdueRevisions:groupOverdueRevisions.length,overdueItems:groupOverdue.length+groupOverdueRevisions.length,
       latestTopic:gt[0]?{versionNo:gt[0].VERSION_NO,reviewStatus:gt[0].REVIEW_STATUS,status:gt[0].STATUS}:null
     };
   });
