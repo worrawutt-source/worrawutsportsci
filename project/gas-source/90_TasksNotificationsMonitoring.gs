@@ -88,3 +88,164 @@ function apiAdminRecalculateEarlyWarnings(token){const ctx=requireSession_(token
 function upsertWarningFlag_(groupId,rule,severity,description,evidence){const rows=readObjectsFresh_('EARLY_WARNING_FLAGS'),evidenceJson=JSON.stringify(evidence||{});const matches=rows.filter(x=>String(x.GROUP_ID)===String(groupId)&&x.RULE_CODE===rule).sort((a,b)=>new Date(b.CREATED_AT)-new Date(a.CREATED_AT));if(matches.some(x=>['OPEN','ACKNOWLEDGED'].includes(String(x.STATUS))))return 0;if(matches.length&&String(matches[0].EVIDENCE_JSON||'')===evidenceJson&&['RESOLVED','DISMISSED'].includes(String(matches[0].STATUS)))return 0;appendObject_('EARLY_WARNING_FLAGS',{FLAG_ID:Utilities.getUuid(),GROUP_ID:groupId,RULE_CODE:rule,SEVERITY:severity,STATUS:'OPEN',DESCRIPTION:description,EVIDENCE_JSON:evidenceJson,ACKNOWLEDGED_BY:'',ACKNOWLEDGED_AT:'',RESOLUTION_NOTE:'',RESOLVED_BY:'',RESOLVED_AT:'',CREATED_AT:new Date(),UPDATED_AT:new Date()});return 1;}
 function apiAdminUpdateEarlyWarning(token,flagId,status,note){const ctx=requireSession_(token,[ROLE.ADMIN]);if(!['ACKNOWLEDGED','RESOLVED','DISMISSED'].includes(String(status)))throw new Error('สถานะไม่ถูกต้อง');const r=readObjectsFresh_('EARLY_WARNING_FLAGS').find(x=>x.FLAG_ID===flagId);if(!r)throw new Error('ไม่พบรายการเตือน');if(status==='ACKNOWLEDGED'&&r.STATUS!=='OPEN')throw new Error('รับทราบได้เฉพาะรายการที่ยัง OPEN');if(['RESOLVED','DISMISSED'].includes(status)&&r.STATUS!=='ACKNOWLEDGED')throw new Error('ต้องรับทราบรายการก่อนจึงจะปิดหรือยกเลิกได้');if(['RESOLVED','DISMISSED'].includes(status)&&String(note||'').trim().length<5)throw new Error('กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร');const sh=sheet_('EARLY_WARNING_FLAGS'),h=SCHEMA.EARLY_WARNING_FLAGS;if(status==='ACKNOWLEDGED'){sh.getRange(r._row,h.indexOf('ACKNOWLEDGED_BY')+1).setValue(ctx.user.USER_ID);sh.getRange(r._row,h.indexOf('ACKNOWLEDGED_AT')+1).setValue(new Date());}else{sh.getRange(r._row,h.indexOf('RESOLUTION_NOTE')+1).setValue(String(note).trim());sh.getRange(r._row,h.indexOf('RESOLVED_BY')+1).setValue(ctx.user.USER_ID);sh.getRange(r._row,h.indexOf('RESOLVED_AT')+1).setValue(new Date());}sh.getRange(r._row,h.indexOf('STATUS')+1).setValue(status);sh.getRange(r._row,h.indexOf('UPDATED_AT')+1).setValue(new Date());logSystem_('EARLY_WARNING_STATUS_CHANGED','EARLY_WARNING',flagId,{before:r.STATUS,after:status,note:String(note||'')},ctx.user.USER_ID);return {ok:true};}
 function apiGetGroupAdvisorFeedbackStatus(token,groupId){const ctx=requireSession_(token,[ROLE.ADMIN,ROLE.ADVISOR,ROLE.STUDENT]);assertGroupAccess_(ctx,String(groupId));const rows=readObjectsFresh_('ADVISOR_FEEDBACK').filter(f=>String(f.GROUP_ID)===String(groupId)&&String(f.STATUS||'ACTIVE')==='ACTIVE');return sanitizeForClient_({hasFeedback:rows.length>0,count:rows.length,lastAt:rows.reduce((m,r)=>!m||new Date(r.CREATED_AT)>new Date(m)?r.CREATED_AT:m,null)});}
+
+
+/**
+ * Course Coordinator dashboard summary.
+ * Returns operational status only; never returns report narratives, advisor feedback,
+ * meeting review comments, Drive URLs, file metadata, or student personal details.
+ */
+function apiAdminGetCoordinatorDashboard(token){
+  requireSession_(token,[ROLE.ADMIN]);
+  const groups=readObjects_('RESEARCH_GROUPS').filter(g=>String(g.STATUS||'').toUpperCase()==='ACTIVE');
+  const assignments=readObjects_('ADVISOR_ASSIGNMENTS');
+  const users=readObjects_('SYS_USERS').filter(u=>String(u.STATUS||'').toUpperCase()==='ACTIVE');
+  const settings=progressWeekSettings_();
+  const reports=readObjects_('PROGRESS_REPORTS');
+  const extensions=readObjects_('GROUP_DEADLINE_EXTENSIONS').filter(x=>String(x.STATUS||'').toUpperCase()==='APPROVED');
+  const meetingReports=readObjects_('MEETING_REPORTS');
+  const meetingFiles=readObjects_('MEETING_FILES');
+  const meetingRecords=readObjects_('MEETING_RECORDS');
+  const groupTasks=readObjects_('GROUP_TASKS');
+  const warnings=readObjects_('EARLY_WARNING_FLAGS');
+  const groupScores=readObjects_('GROUP_SCORES');
+  const individualScores=readObjects_('INDIVIDUAL_SCORES');
+  const members=readObjects_('GROUP_MEMBERS').filter(m=>String(m.STATUS||'').toUpperCase()==='ACTIVE');
+  const peerAssessments=readObjects_('PEER_ASSESSMENTS');
+  const today=new Date();today.setHours(0,0,0,0);
+  const dateOnly=v=>{
+    if(!v)return null;
+    if(v instanceof Date&&!isNaN(v.getTime())){const d=new Date(v);d.setHours(0,0,0,0);return d;}
+    const s=String(v).slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return null;
+    const d=new Date(s+'T00:00:00');return isNaN(d.getTime())?null:d;
+  };
+  const isoDate=v=>{const d=dateOnly(v);return d?Utilities.formatDate(d,Session.getScriptTimeZone(),'yyyy-MM-dd'):'';};
+  const groupById=new Map(groups.map(g=>[String(g.GROUP_ID),g]));
+  const activeUserById=new Map(users.map(u=>[String(u.USER_ID),u]));
+  const assignmentByGroup=new Map();
+  assignments.forEach(a=>{
+    const status=String(a.STATUS||'').toUpperCase(),key=String(a.GROUP_ID||'');
+    if(status==='APPROVED')assignmentByGroup.set(key,a);
+  });
+  const pendingAssignments=assignments.filter(a=>String(a.STATUS||'').toUpperCase()==='PENDING'&&groupById.has(String(a.GROUP_ID)));
+  const invitations=readObjects_('ADVISOR_INVITATIONS');
+  const pendingInvitations=invitations.filter(i=>String(i.STATUS||'').toUpperCase()==='ACCEPTED'&&groupById.has(String(i.GROUP_ID)));
+  const groupsNoAdvisor=groups.filter(g=>!assignmentByGroup.has(String(g.GROUP_ID))&&!pendingAssignments.some(a=>String(a.GROUP_ID)===String(g.GROUP_ID))&&!pendingInvitations.some(i=>String(i.GROUP_ID)===String(g.GROUP_ID)));
+  const approvedAdvisorName=g=>{
+    const a=assignmentByGroup.get(String(g.GROUP_ID)),u=a&&activeUserById.get(String(a.ADVISOR_USER_ID));
+    return u?String(u.DISPLAY_NAME||u.EMAIL||''):a?'บัญชี Advisor ไม่พร้อมใช้งาน':'ยังไม่ได้แต่งตั้ง';
+  };
+  const latestByGroupWeek=new Map();
+  reports.forEach(r=>{
+    const key=String(r.GROUP_ID)+'|'+String(r.WEEK_NO),old=latestByGroupWeek.get(key);
+    if(!old||new Date(r.SUBMITTED_AT||r.UPDATED_AT||0)>=new Date(old.SUBMITTED_AT||old.UPDATED_AT||0))latestByGroupWeek.set(key,r);
+  });
+  const effectiveDue=(groupId,week,setting)=>{
+    const ext=extensions.filter(x=>String(x.GROUP_ID)===String(groupId)&&Number(x.WEEK_NO)===Number(week))
+      .sort((a,b)=>new Date(b.APPROVED_AT||0)-new Date(a.APPROVED_AT||0))[0];
+    return ext?ext.NEW_DUE_DATE:(setting&&setting.dueDate||'');
+  };
+  const pendingReports=[],revisionReports=[],overdueReports=[],dueSoonReports=[];
+  const latestReportByGroup=new Map();
+  groups.forEach(g=>{
+    settings.forEach(w=>{
+      const key=String(g.GROUP_ID)+'|'+String(w.week),r=latestByGroupWeek.get(key)||null;
+      const due=effectiveDue(g.GROUP_ID,w.week,w),dueDate=dateOnly(due),status=String(r&&r.STATUS||'NOT_SUBMITTED').toUpperCase();
+      const submitted=!!r&&!!r.SUBMITTED_AT;
+      const row={groupId:String(g.GROUP_ID),groupName:String(g.GROUP_NAME||''),weekNo:Number(w.week),weekTitle:String(w.title||''),status,
+        submittedAt:r&&r.SUBMITTED_AT?isoDate(r.SUBMITTED_AT):'',dueDate:isoDate(due),revisionDueAt:r&&r.REVISION_DUE_AT?isoDate(r.REVISION_DUE_AT):''};
+      if(['SUBMITTED','RESUBMITTED'].includes(status))pendingReports.push(row);
+      if(status==='REVISION_REQUIRED')revisionReports.push(row);
+      const actionDue=status==='REVISION_REQUIRED'?dateOnly(r&&r.REVISION_DUE_AT||due):dueDate;
+      if(!submitted&&status==='NOT_SUBMITTED'&&actionDue&&actionDue<today)overdueReports.push(row);
+      if(status==='REVISION_REQUIRED'&&actionDue&&actionDue<today)overdueReports.push(row);
+      if(['NOT_SUBMITTED','REVISION_REQUIRED'].includes(status)&&actionDue&&actionDue>=today&&Math.ceil((actionDue-today)/86400000)<=7)dueSoonReports.push(row);
+      if(r){
+        const prev=latestReportByGroup.get(String(g.GROUP_ID));
+        if(!prev||new Date(r.SUBMITTED_AT||r.UPDATED_AT||0)>new Date(prev.SUBMITTED_AT||prev.UPDATED_AT||0))latestReportByGroup.set(String(g.GROUP_ID),r);
+      }
+    });
+  });
+  const meetingOneByGroup=new Map();
+  groups.forEach(g=>{
+    const gid=String(g.GROUP_ID);
+    const online=meetingReports.filter(r=>String(r.GROUP_ID)===gid&&Number(r.MEETING_NO)===1)
+      .sort((a,b)=>Number(b.VERSION||0)-Number(a.VERSION||0)||new Date(b.UPDATED_AT||0)-new Date(a.UPDATED_AT||0))[0];
+    const file=meetingFiles.filter(f=>String(f.GROUP_ID)===gid&&Number(f.MEETING_NO)===1&&['SUBMITTED','VERIFIED','REVISION_REQUIRED','ACTIVE'].includes(String(f.STATUS||'').toUpperCase()))
+      .sort((a,b)=>new Date(b.UPLOADED_AT||0)-new Date(a.UPLOADED_AT||0))[0];
+    const recorded=meetingRecords.some(m=>String(m.GROUP_ID)===gid&&Number(m.MEETING_NO)===1);
+    const latest=online||file||null;
+    const status=latest?String(latest.STATUS||'SUBMITTED').toUpperCase():recorded?'NOT_SUBMITTED':'NOT_RECORDED';
+    meetingOneByGroup.set(gid,{groupId:gid,groupName:String(g.GROUP_NAME||''),status,submittedAt:isoDate(latest&&(latest.SUBMITTED_AT||latest.UPLOADED_AT))});
+  });
+  const meetingOne=[...meetingOneByGroup.values()];
+  const meetingOnePending=meetingOne.filter(x=>x.status==='SUBMITTED');
+  const meetingOneRevision=meetingOne.filter(x=>x.status==='REVISION_REQUIRED');
+  const openWarnings=warnings.filter(w=>['OPEN','ACKNOWLEDGED'].includes(String(w.STATUS||'').toUpperCase())&&groupById.has(String(w.GROUP_ID)));
+  const tasks=groupTasks.filter(t=>groupById.has(String(t.GROUP_ID))&&!['COMPLETED','CANCELLED','DONE'].includes(String(t.STATUS||'').toUpperCase()));
+  const taskRows=tasks.map(t=>({groupId:String(t.GROUP_ID),groupName:String((groupById.get(String(t.GROUP_ID))||{}).GROUP_NAME||''),title:String(t.TASK_TITLE||'งานกลุ่ม'),status:String(t.STATUS||''),dueDate:isoDate(t.DUE_DATE)}));
+  const taskOverdue=taskRows.filter(t=>{const d=dateOnly(t.dueDate);return d&&d<today;});
+  const taskDueSoon=taskRows.filter(t=>{const d=dateOnly(t.dueDate);return d&&d>=today&&Math.ceil((d-today)/86400000)<=7;});
+  const calendar=[];
+  settings.forEach(w=>{const d=dateOnly(w.dueDate);if(d)calendar.push({type:'PROGRESS',title:String(w.title||('รายงานความก้าวหน้า สัปดาห์ '+w.week)),date:isoDate(d),weekNo:Number(w.week),isOpen:!!w.isOpen});});
+  taskRows.forEach(t=>{if(t.dueDate)calendar.push({type:'TASK',title:t.title,groupName:t.groupName,date:t.dueDate,status:t.status});});
+  calendar.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  const scoreByGroup=new Map(groupScores.map(s=>[String(s.GROUP_ID),s]));
+  const individualByStudent=new Map(individualScores.map(s=>[String(s.STUDENT_ID),s]));
+  const activeMembersByGroup=new Map();
+  members.forEach(m=>{const k=String(m.GROUP_ID);if(!activeMembersByGroup.has(k))activeMembersByGroup.set(k,[]);activeMembersByGroup.get(k).push(m);});
+  const assessmentWindows=assessmentSettings_();
+  const assessments=['A1','A2','A3','A4','A5'].map(code=>{
+    let complete=0,recorded=0,expected=groups.length;
+    groups.forEach(g=>{
+      const gid=String(g.GROUP_ID),score=scoreByGroup.get(gid)||{},gm=activeMembersByGroup.get(gid)||[];
+      let has=false,isComplete=false;
+      if(['A1','A2','A3'].includes(code)){const key=code+'_SCORE';has=score[key]!==''&&score[key]!==null&&score[key]!==undefined;isComplete=has;}
+      else if(code==='A4'){
+        const groupDone=score.A4_GROUP_SCORE!==''&&score.A4_GROUP_SCORE!==null&&score.A4_GROUP_SCORE!==undefined;
+        const membersDone=gm.length>0&&gm.every(m=>{const s=individualByStudent.get(String(m.STUDENT_ID))||{};return s.A4_INDIVIDUAL_SCORE!==''&&s.A4_INDIVIDUAL_SCORE!==null&&s.A4_INDIVIDUAL_SCORE!==undefined;});
+        has=groupDone||gm.some(m=>{const s=individualByStudent.get(String(m.STUDENT_ID))||{};return s.A4_INDIVIDUAL_SCORE!==''&&s.A4_INDIVIDUAL_SCORE!==null&&s.A4_INDIVIDUAL_SCORE!==undefined;});
+        isComplete=groupDone&&membersDone;
+      }else{
+        const gmIds=gm.map(m=>String(m.STUDENT_ID)),expectedPeers=gmIds.length*Math.max(0,gmIds.length-1);
+        const peers=peerAssessments.filter(p=>String(p.GROUP_ID)===gid&&gmIds.includes(String(p.EVALUATOR_STUDENT_ID))&&gmIds.includes(String(p.EVALUATEE_STUDENT_ID)));
+        has=peers.length>0;isComplete=expectedPeers===0?false:peers.length>=expectedPeers;
+      }
+      if(has)recorded++;if(isComplete)complete++;
+    });
+    const windowKey='WINDOW_'+code,windowState=assessmentWindows[windowKey]||'NOT_CONFIGURED';
+    return {code,points:{A1:10,A2:30,A3:20,A4:30,A5:10}[code],complete,recorded,expected,windowState,
+      isOpen:['OPEN'].includes(String(windowState).toUpperCase()),active:code==='A4'||code==='A5'?String(windowState).toUpperCase()==='OPEN':false};
+  });
+  const groupRows=groups.map(g=>{
+    const gid=String(g.GROUP_ID),assignment=assignmentByGroup.get(gid),advisor=approvedAdvisorName(g);
+    const latest=latestReportByGroup.get(gid)||null;
+    const progressStatus=latest?String(latest.STATUS||''):'NO_REPORT';
+    const meeting=meetingOneByGroup.get(gid)||{status:'NOT_RECORDED'};
+    const tracking=(openWarnings.some(w=>String(w.GROUP_ID)===gid)?'ติดตามความเสี่ยง':
+      overdueReports.some(r=>r.groupId===gid)||taskOverdue.some(t=>t.groupId===gid)?'เลยกำหนด':
+      !assignment?'รอแต่งตั้ง Advisor':
+      ['SUBMITTED','RESUBMITTED','REVISION_REQUIRED'].includes(progressStatus)?'รอตรวจ/แก้ไข':'ติดตามตามสถานะ');
+    return {groupId:gid,groupName:String(g.GROUP_NAME||''),topic:String(g.TOPIC_TITLE_TH||''),advisor,
+      advisorStatus:assignment?'APPROVED':pendingAssignments.some(a=>String(a.GROUP_ID)===gid)?'PENDING':pendingInvitations.some(i=>String(i.GROUP_ID)===gid)?'ACCEPTED_PENDING_APPROVAL':'NOT_ASSIGNED',
+      latestProgressStatus:progressStatus,latestProgressWeek:latest?Number(latest.WEEK_NO||0):null,latestProgressSubmittedAt:latest?isoDate(latest.SUBMITTED_AT):'',
+      meetingOneStatus:meeting.status,meetingOneSubmittedAt:meeting.submittedAt||'',tracking};
+  });
+  return sanitizeForClient_({
+    generatedAt:new Date().toISOString(),
+    summary:{groups:groups.length,advisorMissing:groupsNoAdvisor.length,advisorPending:pendingAssignments.length+pendingInvitations.length,
+      progressPending:pendingReports.length,progressRevision:revisionReports.length,progressOverdue:overdueReports.length,progressDueSoon:dueSoonReports.length,
+      meetingOnePending:meetingOnePending.length,meetingOneRevision:meetingOneRevision.length,meetingOneRecorded:meetingOne.filter(x=>x.status!=='NOT_RECORDED').length,
+      taskOverdue:taskOverdue.length,taskDueSoon:taskDueSoon.length,openWarnings:openWarnings.length},
+    advisorActions:{missing:groupsNoAdvisor.map(g=>({groupId:String(g.GROUP_ID),groupName:String(g.GROUP_NAME||'')})),
+      pending:pendingAssignments.map(a=>({groupId:String(a.GROUP_ID),groupName:String((groupById.get(String(a.GROUP_ID))||{}).GROUP_NAME||''),assignmentId:String(a.ASSIGNMENT_ID||''),status:'PENDING'}))
+        .concat(pendingInvitations.map(i=>({groupId:String(i.GROUP_ID),groupName:String((groupById.get(String(i.GROUP_ID))||{}).GROUP_NAME||''),status:'ACCEPTED_PENDING_APPROVAL'})))},
+    actions:{progressPending:pendingReports,progressRevision:revisionReports,progressOverdue:overdueReports,progressDueSoon,
+      meetingOnePending,meetingOneRevision,taskOverdue,taskDueSoon,warnings:openWarnings.map(w=>({groupId:String(w.GROUP_ID),groupName:String((groupById.get(String(w.GROUP_ID))||{}).GROUP_NAME||''),severity:String(w.SEVERITY||''),status:String(w.STATUS||'')}))},
+    activities:{advisorApproved:groups.length-groupsNoAdvisor.length,advisorPending:pendingAssignments.length+pendingInvitations.length,
+      meetingOneSubmitted:meetingOne.filter(x=>['SUBMITTED','VERIFIED','REVISION_REQUIRED','ACTIVE'].includes(x.status)).length,
+      meetingOneVerified:meetingOne.filter(x=>x.status==='VERIFIED').length,
+      progressWeekOpen:settings.filter(w=>w.isOpen).map(w=>({weekNo:Number(w.week),title:String(w.title||''),dueDate:isoDate(w.dueDate)}))},
+    groups:groupRows,calendar,assessments
+  });
+}
